@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Todos</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 32rem; margin: 3rem auto; }
+    li { display: flex; gap: .5rem; align-items: center; padding: .25rem 0; }
+    li.done span { text-decoration: line-through; opacity: .5; }
+    #error { color: crimson; min-height: 1.2em; }
+  </style>
+</head>
+<body>
+  <h1>Todos</h1>
+  <form id="new-todo">
+    <input name="title" placeholder="What needs doing?" autocomplete="off" required />
+    <button type="submit">Add</button>
+  </form>
+  <p id="error"></p>
+  <ul id="list"></ul>
+
+  <script type="module">
+    const list = document.querySelector('#list');
+    const form = document.querySelector('#new-todo');
+    const errorBox = document.querySelector('#error');
+
+    // Every call to the server goes through here, so error handling lives in one place.
+    async function api(url, options = {}) {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error(body.error || `Request failed with ${res.status}`);
+      }
+      return res.status === 204 ? null : res.json();
+    }
+
+    function render(todos) {
+      list.innerHTML = '';
+      for (const todo of todos) {
+        const li = document.createElement('li');
+        li.className = todo.done ? 'done' : '';
+
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.checked = todo.done;
+        checkbox.addEventListener('change', () => toggle(todo, checkbox.checked));
+
+        const label = document.createElement('span');
+        label.textContent = todo.title;
+
+        const remove = document.createElement('button');
+        remove.textContent = '×';
+        remove.addEventListener('click', () => destroy(todo));
+
+        li.append(checkbox, label, remove);
+        list.append(li);
+      }
+    }
+
+    async function refresh() {
+      try {
+        render(await api('/api/todos'));
+        errorBox.textContent = '';
+      } catch (err) {
+        errorBox.textContent = err.message;
+      }
+    }
+
+    async function toggle(todo, done) {
+      await api(`/api/todos/${todo.id}`, { method: 'PATCH', body: JSON.stringify({ done }) });
+      refresh();
+    }
+
+    async function destroy(todo) {
+      await api(`/api/todos/${todo.id}`, { method: 'DELETE' });
+      refresh();
+    }
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const title = new FormData(form).get('title');
+      try {
+        await api('/api/todos', { method: 'POST', body: JSON.stringify({ title }) });
+        form.reset();
+        refresh();
+      } catch (err) {
+        errorBox.textContent = err.message;
+      }
+    });
+
+    refresh();
+  </script>
+</body>
+</html>
