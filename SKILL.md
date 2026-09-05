@@ -1,219 +1,247 @@
 ---
 name: codebase-to-course
-description: "Turn any codebase into a beautiful, interactive single-page HTML course that teaches how the code works to non-technical people. Use this skill whenever someone wants to create an interactive course, tutorial, or educational walkthrough from a codebase or project. Also trigger when users mention 'turn this into a course,' 'explain this codebase interactively,' 'teach this code,' 'interactive tutorial from code,' 'codebase walkthrough,' 'learn from this codebase,' or 'make a course from this project.' This skill produces a stunning, self-contained HTML file with scroll-based navigation, animated visualizations, embedded quizzes, and code-with-plain-English side-by-side translations."
+description: "把任意代码库变成一门中文交互式课程，讲给零编程基础、正在学 vibe coding 的中文学员听。Turn any codebase into a beautiful, interactive single-page HTML course in Chinese, for non-technical learners whose first barrier is English. 触发词：把这个项目做成课程、讲讲这个代码库、这份代码是怎么跑的、生成课程、代码库导览；also 'turn this into a course', 'explain this codebase interactively', 'teach this code', 'interactive tutorial from code', 'codebase walkthrough', 'make a course from this project'. 产物是一个自包含的 HTML 目录：滚动式模块、动画图示、内嵌测验、代码与中文逐行对照、以及要求学员动手写的输出题。"
 ---
 
-# Codebase-to-Course
+# 代码库 → 中文课程
 
-Transform any codebase into a stunning, interactive course. The output is a **directory** containing a pre-built `styles.css`, `main.js`, per-module HTML files, and an assembled `index.html` — open it directly in the browser with no setup required (no external dependencies at all — fonts are self-hosted). The course teaches how the code works through scroll-based modules, animated visualizations, embedded quizzes, and plain-English translations of code.
+把任意代码库变成一门好看的交互式课程。产物是一个**目录**：预置的 `styles.css`、`main.js`、
+自托管字体、每个模块一个 HTML 文件，以及拼装好的 `index.html`。双击就能在浏览器里打开，
+不需要任何安装，**没有任何外部网络请求**。
 
-## First-Run Welcome
+## 第一次被触发时
 
-When the skill is first triggered and the user hasn't specified a codebase yet, introduce yourself and explain what you do:
+如果用户还没指定代码库，先自我介绍：
 
-> **I can turn any codebase into an interactive course that teaches how it works — no coding knowledge required.**
+> **我可以把任意代码库变成一门交互式课程，用中文讲，不需要你懂编程。**
 >
-> Just point me at a project:
-> - **A local folder** — e.g., "turn ./my-project into a course"
-> - **A GitHub link** — e.g., "make a course from https://github.com/user/repo"
-> - **The current project** — if you're already in a codebase, just say "turn this into a course"
+> 告诉我看哪个项目就行：
+> - **本地文件夹** —— 比如"把 ./my-project 做成课程"
+> - **GitHub 链接** —— 比如"用 https://github.com/user/repo 做一门课"
+> - **当前项目** —— 如果你已经在项目目录里，说"把这个做成课程"就行
 >
-> I'll read through the code, figure out how everything fits together, and generate a beautiful single-page HTML course with animated diagrams, plain-English code explanations, and interactive quizzes. The whole thing runs in your browser — no setup needed.
+> 我会把代码读一遍，理清它是怎么运转的，然后生成一门带动画图示、代码逐行中文对照、
+> 测验和动手输出题的单页课程。全程在你的浏览器里跑，不联网。
 
-If the user provides a GitHub link, clone the repo first (`git clone <url> /tmp/<repo-name>`) before starting the analysis. If they say "this codebase" or similar, use the current working directory.
+如果给的是 GitHub 链接，先克隆到本地（`git clone <url> /tmp/<repo-name>`）再开始分析。
+说"这个代码库"就用当前目录。
 
-## Who This Is For
+## 学员是谁
 
-The target learner is a **"vibe coder"** — someone who builds software by instructing AI coding tools in natural language, without a traditional CS education. They may have built this project themselves (without looking at the code), or they may have found an interesting open-source project on GitHub and want to understand how it's built. Either way, they don't yet understand what's happening under the hood.
+**完整画像见 `references/content-philosophy.md`，那是内容层的唯一权威，开始写之前必须读。**
+一句话概括：中文母语、零编程基础、正在学 vibe coding、**英文是和技术并列的第一道障碍**。
 
-**Assume zero technical background.** Every CS concept — from variables to APIs to databases — needs to be explained in plain language as if the learner has never encountered it. No jargon without definition. No "as you probably know." The tone should be like a smart friend explaining things, not a professor lecturing.
+他的目标不是成为工程师，而是：看懂代码在干什么、看懂英文报错、能用准确的术语指挥 AI。
+所以这门课有两条不可妥协的原则：
 
-**Their goals are practical, not academic:**
-- Have enough technical knowledge to effectively **steer AI coding tools** — make better architectural and tech stack decisions
-- **Detect when AI is wrong** — spot hallucinations, catch bad patterns, know when something smells off
-- **Intervene when AI gets stuck** — break out of bug loops, debug issues, unblock themselves
-- Build more advanced software with **production-level quality and reliability**
-- Be **technically fluent** enough to discuss decisions with engineers confidently
-- **Acquire the vocabulary of software** — learn the precise technical terms so they can describe requirements clearly and unambiguously to AI coding agents (e.g., knowing to say "namespace package" instead of "shared folder thing")
+1. **语言关**：代码里的英文单词本身要被解释，不只是概念
+2. **输出验证理解**：每个模块结尾至少一道输出题，看得懂不算，说得出才算
 
-**They are NOT trying to become software engineers.** They want coding as a superpower that amplifies what they're already good at. They don't need to write code from scratch — they need to *read* it, *understand* it, and *direct* it.
+## 为什么这个顺序有效
 
-## Why This Approach Works
+传统路径是：背几年概念 → 终于能做点东西 → 明白有什么用（大多数人死在第二步之前）。
+这门课反过来：**东西已经做出来了 → 你用过它 → 现在来看它是怎么转的。**
 
-This skill inverts traditional CS education. The old model is: memorize concepts for years → eventually build something → finally see the point (most people quit before step 3). This model is: **build something first → experience it working → now understand how it works.**
+学员手里有传统学生没有的东西——他用过这个应用，他知道它干嘛的。
+课程从他站的地方开始讲："你点的那个按钮，点下去之后发生了什么？"
 
-The learner already has context that traditional students don't — they've *used* the app, they know what it does, they may have even described its features in natural language. The course meets them where they are: "You know that button you click? Here's what happens under the hood when you click it."
+每个模块先回答**"我为什么要关心这个"**，再讲"它是怎么工作的"。
+而"为什么要关心"的答案永远是实际的：*因为这能让你更好地指挥 AI、更快地定位问题、
+做出更靠谱的技术判断。*
 
-Every module answers **"why should I care?"** before "how does it work?" The answer to "why should I care?" is always practical: *because this knowledge helps you steer AI better, debug faster, or make smarter architectural decisions.*
-
-The directory-based output is intentional: separating CSS/JS from content means AI never regenerates boilerplate, each module is written independently (keeping output size small and quality high), and the assembled `index.html` works offline with zero setup.
+产物是目录而不是单文件，是有意的：CSS/JS 从不重新生成，每个模块独立写（输出短、质量高），
+拼装出的 `index.html` 离线可开、零配置。
 
 ---
 
-## The Process
+## 流程
 
-### Phase 1: Codebase Analysis
+### Phase 1：读懂代码库
 
-Before writing course HTML, deeply understand the codebase. Read all the key files, trace the data flows, identify the "cast of characters" (main components/modules), and map how they communicate. Thoroughness here pays off — the more you understand, the better the course.
+写任何 HTML 之前，先把代码库读透。读完关键文件，追清数据流，认出"角色表"（主要组件/模块），
+理清它们怎么通信。这一步花的功夫，后面会成倍还回来。
 
-**What to extract:**
-- The main "actors" (components, services, modules) and their responsibilities
-- The primary user journey (what happens when someone uses the app end-to-end)
-- Key APIs, data flows, and communication patterns
-- Clever engineering patterns (caching, lazy loading, error handling, etc.)
-- Real bugs or gotchas (if visible in git history or comments)
-- The tech stack and why each piece was chosen
+**要挖出来的东西：**
+- 主要角色（组件、服务、模块）各自负责什么
+- 主线用户旅程（有人从头到尾用一次，发生了什么）
+- 关键接口、数据流、通信方式
+- 巧妙的工程手法（缓存、懒加载、错误处理……）
+- 真实存在的坑（git 历史或注释里能看到的）
+- 技术选型，以及为什么选它
 
-**Figure out what the app does yourself** by reading the README, the main entry points, and the UI code. Don't ask the user to explain the product — they may not be familiar with it either. The course should open by explaining what the app does in plain language (a brief "here's what this thing does and why it's interesting") before diving into how it works. The first module should start with a concrete user action — "imagine you paste a YouTube URL and click Analyze — here's what happens under the hood."
+**自己搞清楚这个应用是干什么的**——读 README、入口文件、界面代码。
+不要让用户解释产品，他自己可能也不熟。课程开头要用大白话讲清"这东西是干嘛的、为什么有意思"，
+然后再往下钻。第一个模块必须从一个**具体动作**开始——
+"你在输入框里打了'买牛奶'，点了添加——接下来发生了什么。"
 
-### Phase 2: Curriculum Design
+### Phase 2：设计课纲
 
-Structure the course as **4-6 modules**. Most courses need 4-6. Only go to 7-8 if the codebase genuinely has that many distinct concepts worth teaching. Fewer, better modules beat more, thinner ones.
+**4–6 个模块。** 只有当代码库真的有那么多值得讲的概念时才做到 7–8 个。
+少而扎实永远好过多而稀薄。
 
-The arc always starts from what the learner already knows (the user-facing behavior) and moves toward what they don't (the code underneath). Think of it as zooming in: start wide with the experience, then progressively peel back layers.
+叙事线永远从学员已知的（界面上的行为）走向未知的（底下的代码）。像镜头推近：
+先拉开讲体验，再一层层剥开。
 
-| Module Position | Purpose | Why it matters for a vibe coder |
+| 模块位置 | 讲什么 | 对学员的实际价值 |
 |---|---|---|
-| 1 | "Here's what this app does — and what happens when you use it" | Start with the product (what it does, why it's interesting), then trace a core user action into the code. Grounds everything in something concrete. |
-| 2 | Meet the actors | Know which components exist so you can tell AI "put this logic in X, not Y" |
-| 3 | How the pieces talk | Understand data flow so you can debug "it's not showing up" problems |
-| 4 | The outside world (APIs, databases) | Know what's external so you can evaluate costs, rate limits, and failure modes |
-| 5 | The clever tricks | Learn patterns (caching, chunking, error handling) so you can request them from AI |
-| 6 | When things break | Build debugging intuition so you can escape AI bug loops |
-| 7 | The big picture | See the full architecture so you can make better decisions about what to build next |
+| 1 | "这东西是干嘛的——你用它的时候发生了什么" | 从产品讲起，再追一个核心动作进代码。让一切有落点 |
+| 2 | 角色表 | 知道有哪些组件，才能对 AI 说"这段逻辑放 X 里，别放 Y" |
+| 3 | 它们怎么通信 | 理解数据流，才能查"东西怎么没显示出来"这类问题 |
+| 4 | 外部世界（接口、数据库） | 知道哪些依赖外部，才能判断成本、限流和故障面 |
+| 5 | 巧妙的手法 | 学会模式（缓存、分块、错误处理），才能主动向 AI 要 |
+| 6 | 出错的时候 | 建立调试直觉，才能从 AI 的死循环里跳出来 |
+| 7 | 全局图 | 看清整体架构，才能决定下一步做什么 |
 
-This is a **menu, not a checklist**. Pick the modules that serve the codebase — a simple CLI tool needs 4, not 7. Adapt the arc to the codebase's complexity.
+这是**菜单，不是清单**。按代码库挑：一个简单的命令行工具 4 个模块就够，不必凑 7 个。
 
-**The key principle:** Every module should connect back to a practical skill — steering AI, debugging, making decisions. If a module doesn't help the learner DO something better, cut it or reframe it until it does.
+**关键原则：** 每个模块都要连回一项实际能力——指挥 AI、定位问题、做判断。
+如果一个模块不能让学员**做成某件事**，砍掉或重写，直到它能。
 
-**Each module should contain:**
-- 3-6 screens (sub-sections that flow within the module)
-- At least one code-with-English translation
-- At least one interactive element (quiz, visualization, or animation)
-- One or two "aha!" callout boxes with universal CS insights
-- A metaphor that grounds the technical concept in everyday life — but NEVER reuse the same metaphor across modules, and NEVER default to the "restaurant" metaphor (it's overused). Pick metaphors that organically fit the specific concept. The best metaphors feel *inevitable* for the concept, not forced.
+**每个模块必须包含：**
+- 3–6 屏（模块内部的小节）
+- 至少一处代码 ↔ 中文逐行对照
+- 至少一个交互元素
+- 一两个"原来如此"提示框，讲通用的计算机原理
+- 一个专属比喻（从 `content-philosophy.md` 的中国日常场景库里挑，**禁用餐厅、禁用美式场景**，
+  且比喻不许在模块之间重复）
+- **一道输出题**，类型必须在写 brief 时就定好（`retell` / `instruct` / `explain`）
 
-**Mandatory interactive elements (every course must include ALL of these):**
-- **Group Chat Animation** — at least one across the course. These are the iMessage/WeChat-style conversations between components. They're one of the most engaging elements and must always appear, even if you have to creatively frame a module's concept as a conversation between actors.
-- **Message Flow / Data Flow Animation** — at least one across the course. The step-by-step packet animation between actors. If the codebase has any kind of request/response, data pipeline, or multi-step process, animate it. Every codebase has data flowing somewhere — find it.
-- **Code ↔ English Translation Blocks** — at least one per module (already required above, but reiterating: this is non-negotiable).
-- **Quizzes** — at least one per module (multiple-choice, scenario, drag-and-drop, or spot-the-bug — any quiz type counts).
-- **Glossary Tooltips** — on every technical term, first use per module.
+**全课程必须出现的元素（一个都不能少）：**
+- **输出题** —— 每个模块至少一道。`scripts/validate.mjs` 会卡住没有输出题的模块。
+- **群聊动画** —— 全课至少一处。组件之间像微信群一样对话，这是最抓人的元素之一。
+- **数据流动画** —— 全课至少一处。任何代码库都有数据在流动，找出来动起来。
+- **代码 ↔ 中文对照** —— 每模块至少一处，没有例外。
+- **测验** —— 每模块至少一道（选择题/场景题/拖拽/找 bug 都算），作为输出题之前的热身。
+- **术语气泡** —— 每个技术术语、每个英文单词，在每个模块内首次出现时都要有。
 
-These five element types are the backbone of every course. Other interactive elements (architecture diagrams, layer toggles, pattern cards, etc.) are optional and should be added when they fit. But the five above must ALWAYS be present — no exceptions.
+**不要把课纲拿去审批，直接建。** 用户要的是课程，不是策划案。
+自己把课纲想清楚，然后开始写。要改，他看到成品会说。
 
-**Do NOT present the curriculum for approval — just build it.** The user wants a course, not a planning document. Design the curriculum internally, then go straight to building. If they want changes, they'll tell you after seeing the result.
+**课纲定了之后，选一条建课路径：**
 
-**After designing the curriculum, decide which build path to use:**
+- **简单代码库**（单一用途的命令行工具、小型 web 应用、库、只有一个入口、模块数 ≤5）
+  → 直接进 Phase 3
+- **复杂代码库**（全栈应用、多服务、内容量大、monorepo、模块数 ≥6）
+  → 先做 Phase 2.5，再进 Phase 3
 
-- **Simple codebase** (single-purpose CLI, small web app, library, one clear entry point, 5 or fewer modules) → go directly to Phase 3 Sequential.
-- **Complex codebase** (full-stack app, multiple services, content-heavy site, monorepo, or 6+ modules) → go to Phase 2.5 first, then Phase 3 Parallel.
+### Phase 2.5：模块 brief（仅复杂代码库）
 
-### Phase 2.5: Module Briefs (complex codebases only)
+代码库复杂时，先给每个模块写一份 brief，再动手写 HTML。这一步的价值是：
+写模块时不必再回头翻代码库，上下文能一直保持干净。
 
-For complex codebases, write a brief for each module before writing any HTML. This is the critical step that enables parallel writing — each brief gives an agent everything it needs without re-reading the codebase.
+模板见 `references/module-brief-template.md`，内容规则见 `references/content-philosophy.md`。
 
-Read `references/module-brief-template.md` for the template structure, and `references/content-philosophy.md` for the content rules that should guide brief writing.
+**每个模块写一份 brief 到 `course-name/briefs/0N-slug.md`，包含：**
+- 教学线索（比喻、开场钩子、核心洞察）
+- **预先摘好的代码片段**（从代码库里原样复制，带文件路径和行号）
+- 交互元素清单，细到能照着做
+- **输出题类型和它的 3–4 条对照清单**
+- 前一个模块和后一个模块各讲了什么（好接上下文）
 
-**For each module, write a brief to `course-name/briefs/0N-slug.md` containing:**
-- Teaching arc (metaphor, opening hook, key insight)
-- Pre-extracted code snippets (copy-pasted from the codebase with file paths and line numbers)
-- Interactive elements checklist with enough detail to build them
-- Which sections of which reference files the writing agent needs
-- What the previous and next modules cover (for transitions)
+代码片段预先摘出来是省 token 的关键：写模块的时候完全不用再读代码库。
 
-The code snippets are the critical token-saving step. By pre-extracting them into the brief, writing agents never need to read the codebase at all.
+### Phase 3：建课
 
-### Phase 3: Build the Course
+产物是一个**目录**。你只写两样东西：`_base.html` 和模块文件。其余全部由构建脚本负责，
+不要自己复制、不要自己生成。
 
-The course output is a **directory**, not a single file. You write exactly two things: `_base.html` and the module files. Everything else is copied in by the build script — do not copy or regenerate it yourself.
-
-**Output structure:**
+**目录结构：**
 ```
 course-name/
-  _base.html       ← YOU write this (customized shell: title, accent color, nav dots)
-  modules/         ← YOU write these
+  _base.html       ← 你写（外壳：标题、主色、导航点）
+  modules/         ← 你写
     01-intro.html
     02-actors.html
     ...
-  briefs/          ← module briefs (complex codebases only, can delete after build)
-  styles.css       ← copied in by the build script
-  main.js          ← copied in by the build script
-  _footer.html     ← copied in by the build script
-  fonts/           ← copied in by the build script (self-hosted, no CDN)
-  index.html       ← assembled by the build script (do not write manually)
+  briefs/          ← 模块 brief（仅复杂代码库，建完可删）
+  styles.css       ← 构建脚本复制
+  main.js          ← 构建脚本复制
+  _footer.html     ← 构建脚本复制
+  fonts/           ← 构建脚本复制（自托管，无 CDN）
+  index.html       ← 构建脚本拼装（不要手写）
 ```
 
-**Step 1 (both paths): Customize `_base.html`** — read `references/_base.html`, then write it to `course-name/_base.html` with exactly three substitutions:
-- Both instances of `COURSE_TITLE` → the actual course title
-- The four `ACCENT_*` placeholders → the chosen accent color values (pick one palette from the comments in `_base.html`)
-- `NAV_DOTS` → one `<button class="nav-dot" ...>` per module
+**第 1 步：定制 `_base.html`** —— 读 `references/_base.html`，写到 `course-name/_base.html`，
+只做三处替换：
+- 两处 `COURSE_TITLE` → 课程标题
+- 四个 `ACCENT_*` → 选定的主色（从 `_base.html` 注释里的配色方案挑一套）
+- `NAV_DOTS` → 每个模块一个 `<button class="nav-dot" ...>`
 
-**Step 2: Write modules** — This is where the paths diverge.
+**第 2 步：写模块** —— 一次写一个，写完一个再写下一个。
+一口气写完所有模块会导致后面的模块越来越薄——这是最常见的质量塌方方式。
 
-#### Sequential path (simple codebases)
+先读 `references/content-philosophy.md` 和 `references/gotchas.md`。
+每个模块写成 `course-name/modules/0N-slug.html`，只包含
+`<section class="module" id="module-N">` 这一块及其内容。
+不要写 `<html>`、`<head>`、`<body>`、`<style>`、`<script>` 标签。
 
-Read `references/content-philosophy.md` and `references/gotchas.md`. Then write modules one at a time. For each module, write `course-name/modules/0N-slug.html` containing only the `<section class="module" id="module-N">` block and its contents. Do not include `<html>`, `<head>`, `<body>`, `<style>`, or `<script>` tags.
+交互元素的 HTML 写法见 `references/interactive-elements.md`，
+视觉规范见 `references/design-system.md`。
 
-Read `references/interactive-elements.md` for HTML patterns for each interactive element type. Read `references/design-system.md` for visual conventions.
+复杂代码库有 brief 时，按 brief 逐个写：每个模块只需要它自己的 brief、
+`content-philosophy.md`、`gotchas.md`，以及 brief 里点名的那几节
+`interactive-elements.md` / `design-system.md`。**不需要**再读代码库（片段已在 brief 里）。
 
-#### Parallel path (complex codebases)
+写完全部模块后，回头做一次一致性检查：导航点和模块对得上、模块之间的过渡连得上、
+语气没有跳变、比喻没有重复。
 
-Dispatch modules to subagents in batches of up to 3. Each agent receives:
-- Its module brief (from `course-name/briefs/`)
-- `references/content-philosophy.md` and `references/gotchas.md`
-- Only the sections of `references/interactive-elements.md` and `references/design-system.md` listed in the brief
-
-Each agent writes its module file(s) to `course-name/modules/`. Short modules (3 screens, one quiz) can be paired — two briefs given to one agent.
-
-**What agents do NOT receive:** the full codebase (snippets are in the brief), SKILL.md, other modules' briefs, or unneeded reference file sections.
-
-After all agents finish, do a quick consistency check in the main context: nav dots match modules, transitions between modules are coherent, no obvious tone shifts.
-
-**Step 3 (both paths): Build** — from the repository root, run:
+**第 3 步：构建** —— 在仓库根目录执行：
 ```
 node scripts/build.mjs course-name
 ```
-The script copies `styles.css`, `main.js`, `_footer.html` and `fonts/` into the course directory, assembles `index.html` in filename order, adds any missing `lang="en"` attributes, and then validates the result. It exits non-zero if a check fails — a failure means the course is broken, not that the script is fussy. Fix the module HTML and run it again.
+脚本会把 `styles.css`、`main.js`、`_footer.html`、`fonts/` 复制进课程目录，
+按文件名顺序拼出 `index.html`，补上漏掉的 `lang="en"`，然后跑校验。
+**校验不过就退出非零**——那意味着课程是坏的，不是脚本挑剔。改模块 HTML，重跑。
 
-Two numbers it prints are worth reading:
-- **`lang="en"` backstop: N added** — anything above 0 means the module HTML ignored the language rule in `references/interactive-elements.md`.
-- **the validate block** — every check that failed, with the offending value.
+有三个数值得看：
+- **`output tasks: N across M modules`** —— 每个模块都得有，少了会直接校验失败
+- **`lang="en" backstop: N added`** —— 大于 0 说明模块 HTML 没按
+  `interactive-elements.md` 的语言规则写
+- **校验清单** —— 每条失败都会打出具体是哪里错了
 
-**Critical rules:**
-- **Never write** `styles.css`, `main.js`, `_footer.html` or `fonts/` into the course directory — the build script owns them
-- Module files contain only `<section>` content — no boilerplate
-- Use CSS `scroll-snap-type: y proximity` (NOT `mandatory`)
-- Use `min-height: 100dvh` with `100vh` fallback on `.module`
-- Interactive element JS is in `main.js`; wire up via `data-*` attributes and CSS class names as shown in `references/interactive-elements.md`
-- Chat containers need `id` attributes; flow animations need `data-steps='[...]'` JSON on `.flow-animation`
+### Phase 4：检查和打开
 
-### Phase 4: Review and Open
+构建通过后，在浏览器里打开 `index.html`，带用户过一遍，问他对内容、设计和交互的意见。
 
-After the build passes, open `index.html` in the browser. Walk the user through what was built and ask for feedback on content, design, and interactivity.
-
----
-
-## Design Identity
-
-The visual design should feel like a **beautiful developer notebook** — warm, inviting, and distinctive. Read `references/design-system.md` for the full token system, but here are the non-negotiable principles:
-
-- **Warm palette**: Off-white backgrounds (like aged paper), warm grays, NO cold whites or blues
-- **Bold accent**: One confident accent color (vermillion, coral, teal — NOT purple gradients)
-- **Distinctive typography**: LXGW WenKai 霞鹜文楷 for both headings and body, JetBrains Mono for code. All self-hosted from `references/fonts/` — never link a CDN. LXGW WenKai ships only weights 400 and 700; anything else gets synthesised and looks wrong.
-- **Generous whitespace**: Modules breathe. Max 3-4 short paragraphs per screen.
-- **Alternating backgrounds**: Even/odd modules alternate between two warm background tones for visual rhythm
-- **Dark code blocks**: IDE-style with Catppuccin-inspired syntax highlighting on deep indigo-charcoal (#1E1E2E)
-- **Depth without harshness**: Subtle warm shadows, never black drop shadows
+**关键规则：**
+- **不要往课程目录里写** `styles.css`、`main.js`、`_footer.html`、`fonts/`——那是构建脚本的地盘
+- 模块文件只包含 `<section>` 的内容，不含任何外壳
+- 滚动吸附用 `scroll-snap-type: y proximity`（**不要** `mandatory`，会把人困在长模块里）
+- `.module` 用 `min-height: 100dvh`，并保留 `100vh` 兜底
+- 交互元素的 JS 全在 `main.js` 里，通过 `data-*` 属性和 class 名接上，见 `interactive-elements.md`
+- 群聊容器需要 `id`；数据流动画需要 `.flow-animation` 上的 `data-steps='[...]'` JSON
+- 输出题需要 `id`、`data-type`、`data-min`，以及 3–4 条对照清单
+- `data-steps` 的 label 里**不能出现英文单引号**，会把属性提前截断，动画会静默失效
 
 ---
 
-## Reference Files
+## 视觉身份
 
-The `references/` directory contains detailed specs. **Read them only when you reach the relevant phase** — not upfront. This keeps context lean.
+整体感觉是**一本暖色的开发者手账**——温暖、有性格、不像模板。
+完整的 token 体系见 `references/design-system.md`，这里只列不可妥协的几条：
 
-- **`references/content-philosophy.md`** — Visual density rules, metaphor guidelines, quiz design, tooltip rules, code translation guidance. Read during Phase 2.5 (briefs) and Phase 3 (writing modules).
-- **`references/gotchas.md`** — Common failure points checklist. Read during Phase 3 and Phase 4 (review).
-- **`references/module-brief-template.md`** — Template for Phase 2.5 module briefs. Read only for complex codebases using the parallel path.
-- **`references/design-system.md`** — Complete CSS custom properties, color palette, typography scale, spacing system, shadows, animations, scrollbar styling. Read during Phase 3 when writing module HTML.
-- **`references/interactive-elements.md`** — Implementation patterns for every interactive element: drag-and-drop quizzes, multiple-choice quizzes, code↔English translations, group chat animations, message flow visualizations, architecture diagrams, pattern cards, callout boxes. Read the relevant sections during Phase 3.
+- **暖色底**：米白、暖灰，**不要**冷白和冷蓝
+- **一个明确的主色**：朱红、珊瑚、青蓝——**不要**紫色渐变
+- **字体自托管**：霞鹜文楷（正文和标题）+ JetBrains Mono（代码），
+  从 `references/fonts/` 来，**永远不要引 CDN，包括 Google Fonts**。
+  霞鹜文楷只有 400 和 700 两个字重，别的字重会被浏览器伪造，很难看
+- **留白要足**：模块要能喘气，每屏最多 3–4 段短文字
+- **交替底色**：奇偶模块在两种暖色底之间交替，形成节奏
+- **深色代码块**：IDE 风格，深靛炭底 (#1E1E2E)
+- **阴影要暖**：不要纯黑投影
+
+---
+
+## 参考文件
+
+`references/` 里是详细规范。**用到哪一步再读哪一份**，不要一开始全读，那会把上下文塞满。
+
+- **`references/content-philosophy.md`** —— 学员画像、语言关三层格式、输出题、比喻库、
+  视觉密度、术语气泡、测验设计、课程末尾固定块。Phase 2.5 和 Phase 3 必读。
+- **`references/interactive-elements.md`** —— 每种交互元素的 HTML 写法：输出题、
+  代码对照、选择题、拖拽、群聊、数据流、架构图、找 bug、提示框、卡片、文件树……
+  Phase 3 按需读对应小节。
+- **`references/design-system.md`** —— 完整的 CSS 变量、配色、字号、间距、阴影、动画。
+  Phase 3 写模块 HTML 时读。
+- **`references/gotchas.md`** —— 常见翻车点清单。Phase 3 和 Phase 4 读。
+- **`references/module-brief-template.md`** —— Phase 2.5 的 brief 模板，只有复杂代码库用得上。

@@ -1,49 +1,71 @@
-# Module Brief Template
+# 模块 brief 模板
 
-> **When to read this:** During Phase 2.5 (planning checkpoint) for complex codebases. Fill in one brief per module, save to `course-name/briefs/0N-slug.md`. Each brief gives a parallel agent everything it needs to write one module without reading the codebase or SKILL.md.
+> **什么时候读：** 复杂代码库的 Phase 2.5。每个模块填一份，存到 `course-name/briefs/0N-slug.md`。
+> 一份 brief 要包含写这一个模块所需的全部信息——写模块的时候不用再读代码库，也不用再读 SKILL.md。
 
 ---
 
-## Module N: [Title]
+## 模块 N：[标题]
 
-### Teaching Arc
-- **Metaphor:** [A fresh, specific metaphor — never "restaurant." See `references/content-philosophy.md` > Metaphors First]
-- **Opening hook:** [1 sentence that connects to something the learner already knows from using the app]
-- **Key insight:** [The one thing the learner should walk away understanding]
-- **"Why should I care?":** [How this helps them steer AI / debug / make decisions]
+### 教学线索
+- **比喻：** [中国日常场景，禁用餐厅和美式场景，且不许和其他模块重复。见 `content-philosophy.md` 的比喻库]
+- **开场钩子：** [一句话，接上学员用这个应用时已经经历过的某个动作]
+- **核心洞察：** [学完这个模块，他应该带走的那一件事]
+- **"我为什么要关心这个"：** [这能让他更好地指挥 AI / 定位问题 / 做判断]
 
-### Code Snippets (pre-extracted)
+### 代码片段（预先摘好）
 
-Include the actual code the module will use in code↔English translation blocks. Copy-paste from the codebase with file path and line numbers. The writing agent will use these verbatim — it will NOT re-read the codebase.
+把这个模块要用在「代码 ↔ 中文对照」里的代码原样贴进来，带文件路径和行号。
+写模块的时候会**逐字使用**这些片段，不会再回去读代码库。
 
-File: src/example/file.ts (lines 12-24)
-[paste actual code here]
+文件：src/example/file.js（第 12–24 行）
+[贴真实代码]
 
-File: src/another/file.ts (lines 45-52)
-[paste actual code here]
+文件：src/another/file.js（第 45–52 行）
+[贴真实代码]
 
-### Interactive Elements
+### 英文单词表（语言关）
 
-Check which elements this module needs. Include enough detail for the writing agent to build them.
+这个模块里学员会撞上的英文标识符，每个给三层。写模块时直接照抄进术语气泡。
 
-- [ ] **Code↔English translation** — which snippet(s) from above
-- [ ] **Quiz** — [number] questions, style: [scenario / debugging / architecture / tracing]. Brief description of each question's angle.
-- [ ] **Group chat animation** — actors: [list]. Message flow summary: [who says what to whom, in what order]
-- [ ] **Data flow animation** — actors: [list]. Steps: [sequence of highlights and packet movements]
-- [ ] **Drag-and-drop** — items: [list], targets: [list]
-- [ ] **Other** — [architecture diagram, layer toggle, pattern cards, etc.]
+| 英文原词 | 直译词义 | 在这里指什么 | 国内工程师叫法 |
+|---|---|---|---|
+| `middleware` | middle 中间 + ware 东西 | 请求到路由之前经过的一串检查函数 | 中间件 |
+| | | | |
 
-### Reference Files to Read
+### 输出题（必填）
 
-List only the sections the writing agent needs — not the whole file.
+- **类型：** [`retell` 复述路径 / `instruct` 给 AI 下指令 / `explain` 解释给朋友听]
+- **题干：** [一句话]
+- **`data-min`：** [60–120]
+- **对照清单（3–4 条，每条点名一个具体的东西）：**
+  1. 说出了 `[文件名]`
+  2. 提到了「[术语]（[English]）」
+  3. 说清楚了 [某个顺序或因果]
+  4. [可选第四条]
 
-- `references/interactive-elements.md` → [section names, e.g., "Multiple-Choice Quizzes", "Group Chat Animation"]
-- `references/design-system.md` → [only if needed for specific tokens not in the brief]
-- `references/content-philosophy.md` → [always include — agent needs content rules]
-- `references/gotchas.md` → [always include — agent needs the checklist]
+### 交互元素
 
-### Connections
+勾上这个模块要用的，写清楚到能照着做。
 
-- **Previous module:** [Title — what it covered, so this module can build on it]
-- **Next module:** [Title — what it will cover, so this module can set it up]
-- **Tone/style notes:** [Any course-wide consistency notes: accent color name, actor naming convention, etc.]
+- [ ] **代码 ↔ 中文对照** —— 用上面第几段片段
+- [ ] **测验** —— [几] 道，类型：[场景 / 调试 / 架构决策 / 追踪]，每道题的切入角度
+- [ ] **群聊动画** —— 角色：[列表]；消息顺序：[谁对谁说了什么]
+- [ ] **数据流动画** —— 角色：[列表]；步骤：[高亮和数据包移动的顺序]
+- [ ] **拖拽匹配** —— 卡片：[列表]，靶位：[列表]
+- [ ] **其他** —— [架构图、分层切换、模式卡片……]
+
+### 要读的参考文件小节
+
+只列这个模块用得上的小节，不要整份文件。
+
+- `references/interactive-elements.md` → [小节名，例如 "Output Tasks 输出题"、"Group Chat Animation"]
+- `references/design-system.md` → [只在需要 brief 里没有的 token 时列]
+- `references/content-philosophy.md` → [永远要读，内容规则在里面]
+- `references/gotchas.md` → [永远要读，翻车清单在里面]
+
+### 前后连接
+
+- **上一个模块：** [标题 —— 讲了什么，这个模块可以接着往下讲]
+- **下一个模块：** [标题 —— 要讲什么，这个模块可以先埋个头]
+- **全课一致性：** [主色名、角色命名习惯、已经用掉的比喻清单——避免重复]
