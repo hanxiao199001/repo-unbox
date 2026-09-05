@@ -48,9 +48,18 @@ fs.writeFileSync(path.join(work, 'modules', '01.html'), `<section class="module"
   </div>
 </section>`);
 
-const build = spawnSync(process.execPath, [path.join(ROOT, 'scripts', 'build.mjs'), work], { encoding: 'utf8' });
-if (build.status !== 0) {
-  console.error('fixture failed to build:\n' + build.stdout + build.stderr);
+// The fixture has no code blocks, so any real directory satisfies --source.
+// build.mjs assembles index.html and THEN validates; this fixture is a
+// one-module test harness, not a publishable course, so it legitimately fails
+// content checks like the 3000-character Chinese minimum. What matters here is
+// that the page was assembled — the engine test runs against that.
+const build = spawnSync(
+  process.execPath,
+  [path.join(ROOT, 'scripts', 'build.mjs'), work, '--source', path.join(ROOT, 'examples', 'todo-api')],
+  { encoding: 'utf8' }
+);
+if (!fs.existsSync(path.join(work, 'index.html'))) {
+  console.error('fixture failed to assemble:\n' + build.stdout + build.stderr);
   process.exit(1);
 }
 

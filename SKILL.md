@@ -190,8 +190,10 @@ course-name/
 
 **第 3 步：构建** —— 在仓库根目录执行：
 ```
-node scripts/build.mjs course-name
+node scripts/build.mjs course-name --source <代码库路径>
 ```
+`--source` 是必填的：每个代码块都要拿去和这个代码库逐字比对。缺了它构建直接失败，
+没有绕过去的办法——这是“代码一字不改”唯一的机械保障。
 脚本会把 `styles.css`、`main.js`、`_footer.html`、`fonts/` 复制进课程目录，
 按文件名顺序拼出 `index.html`，补上漏掉的 `lang="en"`，然后跑校验。
 **校验不过就退出非零**——那意味着课程是坏的，不是脚本挑剔。改模块 HTML，重跑。
@@ -200,6 +202,9 @@ node scripts/build.mjs course-name
 - **`output tasks: N across M modules`** —— 每个模块都得有，少了会直接校验失败
 - **`lang="en" backstop: N added`** —— 大于 0 说明模块 HTML 没按
   `interactive-elements.md` 的语言规则写
+- **`code blocks verbatim and correctly cited`** —— 失败会指出是哪个 `文件:起止行` 对不上
+- **`numeral claims to eyeball`** —— 脚本判不了对错，只把所有“几个/几行/几条”的句子列出来，
+  **你必须自己回去数一遍**（中英文的计数单位不一样，翻译过来的数量十有八九是错的）
 - **校验清单** —— 每条失败都会打出具体是哪里错了
 
 ### Phase 4：检查和打开

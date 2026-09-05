@@ -17,12 +17,25 @@ import { validate, report } from './validate.mjs';
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REFS = path.join(ROOT, 'references');
 
-const courseDir = path.resolve(process.argv[2] || '.');
-
 function die(message) {
   console.error(`build failed: ${message}`);
   process.exit(1);
 }
+
+const args = process.argv.slice(2);
+const sourceFlag = args.indexOf('--source');
+const skipIndex = sourceFlag === -1 ? -1 : sourceFlag + 1;
+const positional = args.filter((a, i) => !a.startsWith('--') && i !== skipIndex);
+const courseDir = path.resolve(positional[0] || '.');
+
+// --source is mandatory here on purpose. validate.mjs may be run standalone
+// without it and will say so loudly, but Phase 4 of the skill goes through this
+// script, and there must be no silent way to switch off the verbatim-code check.
+if (sourceFlag === -1 || !args[sourceFlag + 1]) {
+  die('missing --source <codebase-path>\n  usage: node scripts/build.mjs <course-dir> --source <codebase-path>\n  the codebase is what every code block is checked against, verbatim');
+}
+const sourceDir = path.resolve(args[sourceFlag + 1]);
+if (!fs.existsSync(sourceDir)) die(`--source path does not exist: ${sourceDir}`);
 
 /* ── What the agent must have written ────────────────────────── */
 const basePath = path.join(courseDir, '_base.html');
@@ -141,5 +154,5 @@ if (added === 0) {
 }
 
 console.log('');
-const ok = report(courseDir, validate(courseDir));
+const ok = report(courseDir, validate(courseDir, sourceDir));
 process.exit(ok ? 0 : 1);

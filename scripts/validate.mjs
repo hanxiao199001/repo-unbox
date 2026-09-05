@@ -9,12 +9,13 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { decodeHtml, extractCodeBlocks, findVerbatim, collectSources } from './lib/code-check.mjs';
 
 // HTML comments hold template examples (the nav-dot sample in _base.html), so
 // strip them before any check that counts real elements.
 const stripComments = (html) => html.replace(/<!--[\s\S]*?-->/g, '');
 
-export function validate(courseDir) {
+export function validate(courseDir, sourceDir) {
   const errors = [];
   const checks = [];
   const check = (name, ok, detail = '') => {
@@ -150,7 +151,58 @@ export function validate(courseDir) {
     .filter((n) => n < 3 || n > 4).length;
   check('every checklist has 3-4 items', wrongSize === 0, `${wrongSize} outside that range`);
 
-  /* ── 9. interactive engines can find what they need ────────── */
+  /* ── 9. the course is actually in Chinese ──────────────────── */
+  const bodyText = html
+    .replace(/<pre lang="en">[\s\S]*?<\/pre>/g, '')
+    .replace(/<[^>]+>/g, '');
+  const hanzi = (bodyText.match(/[\u4e00-\u9fa5]/g) || []).length;
+  check(`Chinese prose present (${hanzi} characters)`, hanzi >= 3000, hanzi < 3000 ? 'under 3000 — this is meant to be a Chinese course' : '');
+
+  /* ── 10. mainland punctuation ──────────────────────────────── */
+  // 「」 is Taiwan/HK/Japanese convention. Code, error text and badge codes are
+  // exempt: whatever punctuation the source uses is the source's business.
+  let prose = raw
+    .replace(/<pre lang="en">[\s\S]*?<\/pre>/g, '')
+    .replace(/<div class="bug-code"[^>]*>[\s\S]*?<\/div>\s*<div class="bug-feedback">/g, '')
+    .replace(/<code class="badge-code"[^>]*>[\s\S]*?<\/code>/g, '');
+  const brackets = (prose.match(/[「」『』]/g) || []).length;
+  check('mainland quotation marks (no 「」)', brackets === 0, brackets ? `${brackets} corner brackets in prose — use “” and ‘’` : '');
+
+  /* ── 11. code blocks are verbatim, continuous, correctly cited ── */
+  // The one mechanical guarantee behind CLAUDE.md's "code is never edited".
+  // Doctored code reads BETTER than the real thing, so review will not catch it.
+  const blocks = extractCodeBlocks(raw);
+  if (!sourceDir) {
+    checks.push({ name: `code blocks verbatim (${blocks.length} blocks)`, ok: true, detail: '', skipped: true });
+  } else {
+    const sources = collectSources(sourceDir);
+    const problems = [];
+    for (const block of blocks) {
+      if (!block.label) {
+        problems.push(`a block near "${block.firstLine.slice(0, 40)}" has no file:line label`);
+        continue;
+      }
+      const found = findVerbatim(block.lines, sources, sourceDir);
+      if (!found) problems.push(`${block.label} does not match any continuous run in ${sourceDir} (first line: ${block.firstLine.slice(0, 50)})`);
+      else if (found !== block.label) problems.push(`${block.label} is really at ${found}`);
+    }
+    check(
+      `code blocks verbatim and correctly cited (${blocks.length} blocks)`,
+      problems.length === 0,
+      problems.join('; ')
+    );
+  }
+
+  /* ── 12. numeral phrases, listed for a human ───────────────── */
+  // A script cannot tell whether 六个文件 is true. It can make sure nobody has to
+  // hunt for the sentences that make countable claims. Reported, never failed.
+  const numerals = [...new Set(
+    (bodyText.match(/[^。！？\n]{0,20}[一二三四五六七八九十两]+(?:个|行|条|份|站|道)[^。！？\n]{0,20}/g) || [])
+      .map((x) => x.trim())
+  )];
+  checks.push({ name: `numeral claims to eyeball (${numerals.length})`, ok: true, detail: '', numerals });
+
+  /* ── 13. interactive engines can find what they need ────────── */
   // main.js keys off ids and control-button classes; a missing one fails silently.
   const chatWindows = [...html.matchAll(/<div class="chat-window"([^>]*)>/g)];
   const chatNoId = chatWindows.filter(([, a]) => !/\sid="/.test(a)).length;
@@ -170,16 +222,32 @@ export function validate(courseDir) {
 
 export function report(courseDir, { errors, checks }) {
   console.log(`validate ${path.relative(process.cwd(), courseDir) || '.'}`);
+  let numerals = null;
   for (const c of checks) {
+    if (c.numerals) { numerals = c.numerals; console.log(`  LIST  ${c.name}`); continue; }
+    if (c.skipped) {
+      console.log(`  SKIP  ${c.name} — no --source given, so the strongest check in this file did not run`);
+      continue;
+    }
     console.log(`  ${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok || !c.detail ? '' : ' — ' + c.detail}`);
   }
+  if (numerals && numerals.length) {
+    console.log('');
+    console.log('  numeral claims — a script cannot check these, read them:');
+    for (const n of numerals) console.log(`    · ${n}`);
+  }
+  console.log('');
   console.log(errors.length === 0 ? '  all checks passed' : `  ${errors.length} check(s) failed`);
   return errors.length === 0;
 }
 
 // CLI
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const dir = path.resolve(process.argv[2] || '.');
-  const ok = report(dir, validate(dir));
+  const args = process.argv.slice(2);
+  const sourceFlag = args.indexOf('--source');
+  const sourceDir = sourceFlag === -1 ? null : path.resolve(args[sourceFlag + 1]);
+  const skipIndex = sourceFlag === -1 ? -1 : sourceFlag + 1;
+  const dir = path.resolve(args.find((a, i) => !a.startsWith('--') && i !== skipIndex) || '.');
+  const ok = report(dir, validate(dir, sourceDir));
   process.exit(ok ? 0 : 1);
 }
