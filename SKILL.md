@@ -165,7 +165,10 @@ course-name/
 只做三处替换：
 - 两处 `COURSE_TITLE` → 课程标题
 - 四个 `ACCENT_*` → 选定的主色（从 `_base.html` 注释里的配色方案挑一套）
-- `NAV_DOTS` → 每个模块一个 `<button class="nav-dot" ...>`
+- `NAV_DOTS` → 每个模块一个按钮，形如：
+  ```html
+  <button class="nav-dot" data-target="module-1" data-tooltip="模块标题" role="tab" aria-label="模块 1：模块标题"></button>
+  ```
 
 **第 2 步：写模块** —— 一次写一个，写完一个再写下一个。
 一口气写完所有模块会导致后面的模块越来越薄——这是最常见的质量塌方方式。
@@ -211,6 +214,12 @@ node scripts/build.mjs course-name
 - 交互元素的 JS 全在 `main.js` 里，通过 `data-*` 属性和 class 名接上，见 `interactive-elements.md`
 - 群聊容器需要 `id`；数据流动画需要 `.flow-animation` 上的 `data-steps='[...]'` JSON
 - 输出题需要 `id`、`data-type`、`data-min`，以及 3–4 条对照清单
+- **代码块是硬规则**：每个代码块必须是源文件里**连续的若干行**、**逐字复制**，
+  并在 `translation-label` 里标注 `文件名:起止行`（如 `src/store.js:45-55`）。
+  允许整体去掉公共缩进，不许改相对缩进。原作者的注释是代码的一部分，不要删。
+  要展示不相邻的代码，就开两个代码块，各自连续，**永远不拼接**。
+  写完自己跑构建，校验通不过不算写完。
+- 标点用大陆规范：引号 `“”` / `‘’`，不用 `「」`
 - `data-steps` 的 label 里**不能出现英文单引号**，会把属性提前截断，动画会静默失效
 
 ---

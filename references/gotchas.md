@@ -1,32 +1,55 @@
-# Gotchas — Common Failure Points
+# 翻车清单
 
-> **When to read this:** During Phase 3 (writing module HTML) and Phase 4 (review). Check every one of these before considering a course complete.
+> **什么时候读：** Phase 3（写模块 HTML）和 Phase 4（检查）。
+> 每一条都来自真实产物里真实犯过的错，标注了是〔观察到〕还是〔推断〕。
+> 〔观察到〕= 在某次生成的课程里实际发生过，有具体位置。〔推断〕= 根据原理预判，还没被真实撞到过。
 
-These are real problems encountered when building courses. Check every one before considering a course complete.
+---
 
-### Tooltip Clipping
-Translation blocks use `overflow: hidden` for code wrapping. If tooltips use `position: absolute` inside the term element, they get clipped by the container. **Fix:** Tooltips must use `position: fixed` and be appended to `document.body`. Calculate position from `getBoundingClientRect()`. This is already handled by `main.js` but is the #1 bug that appears in every build.
+### 1. 翻译带数量词的句子时，必须重新数一遍 〔观察到〕
 
-### Not Enough Tooltips
-The most common failure is under-tooltipping. Non-technical learners don't know terms like REPL, JSON, flag, entry point, PATH, pip, namespace, function, class, module, PR, E2E, or even software names like Blender/GIMP. **Rule of thumb:** if a term wouldn't appear in everyday conversation with a non-technical friend, tooltip it. Err heavily on the side of too many. BUT: don't tooltip terms the user already knows well from their domain (e.g., AI/ML concepts for someone in AI).
+英文原句里的数量，翻成中文之后往往不成立了。**中英文的计数单位根本不是同一个东西。**
 
-### Walls of Text
-The course looks like a textbook instead of an infographic. This happens when you write more than 2-3 sentences in a row without a visual break. Every screen must be at least 50% visual. Convert any list of 3+ items into cards, any sequence into step cards or flow diagrams, any code explanation into a code↔English translation block.
+> **v1 的实际错误：** 英文原稿写 `you type "buy milk"`，`buy milk` 是**两个词**。
+> 中文写成“买牛奶”，是**三个字**。翻译时照抄了英文的语感，全课**五处**都写成了“这四个字”，
+> 位置：模块 1 副标题、数据流动画的一条 label、输出题题干、对照清单里一项、正文一处。
 
-### Recycled Metaphors
-Using "restaurant" or "kitchen" for everything. Every module needs its own metaphor that feels inevitable for that specific concept. If you catch yourself reaching for the same metaphor twice, stop and find one that fits the concept organically.
+同类高危：几行代码、几个文件、几条规则、几个参数、几步。
+凡是句子里出现 `[一二三四五六七八九十两]+(个|行|条|份|站|道)`，**回去数一遍**。
+`scripts/validate.mjs` 会把这类句子全部列出来供人工复核——它判不了对错，但能保证你不漏看。
 
-### Code Modifications
-Trimming, simplifying, or "cleaning up" code snippets from the codebase. The learner should be able to open the real file and see the exact same code. Instead of editing code to be shorter, *choose* naturally short snippets (5-10 lines) from the codebase that illustrate the point.
+---
 
-### Quiz Questions That Test Memory
-Asking "What does API stand for?" or "Which file handles X?" — those test recall, not understanding. Every quiz question should present a new scenario the learner hasn't seen and ask them to *apply* what they learned.
+### 2. 模板里的 HTML 注释会原样进产物 〔观察到〕
 
-### Scroll-Snap Mandatory
-Using `scroll-snap-type: y mandatory` traps users inside long modules. Always use `proximity`.
+`references/_base.html` 曾经在导航区放了一段给模型看的英文说明
+（`One <button> per module. Replace MODULE_N_NAME with...`）。
+它被原封不动拼进了 `index.html`，出现在每一门课的源码里——学员按“查看网页源代码”就能看到。
 
-### Module Quality Degradation
-Trying to write all modules in one pass causes later modules to be thin and rushed. Build one module at a time and verify each before moving on. For complex codebases, use the parallel path with module briefs.
+**规则：给模型看的说明写在 `SKILL.md` 和 `references/*.md` 里，不要写在模板 HTML 里。**
+模板里只留占位符本身。
 
-### Missing Interactive Elements
-A module with only text and code blocks, no interactivity. Every module needs at least one of: quiz, data flow animation, group chat, architecture diagram, drag-and-drop. These aren't decorations — they're how non-technical learners actually process information.
+---
+
+### 3. 代码块必须是源文件里的连续行，逐字复制 〔观察到〕
+
+这是 `CLAUDE.md`“代码一字不改”约束最容易被悄悄破坏的地方，
+而且**人眼几乎发现不了**——改过的代码读起来更顺，反而更像对的。
+
+> **v1 的实际错误：** 六个代码块有**四个**不合格。
+> - 模块 1：删掉了 `try` / `catch` 六行。删掉的恰恰是“网络断了会显示报错”这个结论的唯一证据，
+>   而同一个模块的测验题答案正依赖它。
+> - 模块 2：把 `server.js` 里**不相邻**的六行拼在一起——真实源码里它们被注释、空行、
+>   日志中间件和一个 health 路由隔开。
+> - 模块 4：`create` 结尾的 `},` 写成了 `}`（差一个逗号）。
+> - 模块 4：`persist` 删掉了原作者的注释行和一行 `await fs.mkdir(...)`。
+
+**规则：**
+- 每个代码块必须能在源文件里找到**连续的若干行**，逐字匹配
+- **允许**整体去掉公共缩进；**不允许**改动相对缩进
+- 需要展示不相邻的代码，就开**两个代码块**，各自连续，各自标注 `文件名:起止行`
+- 每个块都要标 `文件名:起止行`，写在 `translation-label` 里
+- 原作者的注释是代码的一部分，**不要删**——它往往是最好的教学材料
+- 觉得某段太长？**换一段**，不要裁剪它
+
+写完自己跑 `node scripts/build.mjs <课程目录> --source <代码库路径>`，通不过不算写完。
