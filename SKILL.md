@@ -113,7 +113,7 @@ These five element types are the backbone of every course. Other interactive ele
 
 For complex codebases, write a brief for each module before writing any HTML. This is the critical step that enables parallel writing — each brief gives an agent everything it needs without re-reading the codebase.
 
-Read `references/module-brief-template.md` for the template structure. Read `references/content-philosophy.md` for the content rules that should guide brief writing.
+Read `references/module-brief-template.md` for the template structure, and `references/content-philosophy.md` for the content rules that should guide brief writing.
 
 **For each module, write a brief to `course-name/briefs/0N-slug.md` containing:**
 - Teaching arc (metaphor, opening hook, key insight)
@@ -126,36 +126,30 @@ The code snippets are the critical token-saving step. By pre-extracting them int
 
 ### Phase 3: Build the Course
 
-The course output is a **directory**, not a single file. All CSS and JS are pre-built reference files — never regenerate them. Your job is to write only the HTML content.
+The course output is a **directory**, not a single file. You write exactly two things: `_base.html` and the module files. Everything else is copied in by the build script — do not copy or regenerate it yourself.
 
 **Output structure:**
 ```
 course-name/
-  styles.css       ← copied verbatim from references/styles.css
-  main.js          ← copied verbatim from references/main.js
-  _base.html       ← customized shell (title, accent color, nav dots)
-  _footer.html     ← copied verbatim from references/_footer.html
-  build.sh         ← copied verbatim from references/build.sh
-  briefs/          ← module briefs (complex codebases only, can delete after build)
-  modules/
+  _base.html       ← YOU write this (customized shell: title, accent color, nav dots)
+  modules/         ← YOU write these
     01-intro.html
     02-actors.html
     ...
-  index.html       ← assembled by build.sh (do not write manually)
+  briefs/          ← module briefs (complex codebases only, can delete after build)
+  styles.css       ← copied in by the build script
+  main.js          ← copied in by the build script
+  _footer.html     ← copied in by the build script
+  fonts/           ← copied in by the build script (self-hosted, no CDN)
+  index.html       ← assembled by the build script (do not write manually)
 ```
 
-**Step 1 (both paths): Setup** — Create the course directory. Copy these four files verbatim using Read + Write (do not regenerate their contents):
-- `references/styles.css` → `course-name/styles.css`
-- `references/main.js` → `course-name/main.js`
-- `references/_footer.html` → `course-name/_footer.html`
-- `references/build.sh` → `course-name/build.sh`
-
-**Step 2 (both paths): Customize `_base.html`** — Read `references/_base.html`, then write it to `course-name/_base.html` with exactly three substitutions:
+**Step 1 (both paths): Customize `_base.html`** — read `references/_base.html`, then write it to `course-name/_base.html` with exactly three substitutions:
 - Both instances of `COURSE_TITLE` → the actual course title
 - The four `ACCENT_*` placeholders → the chosen accent color values (pick one palette from the comments in `_base.html`)
 - `NAV_DOTS` → one `<button class="nav-dot" ...>` per module
 
-**Step 3: Write modules** — This is where the paths diverge.
+**Step 2: Write modules** — This is where the paths diverge.
 
 #### Sequential path (simple codebases)
 
@@ -176,14 +170,18 @@ Each agent writes its module file(s) to `course-name/modules/`. Short modules (3
 
 After all agents finish, do a quick consistency check in the main context: nav dots match modules, transitions between modules are coherent, no obvious tone shifts.
 
-**Step 4 (both paths): Assemble** — Run `build.sh` from the course directory:
-```bash
-cd course-name && bash build.sh
+**Step 3 (both paths): Build** — from the repository root, run:
 ```
-This produces `index.html`. Open it in the browser.
+node scripts/build.mjs course-name
+```
+The script copies `styles.css`, `main.js`, `_footer.html` and `fonts/` into the course directory, assembles `index.html` in filename order, adds any missing `lang="en"` attributes, and then validates the result. It exits non-zero if a check fails — a failure means the course is broken, not that the script is fussy. Fix the module HTML and run it again.
+
+Two numbers it prints are worth reading:
+- **`lang="en"` backstop: N added** — anything above 0 means the module HTML ignored the language rule in `references/interactive-elements.md`.
+- **the validate block** — every check that failed, with the offending value.
 
 **Critical rules:**
-- **Never regenerate** `styles.css` or `main.js` — always copy from references
+- **Never write** `styles.css`, `main.js`, `_footer.html` or `fonts/` into the course directory — the build script owns them
 - Module files contain only `<section>` content — no boilerplate
 - Use CSS `scroll-snap-type: y proximity` (NOT `mandatory`)
 - Use `min-height: 100dvh` with `100vh` fallback on `.module`
@@ -192,7 +190,7 @@ This produces `index.html`. Open it in the browser.
 
 ### Phase 4: Review and Open
 
-After running `build.sh`, open `index.html` in the browser. Walk the user through what was built and ask for feedback on content, design, and interactivity.
+After the build passes, open `index.html` in the browser. Walk the user through what was built and ask for feedback on content, design, and interactivity.
 
 ---
 
