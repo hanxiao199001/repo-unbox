@@ -34,6 +34,15 @@
 - `upstream/`  原版仓库（只读基线，不修改）
 - `SKILL.md`   我们的 skill（当前 = 原版副本，待改造）
 - `references/` 我们的参考文件（当前 = 原版副本，待改造）
+- `references/fonts/` 自托管字体（霞鹜文楷 + JetBrains Mono，OFL 1.1，含授权原文），由 `scripts/fetch-fonts.mjs` 生成
 - `scripts/`   稳定的构建/校验脚本（Node/Python，跨平台）
 - `examples/todo-api/` 贯穿全程的目标代码库（Express 待办 API + 浏览器前端，约 340 行）
 - `output/baseline/` 原版 skill 未经修改生成的课程（对照基线，不再改动）
+
+## 已知取舍
+- 字体 8.9 MB / 196 个 woff2 分片直接进仓库，不用 Git LFS。
+  理由：仓库最终要公开，学员用 `npx skills add` 或 `git clone` 安装；LFS 需要客户端装 git-lfs，
+  没装拿到的是指针文件，字体直接失效，而且报错学员看不懂。GitHub 免费 LFS 每月 1 GB 带宽，
+  8.9 MB 一百多次 clone 就超了。
+  若日后体积成问题，备选方案是把 `scripts/fetch-fonts.mjs` 改成首次运行时从 npmmirror.com
+  拉取并本地缓存。现在不做。

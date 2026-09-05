@@ -4,6 +4,14 @@ Implementation patterns for every interactive element type used in courses. Pick
 
 > **Architecture note:** All CSS and JavaScript for these elements live in `references/styles.css` and `references/main.js`, which are copied verbatim into every course directory. When writing module HTML files, use only the HTML patterns below — do **not** inline `<style>` or `<script>` tags for these elements. The engines in `main.js` auto-initialize on page load by scanning for the relevant class names and `data-*` attributes described here.
 
+> **Language note:** the page is `lang="zh-CN"`. Any element whose content is English —
+> code blocks, raw error text, terminal output, file and identifier names shown on their
+> own — must carry `lang="en"` so the browser does not apply Chinese line-breaking and
+> font substitution to it. This applies to `<pre>` inside `.translation-code`, to
+> `.bug-code`, to `.badge-code`, and to any error-text block. `scripts/build.mjs` adds
+> the attribute where it is missing and reports how many it had to add: a non-zero count
+> means the module HTML was not written to this rule.
+
 ## Table of Contents
 1. [Code ↔ English Translation Blocks](#code--english-translation-blocks)
 2. [Multiple-Choice Quizzes](#multiple-choice-quizzes)
@@ -34,7 +42,7 @@ The most important teaching element. Shows real code from the project on the lef
 <div class="translation-block animate-in">
   <div class="translation-code">
     <span class="translation-label">CODE</span>
-    <pre><code>
+    <pre lang="en"><code>
 <span class="code-line"><span class="code-keyword">const</span> response = <span class="code-keyword">await</span> <span class="code-function">fetch</span>(url, {</span>
 <span class="code-line">  <span class="code-property">method</span>: <span class="code-string">'POST'</span>,</span>
 <span class="code-line">  <span class="code-property">headers</span>: { <span class="code-string">'Authorization'</span>: apiKey }</span>
@@ -451,7 +459,7 @@ Show code with a deliberate bug. User clicks the buggy line. Reveal explains the
 ```html
 <div class="bug-challenge">
   <h3>Find the bug in this code:</h3>
-  <div class="bug-code">
+  <div class="bug-code" lang="en">
     <div class="bug-line" data-line="1" onclick="checkBugLine(this, false)">
       <span class="line-num">1</span>
       <code>chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {</code>
@@ -601,11 +609,11 @@ For annotating config files, permissions, or settings:
 ```html
 <div class="badge-list">
   <div class="badge-item">
-    <code class="badge-code">storage</code>
+    <code class="badge-code" lang="en">storage</code>
     <span class="badge-desc">Save data between sessions (like browser bookmarks)</span>
   </div>
   <div class="badge-item">
-    <code class="badge-code">activeTab</code>
+    <code class="badge-code" lang="en">activeTab</code>
     <span class="badge-desc">Access the currently open tab (only when the user clicks)</span>
   </div>
 </div>

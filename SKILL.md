@@ -5,7 +5,7 @@ description: "Turn any codebase into a beautiful, interactive single-page HTML c
 
 # Codebase-to-Course
 
-Transform any codebase into a stunning, interactive course. The output is a **directory** containing a pre-built `styles.css`, `main.js`, per-module HTML files, and an assembled `index.html` — open it directly in the browser with no setup required (only external dependency: Google Fonts CDN). The course teaches how the code works through scroll-based modules, animated visualizations, embedded quizzes, and plain-English translations of code.
+Transform any codebase into a stunning, interactive course. The output is a **directory** containing a pre-built `styles.css`, `main.js`, per-module HTML files, and an assembled `index.html` — open it directly in the browser with no setup required (no external dependencies at all — fonts are self-hosted). The course teaches how the code works through scroll-based modules, animated visualizations, embedded quizzes, and plain-English translations of code.
 
 ## First-Run Welcome
 
@@ -202,7 +202,7 @@ The visual design should feel like a **beautiful developer notebook** — warm, 
 
 - **Warm palette**: Off-white backgrounds (like aged paper), warm grays, NO cold whites or blues
 - **Bold accent**: One confident accent color (vermillion, coral, teal — NOT purple gradients)
-- **Distinctive typography**: Display font with personality for headings (Bricolage Grotesque, or similar bold geometric face — NEVER Inter, Roboto, Arial, or Space Grotesk). Clean sans-serif for body (DM Sans or similar). JetBrains Mono for code.
+- **Distinctive typography**: LXGW WenKai 霞鹜文楷 for both headings and body, JetBrains Mono for code. All self-hosted from `references/fonts/` — never link a CDN. LXGW WenKai ships only weights 400 and 700; anything else gets synthesised and looks wrong.
 - **Generous whitespace**: Modules breathe. Max 3-4 short paragraphs per screen.
 - **Alternating backgrounds**: Even/odd modules alternate between two warm background tones for visual rhythm
 - **Dark code blocks**: IDE-style with Catppuccin-inspired syntax highlighting on deep indigo-charcoal (#1E1E2E)

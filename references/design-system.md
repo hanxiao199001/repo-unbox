@@ -70,11 +70,13 @@ Complete CSS design tokens for the course. Copy this entire `:root` block into t
 ```css
 :root {
   /* --- FONTS ---
-     Display: bold, geometric, personality-driven. NOT Inter/Roboto/Arial.
-     Body: readable with character. NOT system fonts.
-     Mono: developer-friendly with clear character distinction. */
-  --font-display:  'Bricolage Grotesque', Georgia, serif;
-  --font-body:     'DM Sans', -apple-system, sans-serif;
+     Self-hosted from references/fonts/. No CDN, no Google Fonts.
+     LXGW WenKai carries both display and body: it has a real bold weight and
+     reads well as Chinese body text. Only 400 and 700 exist — do not ask for
+     300, 500, 600 or 800, they will be synthesised and look wrong.
+     Mono: JetBrains Mono, latin subset only, weights 400 and 700. */
+  --font-display:  'LXGW WenKai', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
+  --font-body:     'LXGW WenKai', 'PingFang SC', 'Microsoft YaHei', 'Noto Sans SC', sans-serif;
   --font-mono:     'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
 
   /* --- TYPE SCALE (1.25 ratio) --- */
@@ -97,17 +99,17 @@ Complete CSS design tokens for the course. Copy this entire `:root` block into t
 }
 ```
 
-**Google Fonts link (put in `<head>`):**
+**Font stylesheet (put in `<head>`, before `styles.css`):**
 ```html
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700;12..96,800&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400;1,9..40,500&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 ```
+The fonts are copied into the course directory by `scripts/build.mjs`. There is no
+network request anywhere in a built course — it must open offline inside mainland China.
 
 **Rules:**
-- Module numbers: `--text-6xl`, font-display, weight 800, `--color-accent` with 15% opacity
+- Module numbers: `--text-6xl`, font-display, weight 700, `--color-accent` with 15% opacity
 - Module titles: `--text-4xl`, font-display, weight 700
-- Screen headings: `--text-xl` or `--text-2xl`, font-display, weight 600
+- Screen headings: `--text-xl` or `--text-2xl`, font-display, weight 700
 - Body text: `--text-base` or `--text-lg`, font-body, `--leading-normal`
 - Code: `--text-sm`, font-mono
 - Labels/badges: `--text-xs`, font-mono, uppercase, letter-spacing 0.05em
