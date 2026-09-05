@@ -104,7 +104,53 @@ export function validate(courseDir) {
   const noAnswer = quizBlocks.filter(([, attrs]) => !/data-correct="/.test(attrs)).length;
   check(`every quiz question has data-correct (${quizBlocks.length} questions)`, noAnswer === 0, `${noAnswer} without an answer`);
 
-  /* ── 8. interactive engines can find what they need ────────── */
+  /* ── 8. every module has an output task ────────────────────── */
+  // A multiple-choice quiz proves the learner can recognise an answer. Only an
+  // output task proves they can produce the words — which is the whole point,
+  // since instructing an AI needs vocabulary you can produce, not just recognise.
+  const moduleBlocks = html.split(/<section class="module"/).slice(1);
+  const withoutTask = [];
+  moduleBlocks.forEach((block, i) => {
+    if (!block.includes('class="output-task"')) withoutTask.push(moduleIds[i] || `module ${i + 1}`);
+  });
+  const taskCount = (html.match(/class="output-task"/g) || []).length;
+  check(
+    `every module has an output task (${taskCount} tasks across ${moduleBlocks.length} modules)`,
+    withoutTask.length === 0,
+    withoutTask.length ? `no output task in: ${withoutTask.join(', ')}` : ''
+  );
+
+  const TASK_TYPES = ['retell', 'instruct', 'explain'];
+  const taskAttrs = [...html.matchAll(/<div class="output-task"([^>]*)>/g)].map((m) => m[1]);
+  const badType = taskAttrs.filter((a) => {
+    const m = a.match(/data-type="([^"]*)"/);
+    return !m || !TASK_TYPES.includes(m[1]);
+  }).length;
+  check(`output tasks have a valid data-type (${TASK_TYPES.join('/')})`, badType === 0, `${badType} without one`);
+
+  const noMin = taskAttrs.filter((a) => !/data-min="\d+"/.test(a)).length;
+  check('output tasks have data-min', noMin === 0, `${noMin} without one`);
+
+  const noId = taskAttrs.filter((a) => !/\sid="/.test(a)).length;
+  check('output tasks have an id (localStorage key)', noId === 0, `${noId} without one`);
+
+  const textareas = (html.match(/class="output-task-input"/g) || []).length;
+  const reveals = (html.match(/output-task-reveal-btn/g) || []).length;
+  const lists = (html.match(/class="output-task-checklist"/g) || []).length;
+  check(
+    'output tasks are complete (input + reveal button + checklist)',
+    textareas === taskCount && reveals === taskCount && lists === taskCount,
+    `${taskCount} tasks but ${textareas} inputs, ${reveals} buttons, ${lists} checklists`
+  );
+
+  // 3-4 tick boxes: fewer and it is not a checklist, more and nobody reads it.
+  const checklistBlocks = [...html.matchAll(/class="output-task-checklist"[^>]*>([\s\S]*?)<\/div>/g)];
+  const wrongSize = checklistBlocks
+    .map((m) => (m[1].match(/type="checkbox"/g) || []).length)
+    .filter((n) => n < 3 || n > 4).length;
+  check('every checklist has 3-4 items', wrongSize === 0, `${wrongSize} outside that range`);
+
+  /* ── 9. interactive engines can find what they need ────────── */
   // main.js keys off ids and control-button classes; a missing one fails silently.
   const chatWindows = [...html.matchAll(/<div class="chat-window"([^>]*)>/g)];
   const chatNoId = chatWindows.filter(([, a]) => !/\sid="/.test(a)).length;

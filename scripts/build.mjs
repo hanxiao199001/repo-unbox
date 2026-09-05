@@ -121,6 +121,16 @@ console.log(`  order: ${moduleFiles.join(', ')}`);
 console.log(`  copied styles.css, main.js, _footer.html and fonts/ (${fontFiles} files, ${(fontBytes / 1048576).toFixed(2)} MB — woff2 subsets plus fonts.css and licences)`);
 console.log(`  index.html: ${(fs.statSync(indexPath).size / 1024).toFixed(1)} KB`);
 
+const taskTypes = [...html.matchAll(/class="output-task"[^>]*data-type="([^"]*)"/g)].map((m) => m[1]);
+const moduleCount = moduleFiles.length;
+if (taskTypes.length === 0) {
+  console.log(`  output tasks: none — every module needs at least one`);
+} else {
+  const byType = taskTypes.reduce((acc, t) => ({ ...acc, [t]: (acc[t] || 0) + 1 }), {});
+  const breakdown = Object.entries(byType).map(([t, n]) => `${t} ×${n}`).join(', ');
+  console.log(`  output tasks: ${taskTypes.length} across ${moduleCount} modules — ${breakdown}`);
+}
+
 const added = Object.values(counts).reduce((a, b) => a + b, 0);
 if (added === 0) {
   console.log('  lang="en" backstop: 0 added (module HTML already correct)');

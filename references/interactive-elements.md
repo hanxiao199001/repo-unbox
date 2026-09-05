@@ -14,22 +14,23 @@ Implementation patterns for every interactive element type used in courses. Pick
 
 ## Table of Contents
 1. [Code ↔ English Translation Blocks](#code--english-translation-blocks)
-2. [Multiple-Choice Quizzes](#multiple-choice-quizzes)
-3. [Drag-and-Drop Matching](#drag-and-drop-matching)
-4. [Group Chat Animation](#group-chat-animation)
-5. [Message Flow / Data Flow Animation](#message-flow--data-flow-animation)
-6. [Interactive Architecture Diagram](#interactive-architecture-diagram)
-7. [Layer Toggle Demo](#layer-toggle-demo)
-8. ["Spot the Bug" Challenge](#spot-the-bug-challenge)
-9. [Scenario Quiz](#scenario-quiz)
-10. [Callout Boxes](#callout-boxes)
-11. [Pattern/Feature Cards](#patternfeature-cards)
-12. [Flow Diagrams](#flow-diagrams)
-13. [Permission/Config Badges](#permissionconfig-badges)
-14. [Glossary Tooltips](#glossary-tooltips)
-15. [Visual File Tree](#visual-file-tree)
-16. [Icon-Label Rows](#icon-label-rows)
-17. [Numbered Step Cards](#numbered-step-cards)
+2. [Output Tasks 输出题](#output-tasks-输出题)
+3. [Multiple-Choice Quizzes](#multiple-choice-quizzes)
+4. [Drag-and-Drop Matching](#drag-and-drop-matching)
+5. [Group Chat Animation](#group-chat-animation)
+6. [Message Flow / Data Flow Animation](#message-flow--data-flow-animation)
+7. [Interactive Architecture Diagram](#interactive-architecture-diagram)
+8. [Layer Toggle Demo](#layer-toggle-demo)
+9. ["Spot the Bug" Challenge](#spot-the-bug-challenge)
+10. [Scenario Quiz](#scenario-quiz)
+11. [Callout Boxes](#callout-boxes)
+12. [Pattern/Feature Cards](#patternfeature-cards)
+13. [Flow Diagrams](#flow-diagrams)
+14. [Permission/Config Badges](#permissionconfig-badges)
+15. [Glossary Tooltips](#glossary-tooltips)
+16. [Visual File Tree](#visual-file-tree)
+17. [Icon-Label Rows](#icon-label-rows)
+18. [Numbered Step Cards](#numbered-step-cards)
 
 ---
 
@@ -118,6 +119,64 @@ The most important teaching element. Shows real code from the project on the lef
 - Each English line should correspond to 1-2 code lines
 - Use conversational language, not technical jargon
 - Highlight the "why" not just the "what" — e.g., "Include our API key so the server knows who we are" not "Set the Authorization header"
+
+---
+
+## Output Tasks 输出题
+
+**Every module must contain at least one.** `scripts/validate.mjs` fails the build if a module has none.
+
+A multiple-choice quiz shows that the learner can recognise the right answer. An output task
+is the only element that makes them *produce* the words. That matters here more than usual:
+the learner's real goal is to instruct an AI in precise terms, and you cannot instruct with
+vocabulary you can only recognise.
+
+**How it behaves:** the learner types an answer. The "看对照清单" button stays disabled until
+they have written `data-min` characters. Only then does the checklist appear, and they tick it
+themselves. Nothing is scored, nothing is judged, nothing leaves the page. The draft is kept in
+`localStorage` so an accidental refresh does not destroy it.
+
+**Three types** — pick the one that fits what the module taught:
+
+| `data-type` | Label (set automatically by `main.js`) | Ask for |
+|---|---|---|
+| `retell` | 输出题 · 复述路径 | A trace in their own words: what happened, in what order, through which files |
+| `instruct` | 输出题 · 给 AI 下指令 | The literal sentence they would say to an AI to get a change made |
+| `explain` | 输出题 · 解释给朋友听 | A plain explanation of one concept to someone who has never coded |
+
+**Wiring:** `main.js` auto-initializes every `.output-task` on load. The element needs an `id`
+(the `localStorage` key is derived from it), a `data-type`, and a `data-min`. The label text is
+written by `main.js` from `data-type` — leave the span empty or it will be overwritten anyway.
+
+**HTML:**
+```html
+<div class="output-task" id="task-module3" data-type="retell" data-min="80">
+  <span class="output-task-label"></span>
+  <h3 class="quiz-question">用你自己的话说一遍：你点了「添加」之后，这句话经过了哪几个文件？</h3>
+  <textarea class="output-task-input" rows="6"
+            placeholder="不用写得漂亮，写得具体就行。能说出文件名最好。"></textarea>
+  <div class="output-task-meter"></div>
+  <button class="quiz-check-btn output-task-reveal-btn" disabled>我说完了，看对照清单</button>
+
+  <div class="output-task-checklist" hidden>
+    <label><input type="checkbox"> 说出了 <code lang="en">express.json()</code> 先把数据拆包</label>
+    <label><input type="checkbox"> 提到了「中间件（middleware）」这个词</label>
+    <label><input type="checkbox"> 说出了 <code lang="en">store.js</code> 才是真正写文件的那个</label>
+    <label><input type="checkbox"> 说清楚了浏览器最后又重新问了一次列表</label>
+  </div>
+</div>
+```
+
+**Rules:**
+- **3–4 checklist items**, never more. Each one names something concrete: a filename, a function
+  name, a term they were supposed to acquire, a step in the order.
+- Checklist items are written in Chinese, but the things they name — filenames, function names,
+  status codes — stay in English inside `<code lang="en">`.
+- `data-min` between 60 and 120. Long enough that they cannot type "就是那样" and move on;
+  short enough that it does not feel like homework.
+- The `placeholder` should lower the stakes. They are not being marked.
+- Put the output task **last** in the module, after the multiple-choice quiz. The quiz is the
+  warm-up; this is the thing that proves it stuck.
 
 ---
 
