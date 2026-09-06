@@ -789,6 +789,406 @@ describe('导航条 navigation', async (tab) => {
   })
 })
 
+// ---------------------------------------------------------------- 静态元素
+
+const CODE_SAMPLE = [
+  'async function create(title) {',
+  '  // 标题里只有空格的，别让它进来',
+  '  if (!title.trim()) return null;',
+  '',
+  '  const todo = { id: nextId++, title, done: false };',
+  '  await persist(todo);',
+  '  return todo;',
+  '}'
+].join('\n')
+
+describe('代码对照 kc-code-pair', async (tab) => {
+  const url = fixture('code-pair', `
+<main class="kc-course"><section class="kc-module" id="kc-m1" data-kc-tone="a" data-kc-metaphor="食堂窗口">
+<section class="kc-screen">
+  <div class="kc-code-pair" id="cp-ok">
+    <div class="kc-code-pair__code">
+      <p class="kc-code-pair__source">src/store.js:12-19</p>
+      <pre data-kc-lang="en">${CODE_SAMPLE.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>
+    </div>
+    <div class="kc-code-pair__lines">
+      <p class="kc-code-pair__line">这一行给函数起名 create，意思是“造一个出来”。</p>
+      <p class="kc-code-pair__line">原作者自己写的注释：空标题要挡在门外。</p>
+      <p class="kc-code-pair__line">trim 把首尾空格去掉，去完还是空的就直接返回。</p>
+      <p class="kc-code-pair__line">这里才真正拼出一条待办，done 一开始是 false。</p>
+    </div>
+  </div>
+  <div class="kc-code-pair" id="cp-bad">
+    <div class="kc-code-pair__code">
+      <p class="kc-code-pair__source">store.js 第十二行</p>
+      <pre data-kc-lang="en">const a = 1;</pre>
+    </div>
+    <div class="kc-code-pair__lines"><p class="kc-code-pair__line">说明。</p></div>
+  </div>
+</section></section></main>`)
+  await tab.goto(url)
+
+  await it('代码在宽屏和窄屏下都不出现横向滚动条', async () => {
+    for (const w of [1100, 900, 480, 360]) {
+      await tab.viewport(w, 800)
+      const r = await tab.eval(`var pre=document.querySelector('#cp-ok pre');
+        var col=document.querySelector('#cp-ok .kc-code-pair__code');
+        return {sw:pre.scrollWidth, cw:pre.clientWidth, ov:getComputedStyle(pre).overflowX,
+                colSW:col.scrollWidth, colCW:col.clientWidth, docSW:document.documentElement.scrollWidth, docCW:document.documentElement.clientWidth};`)
+      assert(r.sw <= r.cw + 1, w + 'px 下代码块内部溢出：' + r.sw + ' > ' + r.cw)
+      assert(r.colSW <= r.colCW + 1, w + 'px 下左栏溢出')
+      assert(r.docSW <= r.docCW + 1, w + 'px 下整页出现横向滚动条')
+    }
+    await tab.viewport(1100, 800)
+  })
+
+  await it('语法高亮只包 span，代码与源文逐字一致', async () => {
+    const r = await tab.eval(`var pre=document.querySelector('#cp-ok pre');
+      return {text:pre.textContent, spans:pre.querySelectorAll('span[class^="kc-syn"]').length};`)
+    eq(r.text, CODE_SAMPLE, '代码文字被改动了')
+    assert(r.spans > 5, '应当有语法高亮，实际 span 数 ' + r.spans)
+  })
+
+  await it('代码可选中，且代码区域内不生效中文排版规则', async () => {
+    const r = await tab.eval(`var pre=document.querySelector('#cp-ok pre');
+      return {lat:pre.querySelectorAll('.kc-lat').length, pun:pre.querySelectorAll('.kc-pun').length,
+              sel:getComputedStyle(pre).userSelect, lang:pre.getAttribute('lang'),
+              ws:getComputedStyle(pre).whiteSpace};`)
+    eq(r.lat, 0, '代码里不许注入中西文间距')
+    eq(r.pun, 0, '代码里不许压缩标点')
+    eq(r.lang, 'en', 'data-kc-lang 必须同步到 lang')
+    assert(r.sel !== 'none', '代码必须可选中复制')
+    assert(r.ws.indexOf('pre-wrap') >= 0, '长行必须自动折行，实际 white-space=' + r.ws)
+  })
+
+  await it('来源标注格式不对时在页面上留下可见痕迹', async () => {
+    const r = await tab.eval(`
+      var ok=document.getElementById('cp-ok').querySelectorAll('.kc-broken').length;
+      var bad=document.getElementById('cp-bad').querySelector('.kc-broken');
+      return {ok:ok, badText:bad?bad.textContent:null,
+              visible: bad ? getComputedStyle(bad).display!=='none' : false};`)
+    eq(r.ok, 0, '合规的对照块不该报错')
+    assert(r.badText && r.badText.indexOf('src/store.js:45-55') >= 0, '格式错误应给出正确形式，实际：' + r.badText)
+    assert(r.visible, '错误痕迹必须可见')
+  })
+
+  await it('窄屏下变为上下排布，中文在代码下方', async () => {
+    await tab.viewport(400, 900)
+    const r = await tab.eval(`var c=document.querySelector('#cp-ok .kc-code-pair__code').getBoundingClientRect();
+      var l=document.querySelector('#cp-ok .kc-code-pair__lines').getBoundingClientRect();
+      return {codeBottom:c.bottom, linesTop:l.top, codeLeft:c.left, linesLeft:l.left};`)
+    assert(r.linesTop >= r.codeBottom - 2, '窄屏下中文栏应整体落在代码下方')
+    near(r.linesLeft, r.codeLeft, 2, '窄屏下两栏应左对齐（同一列）')
+    await tab.viewport(1100, 800)
+  })
+})
+
+describe('提示框 kc-note', async (tab) => {
+  const url = fixture('note', `
+<main class="kc-course"><section class="kc-screen">
+  <div class="kc-note" data-kc-tone="insight"><span class="kc-note__icon">✦</span><p class="kc-note__title">关注点分离</p><p class="kc-note__body">每一块只管一件事。</p></div>
+  <div class="kc-note" data-kc-tone="info"><span class="kc-note__icon">ℹ</span><p class="kc-note__title">补充</p><p class="kc-note__body">知道了更好。</p></div>
+  <div class="kc-note" data-kc-tone="warning"><span class="kc-note__icon">⚠</span><p class="kc-note__title">容易踩的坑</p><p class="kc-note__body">这里最常出错。</p></div>
+  <div class="kc-note" id="note-bad" data-kc-tone="danger"><span class="kc-note__icon">!</span><p class="kc-note__title">语气不合法</p><p class="kc-note__body">应当留下痕迹。</p></div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('三种语气各有不同的左边框颜色', async () => {
+    const r = await tab.eval(`return [].slice.call(document.querySelectorAll('.kc-note')).slice(0,3)
+      .map(function(n){return getComputedStyle(n).borderInlineStartColor;});`)
+    eq(new Set(r).size, 3, '三种语气的左边框颜色必须互不相同：' + JSON.stringify(r))
+  })
+
+  await it('三种语气靠图标区分，灰度截图里仍可分辨', async () => {
+    const r = await tab.eval(`return [].slice.call(document.querySelectorAll('.kc-note')).slice(0,3)
+      .map(function(n){return n.querySelector('.kc-note__icon').textContent.trim();});`)
+    eq(r.length, 3)
+    eq(new Set(r).size, 3, '三种语气的图标字符必须互不相同（不能只靠颜色）：' + JSON.stringify(r))
+    assert(r.every((x) => x.length > 0), '每个提示框都要有图标')
+  })
+
+  await it('语气取值不在三个值里时留下可见痕迹', async () => {
+    const r = await tab.eval(`var b=document.querySelector('#note-bad .kc-broken');
+      return {text:b?b.textContent:null, ok:document.querySelectorAll('.kc-note:not(#note-bad) .kc-broken').length};`)
+    eq(r.ok, 0, '合规的提示框不该报错')
+    assert(r.text && r.text.indexOf('insight') >= 0, '痕迹里要说清楚合法取值，实际：' + r.text)
+  })
+})
+
+describe('概念卡片 kc-cards', async (tab) => {
+  const url = fixture('cards', `
+<main class="kc-course"><section class="kc-screen">
+  <div class="kc-cards" id="cards-ok">
+    <div class="kc-cards__item" data-kc-accent="1"><span class="kc-cards__icon">◆</span><p class="kc-cards__title">读</p><p class="kc-cards__body">把数据取出来，比如打开页面时先问一遍后端。</p></div>
+    <div class="kc-cards__item" data-kc-accent="2"><span class="kc-cards__icon">◇</span><p class="kc-cards__title">写</p><p class="kc-cards__body">把新东西存进去。</p></div>
+    <div class="kc-cards__item" data-kc-accent="3"><span class="kc-cards__icon">○</span><p class="kc-cards__title">删</p><p class="kc-cards__body">把一条记录去掉，通常只是打个标记。</p></div>
+  </div>
+  <div class="kc-cards" id="cards-bad"><div class="kc-cards__item" data-kc-accent="9"><span class="kc-cards__icon">×</span><p class="kc-cards__title">越界</p><p class="kc-cards__body">颜色取值超出范围。</p></div></div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('同一组内颜色不重复', async () => {
+    const r = await tab.eval(`return [].map.call(document.querySelectorAll('#cards-ok .kc-cards__item'),
+      function(n){return getComputedStyle(n).borderBlockStartColor;});`)
+    eq(r.length, 3)
+    eq(new Set(r).size, 3, '同组卡片顶边颜色重复了：' + JSON.stringify(r))
+  })
+
+  await it('窄屏下自动变为单列', async () => {
+    await tab.viewport(1100, 800)
+    const wide = await tab.eval(`return [].map.call(document.querySelectorAll('#cards-ok .kc-cards__item'),function(n){return Math.round(n.getBoundingClientRect().top);});`)
+    assert(new Set(wide).size === 1, '宽屏下三张卡片应在同一行：' + JSON.stringify(wide))
+    await tab.viewport(380, 900)
+    const narrow = await tab.eval(`return [].map.call(document.querySelectorAll('#cards-ok .kc-cards__item'),function(n){return Math.round(n.getBoundingClientRect().top);});`)
+    eq(new Set(narrow).size, 3, '窄屏下三张卡片应各占一行：' + JSON.stringify(narrow))
+    await tab.viewport(1100, 800)
+  })
+
+  await it('卡片高度不齐时底部对齐良好', async () => {
+    const r = await tab.eval(`return [].map.call(document.querySelectorAll('#cards-ok .kc-cards__item'),
+      function(n){var r=n.getBoundingClientRect();return {top:Math.round(r.top),bottom:Math.round(r.bottom)};});`)
+    const tops = new Set(r.map((x) => x.top))
+    const bottoms = new Set(r.map((x) => x.bottom))
+    eq(tops.size, 1, '同一行卡片顶部应对齐')
+    eq(bottoms.size, 1, '同一行卡片底部应对齐，不许出现参差的空洞：' + JSON.stringify(r))
+  })
+
+  await it('颜色取值超出 1–5 时留下可见痕迹', async () => {
+    const r = await tab.eval(`return {bad:document.querySelectorAll('#cards-bad .kc-broken').length,
+      ok:document.querySelectorAll('#cards-ok .kc-broken').length};`)
+    eq(r.ok, 0)
+    assert(r.bad > 0, 'accent=9 应留下可见痕迹')
+  })
+})
+
+describe('编号步骤卡 kc-steps', async (tab) => {
+  const url = fixture('steps', `
+<main class="kc-course"><section class="kc-screen">
+  <div class="kc-steps" id="steps-ok">
+    <div class="kc-steps__item"><span class="kc-steps__num">1</span><p class="kc-steps__title">你点了添加</p><p class="kc-steps__body">浏览器把你打的字收起来。</p></div>
+    <div class="kc-steps__item"><span class="kc-steps__num">2</span><p class="kc-steps__title">发给 server.js</p><p class="kc-steps__body">走的是 POST /todos 这条路。</p></div>
+    <div class="kc-steps__item"><span class="kc-steps__num">5</span><p class="kc-steps__title">页面重新问一遍</p><p class="kc-steps__body">这里故意跳号，实现不许改写作者写的编号。</p></div>
+  </div>
+  <div class="kc-steps" id="steps-bad"><div class="kc-steps__item"><span class="kc-steps__num"></span><p class="kc-steps__title">缺编号</p><p class="kc-steps__body">应当留下痕迹。</p></div></div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('编号由写内容的人给，实现不自动生成也不改写', async () => {
+    const r = await tab.eval(`return [].map.call(document.querySelectorAll('#steps-ok .kc-steps__num'),function(n){return n.textContent.trim();});`)
+    eq(r.join(','), '1,2,5', '编号被改写了（故意跳号的 5 必须保留）')
+  })
+
+  await it('缺编号时留下可见痕迹', async () => {
+    const r = await tab.eval(`return {bad:document.querySelectorAll('#steps-bad .kc-broken').length,
+      ok:document.querySelectorAll('#steps-ok .kc-broken').length};`)
+    eq(r.ok, 0)
+    assert(r.bad > 0, '空编号应留下痕迹')
+  })
+
+  await it('窄屏下卡片不挤压变形也不溢出', async () => {
+    await tab.viewport(360, 900)
+    const r = await tab.eval(`var bad=[];
+      [].forEach.call(document.querySelectorAll('#steps-ok .kc-steps__item'),function(n){
+        var num=n.querySelector('.kc-steps__num').getBoundingClientRect();
+        var box=n.getBoundingClientRect();
+        if(num.width<20||num.height<20) bad.push('圆形编号被压扁 '+Math.round(num.width)+'x'+Math.round(num.height));
+        if(Math.abs(num.width-num.height)>1.5) bad.push('编号不圆了 '+num.width+'x'+num.height);
+        if(box.right>document.documentElement.clientWidth+1) bad.push('卡片溢出视口');});
+      return {bad:bad, docSW:document.documentElement.scrollWidth, docCW:document.documentElement.clientWidth};`)
+    eq(r.bad.length, 0, JSON.stringify(r.bad))
+    assert(r.docSW <= r.docCW + 1, '窄屏下出现了横向滚动条')
+    await tab.viewport(1100, 800)
+  })
+})
+
+describe('箭头流程 kc-chain', async (tab) => {
+  const url = fixture('chain', `
+<main class="kc-course"><section class="kc-screen">
+  <div class="kc-chain" id="chain">
+    <div class="kc-chain__step"><span class="kc-chain__num">1</span>你点了按钮</div>
+    <span class="kc-chain__arrow">→</span>
+    <div class="kc-chain__step"><span class="kc-chain__num">2</span>请求发出去</div>
+    <span class="kc-chain__arrow">→</span>
+    <div class="kc-chain__step"><span class="kc-chain__num">3</span>页面重新画</div>
+  </div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('横向排列时不出现横向滚动条', async () => {
+    const r = await tab.eval(`var c=document.getElementById('chain');
+      var tops=[].map.call(c.querySelectorAll('.kc-chain__step'),function(n){return Math.round(n.getBoundingClientRect().top);});
+      return {sw:c.scrollWidth, cw:c.clientWidth, docSW:document.documentElement.scrollWidth, docCW:document.documentElement.clientWidth, tops:tops};`)
+    assert(r.sw <= r.cw + 1, '流程容器内部横向溢出')
+    assert(r.docSW <= r.docCW + 1, '整页出现横向滚动条')
+    eq(new Set(r.tops).size, 1, '宽屏下三步应在同一行：' + JSON.stringify(r.tops))
+  })
+
+  await it('窄屏下改为纵向排列', async () => {
+    await tab.viewport(360, 900)
+    const tops = await tab.eval(`return [].map.call(document.querySelectorAll('#chain .kc-chain__step'),function(n){return Math.round(n.getBoundingClientRect().top);});`)
+    eq(new Set(tops).size, 3, '窄屏下三步应各占一行：' + JSON.stringify(tops))
+  })
+
+  await it('窄屏下箭头方向变为向下', async () => {
+    const r = await tab.eval(`return [].map.call(document.querySelectorAll('#chain .kc-chain__arrow'),function(n){return getComputedStyle(n).transform;});`)
+    eq(r.length, 2)
+    // rotate(90deg) 的矩阵是 matrix(0, 1, -1, 0, 0, 0)
+    r.forEach((t) => assert(/matrix\(\s*0(\.\d+)?\s*,\s*1/.test(t) || t.indexOf('rotate(90') >= 0,
+      '窄屏箭头应旋转 90 度，实际 transform=' + t))
+    await tab.viewport(1100, 800)
+    const wide = await tab.eval(`return getComputedStyle(document.querySelector('#chain .kc-chain__arrow')).transform;`)
+    assert(wide === 'none' || /matrix\(1,\s*0,\s*0,\s*1/.test(wide), '宽屏下箭头不该旋转，实际 ' + wide)
+  })
+})
+
+describe('代号表 kc-deflist', async (tab) => {
+  const KEY = 'ECONNREFUSED 127.0.0.1:3000'
+  const url = fixture('deflist', `
+<main class="kc-course"><section class="kc-screen">
+  <div class="kc-deflist" id="dl-ok">
+    <div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">404</code><p class="kc-deflist__value">你要的东西不在这个地址上，先检查路径拼对没有。</p></div>
+    <div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">${KEY}</code><p class="kc-deflist__value">服务没起来，或者端口不是 3000。先看终端里 npm start 有没有报错。</p></div>
+    <div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">500</code><p class="kc-deflist__value">服务器自己出错了，去看终端里那一大段红字。</p></div>
+    <div class="kc-deflist__row" id="dl-long"><code class="kc-deflist__key" data-kc-lang="en">Error: listen EADDRINUSE: address already in use :::3000</code><p class="kc-deflist__value">3000 这个端口已经被另一个程序占了。先把它关掉，或者换个端口。</p></div>
+  </div>
+  <div class="kc-deflist" id="dl-bad"><div class="kc-deflist__row"><code class="kc-deflist__key">401</code><p class="kc-deflist__value">没标英文。</p></div></div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('代号可完整选中复制，与源文一字不差', async () => {
+    const r = await tab.eval(`var k=document.querySelectorAll('#dl-ok .kc-deflist__key')[1];
+      var sel=window.getSelection(); var r=document.createRange(); r.selectNodeContents(k);
+      sel.removeAllRanges(); sel.addRange(r);
+      var got=sel.toString(); sel.removeAllRanges();
+      return {text:k.textContent, selected:got, us:getComputedStyle(k).userSelect};`)
+    eq(r.text, KEY, '代号文字被改动了')
+    eq(r.selected, KEY, '选中拿到的文字与源文不一致')
+    assert(r.us !== 'none', '代号必须可选中')
+  })
+
+  await it('长代号在窄屏下折行而不撑破容器', async () => {
+    await tab.viewport(340, 900)
+    const r = await tab.eval(`var row=document.getElementById('dl-long');
+      var k=row.querySelector('.kc-deflist__key');
+      return {keyRight:k.getBoundingClientRect().right, rowRight:row.getBoundingClientRect().right,
+              docSW:document.documentElement.scrollWidth, docCW:document.documentElement.clientWidth,
+              lines:Math.round(k.getBoundingClientRect().height/parseFloat(getComputedStyle(k).lineHeight))};`)
+    assert(r.keyRight <= r.rowRight + 1, '长代号撑破了容器')
+    assert(r.docSW <= r.docCW + 1, '窄屏下出现横向滚动条')
+    assert(r.lines >= 2, '长代号应当折行，实际行数 ' + r.lines)
+    await tab.viewport(1100, 800)
+  })
+
+  await it('代号区域不生效中文排版规则；没标英文时留下痕迹', async () => {
+    const r = await tab.eval(`var k=document.querySelectorAll('#dl-ok .kc-deflist__key')[1];
+      return {lat:k.querySelectorAll('.kc-lat').length, pun:k.querySelectorAll('.kc-pun').length,
+              lang:k.getAttribute('lang'),
+              bad:document.querySelectorAll('#dl-bad .kc-broken').length,
+              ok:document.querySelectorAll('#dl-ok .kc-broken').length};`)
+    eq(r.lat, 0, '代号里不许注入中西文间距')
+    eq(r.pun, 0, '代号里不许压缩标点')
+    eq(r.lang, 'en')
+    eq(r.ok, 0)
+    assert(r.bad > 0, '未标 data-kc-lang="en" 的代号应留下可见痕迹')
+  })
+})
+
+describe('文件树 kc-tree', async (tab) => {
+  const url = fixture('tree', `
+<main class="kc-course"><section class="kc-screen">
+  <div class="kc-tree" id="tree-ok">
+    <div class="kc-tree__dir"><code class="kc-tree__name" data-kc-lang="en">src/</code><span class="kc-tree__note">代码都在这儿，其余都是配置。</span></div>
+    <div class="kc-tree__children">
+      <div class="kc-tree__file"><code class="kc-tree__name" data-kc-lang="en">server.js</code><span class="kc-tree__note">大门口——启动程序，决定每种请求交给谁。</span></div>
+      <div class="kc-tree__file"><code class="kc-tree__name" data-kc-lang="en">store.js</code><span class="kc-tree__note">只有它碰硬盘，数据不对的时候先来这里找。</span></div>
+    </div>
+  </div>
+  <div class="kc-tree" id="tree-bad">
+    <div class="kc-tree__file"><code class="kc-tree__name" data-kc-lang="en">a.js</code><span class="kc-tree__note"></span></div>
+    <div class="kc-tree__file"><code class="kc-tree__name">b.js</code><span class="kc-tree__note">名字没标英文。</span></div>
+  </div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('层级关系一眼可辨：子层有缩进和竖线', async () => {
+    const r = await tab.eval(`var dir=document.querySelector('#tree-ok .kc-tree__dir').getBoundingClientRect();
+      var child=document.querySelector('#tree-ok .kc-tree__children');
+      var f=child.querySelector('.kc-tree__file').getBoundingClientRect();
+      var s=getComputedStyle(child);
+      return {indent:f.left-dir.left, border:s.borderInlineStartStyle, bw:parseFloat(s.borderInlineStartWidth)};`)
+    assert(r.indent >= 12, '子层缩进不足，实际 ' + r.indent + 'px')
+    assert(r.bw > 0 && r.border !== 'none', '子层应有左侧竖线，实际 ' + r.border)
+  })
+
+  await it('窄屏下说明换行到名字下方，不横向溢出', async () => {
+    await tab.viewport(340, 900)
+    const r = await tab.eval(`var row=document.querySelector('#tree-ok .kc-tree__file');
+      var n=row.querySelector('.kc-tree__name').getBoundingClientRect();
+      var t=row.querySelector('.kc-tree__note').getBoundingClientRect();
+      return {noteTop:t.top, nameBottom:n.bottom,
+              docSW:document.documentElement.scrollWidth, docCW:document.documentElement.clientWidth};`)
+    assert(r.noteTop >= r.nameBottom - 2, '窄屏下说明应落到名字下方')
+    assert(r.docSW <= r.docCW + 1, '窄屏下出现横向滚动条')
+    await tab.viewport(1100, 800)
+  })
+
+  await it('缺说明或名字没标英文时留下可见痕迹', async () => {
+    const r = await tab.eval(`var b=document.querySelectorAll('#tree-bad .kc-broken');
+      return {n:b.length, texts:[].map.call(b,function(x){return x.textContent;}),
+              ok:document.querySelectorAll('#tree-ok .kc-broken').length};`)
+    eq(r.ok, 0, '合规的树不该报错')
+    assert(r.n >= 2, '缺说明与未标英文各应留下一条痕迹，实际 ' + r.n + '：' + JSON.stringify(r.texts))
+  })
+
+  await it('文件名可复制，与真实路径一致', async () => {
+    const r = await tab.eval(`return [].map.call(document.querySelectorAll('#tree-ok .kc-tree__name'),function(n){return n.textContent;});`)
+    eq(r.join('|'), 'src/|server.js|store.js', '文件名被改动了')
+  })
+})
+
+describe('角色行 kc-rolelist', async (tab) => {
+  const url = fixture('rolelist', `
+<main class="kc-course"><section class="kc-screen">
+  <div class="kc-rolelist" id="rl-ok">
+    <div class="kc-rolelist__row" data-kc-accent="2"><span class="kc-rolelist__icon">S</span><p class="kc-rolelist__name">server.js</p><p class="kc-rolelist__note">收请求、分诊、把活派给别人。</p></div>
+    <div class="kc-rolelist__row" data-kc-accent="3"><span class="kc-rolelist__icon">T</span><p class="kc-rolelist__name">store.js</p><p class="kc-rolelist__note">只有它碰硬盘。</p></div>
+    <div class="kc-rolelist__row" data-kc-accent="2"><span class="kc-rolelist__icon">S</span><p class="kc-rolelist__name">server.js</p><p class="kc-rolelist__note">同一个角色第二次出现，颜色必须一样。</p></div>
+  </div>
+  <div class="kc-rolelist" id="rl-bad"><div class="kc-rolelist__row" data-kc-accent="0"><span class="kc-rolelist__icon">X</span><p class="kc-rolelist__name">x.js</p><p class="kc-rolelist__note">越界。</p></div></div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('同一个角色在全课颜色一致', async () => {
+    const r = await tab.eval(`return [].map.call(document.querySelectorAll('#rl-ok .kc-rolelist__icon'),
+      function(n){return getComputedStyle(n).backgroundColor;});`)
+    eq(r[0], r[2], '同一个角色（accent=2）两次出现颜色不一致：' + JSON.stringify(r))
+    assert(r[0] !== r[1], '不同角色应有不同颜色：' + JSON.stringify(r))
+  })
+
+  await it('窄屏下图标与文字不重叠', async () => {
+    await tab.viewport(340, 900)
+    const r = await tab.eval(`var bad=[];
+      [].forEach.call(document.querySelectorAll('#rl-ok .kc-rolelist__row'),function(row){
+        var i=row.querySelector('.kc-rolelist__icon').getBoundingClientRect();
+        var n=row.querySelector('.kc-rolelist__name').getBoundingClientRect();
+        var t=row.querySelector('.kc-rolelist__note').getBoundingClientRect();
+        if(n.left<i.right-0.5) bad.push('名字压到图标上');
+        if(t.left<i.right-0.5) bad.push('说明压到图标上');
+        if(i.width<20) bad.push('图标被压扁');});
+      return {bad:bad, docSW:document.documentElement.scrollWidth, docCW:document.documentElement.clientWidth};`)
+    eq(r.bad.length, 0, JSON.stringify(r.bad))
+    assert(r.docSW <= r.docCW + 1, '窄屏下出现横向滚动条')
+    await tab.viewport(1100, 800)
+  })
+
+  await it('颜色取值超出 1–5 时留下可见痕迹', async () => {
+    const r = await tab.eval(`return {bad:document.querySelectorAll('#rl-bad .kc-broken').length,
+      ok:document.querySelectorAll('#rl-ok .kc-broken').length};`)
+    eq(r.ok, 0)
+    assert(r.bad > 0, 'accent=0 应留下可见痕迹')
+  })
+})
+
 /* KC_GROUPS_END */
 
 // ---------------------------------------------------------------- 入口
