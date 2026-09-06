@@ -1892,6 +1892,375 @@ ${OUT('kc-output-m2', 'instruct', 60)}
   })
 })
 
+// ---------------------------------------------------------------- 组件群聊
+
+const MSG = (sp, av, text) => `<div class="kc-chat__message" data-kc-speaker="${sp}"><span class="kc-chat__avatar">${av}</span><div class="kc-chat__bubble"><p class="kc-chat__speaker">${sp}</p>${text}</div></div>`
+
+const CHAT = (id) => `
+<div class="kc-chat" id="${id}">
+  <div class="kc-chat__stream">
+    ${MSG('app.js', 'A', '我这边有人打了“买牛奶”，还点了添加。我先拦一下，标题是空的我就不发。')}
+    ${MSG('server.js', 'S', '收到，POST /todos。我不存东西，我只管把活派下去。')}
+    ${MSG('store.js', 'T', '我来写。写完我给你一条带 id 的完整记录。')}
+    ${MSG('server.js', 'S', '好，我把它包成 201 回给你。')}
+    ${MSG('app.js', 'A', '我不自己画，我重新问你要一遍全部的，画出来的才是真的。')}
+  </div>
+  <div class="kc-chat__typing"></div>
+  <div class="kc-chat__actions">
+    <button class="kc-chat__next">下一条</button>
+    <button class="kc-chat__all">全部播放</button>
+    <button class="kc-chat__replay">重放</button>
+  </div>
+  <p class="kc-chat__progress"></p>
+</div>`
+
+describe('组件群聊 kc-chat', async (tab) => {
+  const url = fixture('chat', `<main class="kc-course"><section class="kc-screen">
+${CHAT('kc-chat-m1')}
+${CHAT('kc-chat-m2')}
+<div class="kc-chat" id="chat-bad">
+  <div class="kc-chat__stream"><div class="kc-chat__message"><span class="kc-chat__avatar">?</span><div class="kc-chat__bubble"><p class="kc-chat__speaker">谁</p>没有声明发言者。</div></div></div>
+  <div class="kc-chat__typing"></div>
+  <div class="kc-chat__actions"><button class="kc-chat__next">下一条</button><button class="kc-chat__replay">重放</button></div>
+  <p class="kc-chat__progress"></p>
+</div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('初始为空，进度提示与实际显示条数一致', async () => {
+    const r = await tab.eval(`var root=document.getElementById('kc-chat-m1');
+      return {shown:root.querySelectorAll('.kc-chat__message.kc-is-shown').length,
+              visible:[].filter.call(root.querySelectorAll('.kc-chat__message'),function(m){return getComputedStyle(m).display!=='none';}).length,
+              progress:root.querySelector('.kc-chat__progress').textContent};`)
+    eq(r.shown, 0, '初始不该显示任何消息')
+    eq(r.visible, 0)
+    eq(r.progress, '0 / 5 条', '进度提示不对，实际：' + r.progress)
+  })
+
+  await it('打字指示的头像是下一个发言者，不是通用问号', async () => {
+    await tab.click('#kc-chat-m1 .kc-chat__next')
+    const during = await tab.eval(`var t=document.querySelector('#kc-chat-m1 .kc-chat__typing');
+      return {shown:t.classList.contains('kc-is-shown'), speaker:t.getAttribute('data-kc-speaker'),
+              avatar:t.querySelector('.kc-chat__avatar').textContent,
+              firstAvatar:document.querySelector('#kc-chat-m1 .kc-chat__message .kc-chat__avatar').textContent};`)
+    assert(during.shown, '点“下一条”后应先出现打字指示')
+    eq(during.speaker, 'app.js', '打字指示应属于即将发言的那个角色')
+    eq(during.avatar, during.firstAvatar, '打字指示的头像必须与该角色的头像一致')
+    assert(during.avatar !== '?', '不许用通用问号')
+
+    await tab.wait(1000)
+    const after = await tab.eval(`var root=document.getElementById('kc-chat-m1');
+      return {shown:root.querySelectorAll('.kc-chat__message.kc-is-shown').length,
+              typing:root.querySelector('.kc-chat__typing').classList.contains('kc-is-shown'),
+              progress:root.querySelector('.kc-chat__progress').textContent};`)
+    eq(after.shown, 1, '停顿之后消息应出现')
+    assert(!after.typing, '消息出现后打字指示应收起')
+    eq(after.progress, '1 / 5 条')
+
+    await tab.click('#kc-chat-m1 .kc-chat__next')
+    const second = await tab.eval(`var t=document.querySelector('#kc-chat-m1 .kc-chat__typing');
+      return {speaker:t.getAttribute('data-kc-speaker'), avatar:t.querySelector('.kc-chat__avatar').textContent};`)
+    eq(second.speaker, 'server.js', '第二次的打字指示应换成下一个发言者')
+    eq(second.avatar, 'S')
+    await tab.wait(1000)
+  })
+
+  await it('“全部播放”过程中重复点击不会跳条或重复', async () => {
+    await tab.click('#kc-chat-m1 .kc-chat__replay')
+    await tab.click('#kc-chat-m1 .kc-chat__all')
+    for (let i = 0; i < 6; i++) {
+      await tab.eval(`var b=document.querySelector('#kc-chat-m1 .kc-chat__next'); b.dispatchEvent(new MouseEvent('click',{bubbles:true})); return true;`)
+      await tab.wait(60)
+    }
+    await tab.wait(7000)
+    const r = await tab.eval(`var root=document.getElementById('kc-chat-m1');
+      return {shown:root.querySelectorAll('.kc-chat__message.kc-is-shown').length,
+              total:root.querySelectorAll('.kc-chat__message').length,
+              progress:root.querySelector('.kc-chat__progress').textContent,
+              nextDisabled:root.querySelector('.kc-chat__next').disabled};`)
+    eq(r.shown, r.total, '全部播放结束后应恰好显示全部消息，一条不多一条不少')
+    eq(r.progress, '5 / 5 条', '进度提示与实际显示条数必须一致')
+    assert(r.nextDisabled, '播完之后“下一条”应不可点')
+  })
+
+  await it('走到末尾再点“下一条”无效果不报错，“重放”后可以完整再走一遍', async () => {
+    const before = tab.errors.length
+    await tab.eval(`var b=document.querySelector('#kc-chat-m1 .kc-chat__next'); b.disabled=false; b.click(); return true;`)
+    await tab.wait(200)
+    const r = await tab.eval(`var root=document.getElementById('kc-chat-m1');
+      return {shown:root.querySelectorAll('.kc-chat__message.kc-is-shown').length,
+              progress:root.querySelector('.kc-chat__progress').textContent};`)
+    eq(r.shown, 5, '末尾再点不许多出一条')
+    eq(tab.errors.length, before, '不许报错')
+
+    await tab.click('#kc-chat-m1 .kc-chat__replay')
+    const reset = await tab.eval(`var root=document.getElementById('kc-chat-m1');
+      return {shown:root.querySelectorAll('.kc-chat__message.kc-is-shown').length,
+              progress:root.querySelector('.kc-chat__progress').textContent,
+              typing:root.querySelector('.kc-chat__typing').classList.contains('kc-is-shown'),
+              nextDisabled:root.querySelector('.kc-chat__next').disabled};`)
+    eq(reset.shown, 0, '重放应把全部消息收回')
+    eq(reset.progress, '0 / 5 条', '进度应归零')
+    assert(!reset.typing && !reset.nextDisabled, '重放后应回到可以重新开始的状态')
+    await tab.click('#kc-chat-m1 .kc-chat__next')
+    await tab.wait(1000)
+    const again = await tab.eval(`return document.querySelectorAll('#kc-chat-m1 .kc-chat__message.kc-is-shown').length;`)
+    eq(again, 1, '重放之后必须能完整再走一遍')
+  })
+
+  await it('同一角色在全课颜色一致，不同角色颜色不同', async () => {
+    const r = await tab.eval(`
+      function col(sel){var m=document.querySelector(sel);return getComputedStyle(m.querySelector('.kc-chat__avatar')).backgroundColor;}
+      return {a1:col('#kc-chat-m1 [data-kc-speaker="app.js"]'),
+              a2:col('#kc-chat-m2 [data-kc-speaker="app.js"]'),
+              s1:col('#kc-chat-m1 [data-kc-speaker="server.js"]'),
+              t1:col('#kc-chat-m1 [data-kc-speaker="store.js"]')};`)
+    eq(r.a1, r.a2, '同一个角色在两个不同的聊天窗里颜色必须一致')
+    assert(r.a1 !== r.s1 && r.s1 !== r.t1 && r.a1 !== r.t1,
+      '三个不同角色的颜色应当互不相同：' + JSON.stringify(r))
+  })
+
+  await it('两个聊天窗互不干扰', async () => {
+    const r = await tab.eval(`return {
+      m1:document.querySelectorAll('#kc-chat-m1 .kc-chat__message.kc-is-shown').length,
+      m2:document.querySelectorAll('#kc-chat-m2 .kc-chat__message.kc-is-shown').length,
+      m2p:document.querySelector('#kc-chat-m2 .kc-chat__progress').textContent};`)
+    eq(r.m1, 1, '第一个窗口应保持自己的进度')
+    eq(r.m2, 0, '第二个窗口不该被带着走')
+    eq(r.m2p, '0 / 5 条')
+  })
+
+  await it('键盘可以触发三个按钮', async () => {
+    await tab.focus('#kc-chat-m2 .kc-chat__next')
+    await tab.key('Enter')
+    await tab.wait(1000)
+    const one = await tab.eval(`return document.querySelectorAll('#kc-chat-m2 .kc-chat__message.kc-is-shown').length;`)
+    eq(one, 1, '回车应能触发“下一条”')
+    await tab.focus('#kc-chat-m2 .kc-chat__replay')
+    await tab.key(' ')
+    const zero = await tab.eval(`return document.querySelectorAll('#kc-chat-m2 .kc-chat__message.kc-is-shown').length;`)
+    eq(zero, 0, '空格应能触发“重放”')
+    await tab.focus('#kc-chat-m2 .kc-chat__all')
+    await tab.key('Enter')
+    await tab.wait(1200)
+    const some = await tab.eval(`return document.querySelectorAll('#kc-chat-m2 .kc-chat__message.kc-is-shown').length;`)
+    assert(some >= 1, '回车应能触发“全部播放”')
+    await tab.click('#kc-chat-m2 .kc-chat__replay')
+  })
+
+  await it('消息没有声明发言者时留下可见痕迹', async () => {
+    const r = await tab.eval(`return {bad:document.querySelectorAll('#chat-bad .kc-broken').length,
+      text:(document.querySelector('#chat-bad .kc-broken')||{}).textContent,
+      ok:document.querySelectorAll('#kc-chat-m1 .kc-broken').length};`)
+    eq(r.ok, 0)
+    assert(r.bad > 0, '缺 data-kc-speaker 应留下痕迹')
+    assert((r.text || '').indexOf('打字指示无法确定头像') >= 0, '要说清楚后果，实际：' + r.text)
+  })
+
+  await it('脚本未运行时所有消息直接全部可见，按钮还在但无效', async () => {
+    const nojs = fixture('chat-nojs', `<main class="kc-course"><section class="kc-screen">${CHAT('kc-chat-n')}</section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var root=document.getElementById('kc-chat-n');
+      return {visible:[].filter.call(root.querySelectorAll('.kc-chat__message'),function(m){return getComputedStyle(m).display!=='none';}).length,
+              total:root.querySelectorAll('.kc-chat__message').length,
+              buttons:root.querySelectorAll('button').length,
+              buttonsVisible:[].filter.call(root.querySelectorAll('button'),function(b){return getComputedStyle(b).display!=='none';}).length};`)
+    eq(r.visible, r.total, '无脚本时所有消息都应直接可见')
+    eq(r.buttons, 3)
+    eq(r.buttonsVisible, 3, '按钮无效但不消失')
+  })
+})
+
+// ---------------------------------------------------------------- 数据流演示
+
+const ACTOR = (id, icon, name) => `<div class="kc-flow__actor" id="${id}"><span class="kc-flow__icon">${icon}</span><span class="kc-flow__name">${name}</span></div>`
+
+const FLOW_STEPS = [
+  { actor: 'kc-flow-m2-you', text: '你在输入框里打了“买牛奶”，点了添加。' },
+  { actor: 'kc-flow-m2-app', text: '页面先自己看一眼：标题不是空的，可以发。', from: 'kc-flow-m2-you', to: 'kc-flow-m2-app' },
+  { actor: 'kc-flow-m2-server', text: '请求过网线到了服务器，走的是 POST /todos 这条路。', from: 'kc-flow-m2-app', to: 'kc-flow-m2-server' },
+  { actor: 'kc-flow-m2-store', text: '服务器自己不存东西，它把这条待办交给管硬盘的那个。', from: 'kc-flow-m2-server', to: 'kc-flow-m2-store' },
+  { actor: 'kc-flow-m2-app', text: '写完了，页面重新问了一遍全部待办，你才看见它出现在列表里。', from: 'kc-flow-m2-store', to: 'kc-flow-m2-app' }
+]
+
+const FLOW = (steps) => `
+<div class="kc-flow" id="kc-flow-m2" data-kc-steps='${JSON.stringify(steps)}'>
+  <div class="kc-flow__actors">
+    ${ACTOR('kc-flow-m2-you', '🧑', '你')}
+    ${ACTOR('kc-flow-m2-app', '▤', 'app.js')}
+    ${ACTOR('kc-flow-m2-server', '▣', 'server.js')}
+    ${ACTOR('kc-flow-m2-store', '▦', 'store.js')}
+  </div>
+  <span class="kc-flow__packet"></span>
+  <p class="kc-flow__caption">点“下一步”，跟着这条待办走一遍。</p>
+  <div class="kc-flow__actions"><button class="kc-flow__next">下一步</button><button class="kc-flow__reset">重来</button></div>
+  <p class="kc-flow__progress"></p>
+</div>`
+
+describe('数据流演示 kc-flow', async (tab) => {
+  const url = fixture('flow', `<main class="kc-course"><section class="kc-screen">${FLOW(FLOW_STEPS)}</section></main>`)
+  await tab.goto(url)
+
+  await it('初始没有角色被高亮，说明文字是引导语，进度归零', async () => {
+    const r = await tab.eval(`var root=document.getElementById('kc-flow-m2');
+      return {cur:root.querySelectorAll('.kc-is-current').length,
+              caption:root.querySelector('.kc-flow__caption').textContent,
+              progress:root.querySelector('.kc-flow__progress').textContent,
+              broken:root.querySelectorAll('.kc-broken').length};`)
+    eq(r.broken, 0, '合规的步骤序列不该报错')
+    eq(r.cur, 0, '初始不该有角色被高亮')
+    assert(r.caption.indexOf('点“下一步”') >= 0, '初始说明应是引导语，实际：' + r.caption)
+    eq(r.progress, '第 0 步 / 共 5 步')
+  })
+
+  await it('任意时刻最多一个角色高亮，说明与进度跟着走', async () => {
+    for (let i = 1; i <= 5; i++) {
+      await tab.click('#kc-flow-m2 .kc-flow__next')
+      const r = await tab.eval(`var root=document.getElementById('kc-flow-m2');
+        var cur=root.querySelectorAll('.kc-flow__actor.kc-is-current');
+        return {n:cur.length, id:cur[0]?cur[0].id:null,
+                caption:root.querySelector('.kc-flow__caption').textContent,
+                progress:root.querySelector('.kc-flow__progress').textContent};`)
+      eq(r.n, 1, '第 ' + i + ' 步：任意时刻最多一个角色高亮')
+      eq(r.id, FLOW_STEPS[i - 1].actor, '第 ' + i + ' 步高亮的角色不对')
+      eq(r.progress, '第 ' + i + ' 步 / 共 5 步')
+      assert(r.caption.indexOf(FLOW_STEPS[i - 1].text.slice(0, 6)) >= 0, '第 ' + i + ' 步的说明文字不对：' + r.caption)
+    }
+  })
+
+  await it('走到最后再点“下一步”无异常', async () => {
+    const before = tab.errors.length
+    await tab.eval(`var b=document.querySelector('#kc-flow-m2 .kc-flow__next'); b.disabled=false; b.click(); b.click(); return true;`)
+    await tab.wait(200)
+    const r = await tab.eval(`return document.querySelector('#kc-flow-m2 .kc-flow__progress').textContent;`)
+    eq(r, '第 5 步 / 共 5 步', '不许越过最后一步')
+    eq(tab.errors.length, before, '不许报错')
+  })
+
+  await it('“重来”完全复原', async () => {
+    await tab.click('#kc-flow-m2 .kc-flow__reset')
+    const r = await tab.eval(`var root=document.getElementById('kc-flow-m2');
+      return {cur:root.querySelectorAll('.kc-is-current').length,
+              caption:root.querySelector('.kc-flow__caption').textContent,
+              progress:root.querySelector('.kc-flow__progress').textContent,
+              flying:root.querySelector('.kc-flow__packet').classList.contains('kc-is-flying'),
+              nextDisabled:root.querySelector('.kc-flow__next').disabled};`)
+    eq(r.cur, 0, '全部高亮应取消')
+    assert(r.caption.indexOf('点“下一步”') >= 0, '说明文字应恢复引导语')
+    eq(r.progress, '第 0 步 / 共 5 步')
+    assert(!r.flying, '数据包应停下')
+    assert(!r.nextDisabled, '“下一步”应恢复可点')
+  })
+
+  await it('窄屏下角色换行后，数据包仍然飞在正确的两点之间', async () => {
+    await tab.viewport(360, 900)
+    await tab.click('#kc-flow-m2 .kc-flow__reset')
+    const wrapped = await tab.eval(`return new Set([].map.call(document.querySelectorAll('#kc-flow-m2 .kc-flow__actor'),
+      function(a){return Math.round(a.getBoundingClientRect().top);})).size;`)
+    assert(wrapped >= 2, '窄屏下角色应当换行，实际只有 ' + wrapped + ' 行；这一条测不出来就没意义')
+
+    await tab.click('#kc-flow-m2 .kc-flow__next')
+    await tab.click('#kc-flow-m2 .kc-flow__next')
+    const r = await tab.eval(`var root=document.getElementById('kc-flow-m2');
+      var p=root.querySelector('.kc-flow__packet');
+      var base=root.getBoundingClientRect();
+      function center(id){var r=document.getElementById(id).getBoundingClientRect();
+        return {x:r.left+r.width/2-base.left, y:r.top+r.height/2-base.top};}
+      var start=center(p.getAttribute('data-kc-from')), end=center(p.getAttribute('data-kc-to'));
+      var pr=p.getBoundingClientRect();
+      return {from:p.getAttribute('data-kc-from'), to:p.getAttribute('data-kc-to'),
+              start:start, end:end,
+              packetNow:{x:pr.left+pr.width/2-base.left, y:pr.top+pr.height/2-base.top},
+              flying:p.classList.contains('kc-is-flying'), vw:document.documentElement.clientWidth};`)
+    eq(r.from, 'kc-flow-m2-you')
+    eq(r.to, 'kc-flow-m2-app')
+    assert(r.flying, '这一步有传递，数据包应当在飞')
+    // 起点终点必须落在两个角色的中心上，而不是写死的坐标
+    const dx = Math.abs(r.end.x - r.start.x)
+    const dy = Math.abs(r.end.y - r.start.y)
+    assert(dx + dy > 10, '起点与终点不该重合：' + JSON.stringify(r))
+    assert(r.packetNow.x >= Math.min(r.start.x, r.end.x) - 12 && r.packetNow.x <= Math.max(r.start.x, r.end.x) + 12,
+      '数据包飞出了两个角色之间的范围（横向）：' + JSON.stringify(r))
+    assert(r.packetNow.y >= Math.min(r.start.y, r.end.y) - 12 && r.packetNow.y <= Math.max(r.start.y, r.end.y) + 12,
+      '数据包飞出了两个角色之间的范围（纵向）：' + JSON.stringify(r))
+    await tab.wait(900)
+    const landed = await tab.eval(`var root=document.getElementById('kc-flow-m2');
+      var p=root.querySelector('.kc-flow__packet'); var base=root.getBoundingClientRect();
+      var pr=p.getBoundingClientRect(); var e=document.getElementById('kc-flow-m2-app').getBoundingClientRect();
+      return {dx:Math.abs((pr.left+pr.width/2)-(e.left+e.width/2)), dy:Math.abs((pr.top+pr.height/2)-(e.top+e.height/2)),
+              flying:p.classList.contains('kc-is-flying')};`)
+    assert(landed.dx < 6 && landed.dy < 6, '数据包应当落在终点角色的中心，实际偏差 ' + JSON.stringify(landed))
+    assert(!landed.flying, '飞完之后数据包应当消失')
+    await tab.viewport(1100, 800)
+  })
+
+  await it('步骤序列里带英文单引号时，构建报错而不是页面静默失效', async () => {
+    // 说明文字里放一个英文撇号，它会提前闭合属性，JSON 就断在那里
+    const broken = `<main class="kc-course"><section class="kc-screen">
+      <div class="kc-flow" id="flow-quote" data-kc-steps='[{"actor":"fq-a","text":"it's here"}]'>
+        <div class="kc-flow__actors">${ACTOR('fq-a', '▤', 'a.js')}</div>
+        <span class="kc-flow__packet"></span>
+        <p class="kc-flow__caption">引导语。</p>
+        <div class="kc-flow__actions"><button class="kc-flow__next">下一步</button><button class="kc-flow__reset">重来</button></div>
+        <p class="kc-flow__progress"></p>
+      </div></section></main>`
+    await tab.goto(fixture('flow-quote', broken))
+    const r = await tab.eval(`var root=document.getElementById('flow-quote');
+      var b=root.querySelector('.kc-broken');
+      return {n:root.querySelectorAll('.kc-broken').length, text:b?b.textContent:null,
+              visible:b?getComputedStyle(b).display!=='none':false,
+              live:root.classList.contains('kc-is-live')};`)
+    assert(r.n > 0, '解析失败必须硬失败，不许悄悄不动')
+    assert(r.visible, '错误痕迹必须可见')
+    assert((r.text || '').indexOf('英文单引号') >= 0, '要指出是单引号的问题，实际：' + r.text)
+    assert(!r.live, '解析失败的块不该被当成可用的')
+  })
+
+  await it('步骤引用不存在的角色、角色标识符重复、步骤为空，各留可见痕迹', async () => {
+    const mk = (id, steps, actors) => `
+      <div class="kc-flow" id="${id}" data-kc-steps='${steps}'>
+        <div class="kc-flow__actors">${actors}</div>
+        <span class="kc-flow__packet"></span><p class="kc-flow__caption">引导语。</p>
+        <div class="kc-flow__actions"><button class="kc-flow__next">下一步</button><button class="kc-flow__reset">重来</button></div>
+        <p class="kc-flow__progress"></p></div>`
+    await tab.goto(fixture('flow-bad', `<main class="kc-course"><section class="kc-screen">
+      ${mk('f-missing', '[{"actor":"nope","text":"引用了不存在的角色"}]', ACTOR('f-a', '▤', 'a.js'))}
+      ${mk('f-empty', '[]', ACTOR('f-b', '▤', 'b.js'))}
+      ${mk('f-dup1', '[{"actor":"f-same","text":"第一个"}]', ACTOR('f-same', '▤', 'a.js'))}
+      ${mk('f-dup2', '[{"actor":"f-same","text":"第二个"}]', ACTOR('f-same', '▤', 'a.js'))}
+    </section></main>`))
+    const r = await tab.eval(`function t(id){var b=document.querySelector('#'+id+' .kc-broken');return b?b.textContent:null;}
+      return {missing:t('f-missing'), empty:t('f-empty'), dup:t('f-dup1')||t('f-dup2')};`)
+    assert((r.missing || '').indexOf('不存在的角色标识符') >= 0, '引用不存在的角色应报错，实际：' + r.missing)
+    assert((r.empty || '').indexOf('空') >= 0, '步骤为空应报错，实际：' + r.empty)
+    assert((r.dup || '').indexOf('重复') >= 0, '角色标识符重复应报错，实际：' + r.dup)
+  })
+
+  await it('键盘能触发两个按钮；脚本未运行时角色可见、说明停在引导语', async () => {
+    await tab.goto(url)
+    await tab.focus('#kc-flow-m2 .kc-flow__next')
+    await tab.key('Enter')
+    const one = await tab.eval(`return document.querySelector('#kc-flow-m2 .kc-flow__progress').textContent;`)
+    eq(one, '第 1 步 / 共 5 步', '回车应能触发“下一步”')
+    await tab.focus('#kc-flow-m2 .kc-flow__reset')
+    await tab.key(' ')
+    const zero = await tab.eval(`return document.querySelector('#kc-flow-m2 .kc-flow__progress').textContent;`)
+    eq(zero, '第 0 步 / 共 5 步', '空格应能触发“重来”')
+
+    const nojs = fixture('flow-nojs', `<main class="kc-course"><section class="kc-screen">${FLOW(FLOW_STEPS)}</section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var root=document.getElementById('kc-flow-m2');
+      return {actors:[].filter.call(root.querySelectorAll('.kc-flow__actor'),function(a){return getComputedStyle(a).display!=='none';}).length,
+              names:[].map.call(root.querySelectorAll('.kc-flow__name'),function(n){return n.textContent;}).join(','),
+              caption:root.querySelector('.kc-flow__caption').textContent,
+              cur:root.querySelectorAll('.kc-is-current').length};`)
+    eq(r.actors, 4, '无脚本时角色照常可见')
+    eq(r.names, '你,app.js,server.js,store.js', '角色名照常可见')
+    assert(r.caption.indexOf('点“下一步”') >= 0, '无脚本时说明应显示引导语')
+    eq(r.cur, 0)
+  })
+})
+
 /* KC_GROUPS_END */
 
 // ---------------------------------------------------------------- 入口
