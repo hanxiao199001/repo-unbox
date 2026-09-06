@@ -97,8 +97,12 @@ console.log(`output总计: ${n(g.output)}`);
 // cache-read + 63,179 output priced at 5 / 10 / 0.5 / 25 comes to $4.542236,
 // which is what result.json said to the last cent. Cache write here is the
 // one-hour TTL (2x input); a 5-minute write would be 1.25x.
+// Sonnet's rates were derived the same way from its own run and also close to
+// the cent: 60 + 147,712 + 3,337,390 + 59,123 at 2 / 4 / 0.2 / 10 gives
+// $1.849676, which is what that result.json reported.
 const RATES = {
   'claude-opus-5': { input: 5, cacheWrite1h: 10, cacheRead: 0.5, output: 25 },
+  'claude-sonnet-5': { input: 2, cacheWrite1h: 4, cacheRead: 0.2, output: 10 },
 };
 const rate = RATES[model];
 if (rate) {
