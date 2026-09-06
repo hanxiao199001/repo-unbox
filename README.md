@@ -12,6 +12,18 @@ git clone --depth 1 https://github.com/zarazhangrui/codebase-to-course.git upstr
 
 授权情况见 [LICENSE](LICENSE)：上游仓库目前没有发布任何授权文件，本项目的 MIT 只覆盖自己的部分。
 
+> ## ⚠️ 当前状态：重写中，构建是坏的
+>
+> 从 `v0.1.1` 之后，这个仓库正在按 [`spec/`](spec/) 里的黑盒规格重写页面层。
+> 旧实现（`styles.css`、`main.js`、页面模板、旧的元素范例）已经移到 `.legacy/` 并不再跟踪，
+> 所以 **`scripts/build.mjs` 现在跑不起来，这是预期的**。
+>
+> - 想要一个能用的版本：`git checkout v0.1.1`
+> - 想看新页面层要做成什么样：读 [`spec/README.md`](spec/README.md)
+>
+> `spec/` 是功能规格，不含任何实现细节——class 和 id 全部重新命名，
+> 与旧实现没有任何名字上的继承关系。
+
 ## 和原版的区别
 
 | | 原版 | 这个版本 |
