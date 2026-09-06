@@ -1,5 +1,6 @@
-node_modules/
-examples/*/data/
 .DS_Store
-upstream/
+examples/*/data/
+examples/signal-log/
+node_modules/
 output/*/fonts/
+upstream/
