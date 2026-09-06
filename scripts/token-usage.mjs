@@ -22,7 +22,10 @@ const flag = (name) => {
   return i === -1 ? null : args[i + 1];
 };
 
-const dir = flag('--dir') || path.join(os.homedir(), '.claude', 'projects', '-Users-a01-Claude');
+// Claude Code stores a session's transcript under a directory named after the
+// working directory, with the separators replaced by dashes.
+const projectsRoot = path.join(os.homedir(), '.claude', 'projects');
+const dir = flag('--dir') || path.join(projectsRoot, process.cwd().replace(/\//g, '-'));
 const file = flag('--file') || fs.readdirSync(dir)
   .filter((f) => f.endsWith('.jsonl'))
   .map((f) => ({ f, m: fs.statSync(path.join(dir, f)).mtimeMs }))
