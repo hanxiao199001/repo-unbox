@@ -1,5 +1,5 @@
 ---
-name: codebase-to-course
+name: codebase-course-cn
 description: "把任意代码库变成一门中文交互式课程，讲给零编程基础、正在学 vibe coding 的中文学员听。Turn any codebase into a beautiful, interactive single-page HTML course in Chinese, for non-technical learners whose first barrier is English. 触发词：把这个项目做成课程、讲讲这个代码库、这份代码是怎么跑的、生成课程、代码库导览；also 'turn this into a course', 'explain this codebase interactively', 'teach this code', 'interactive tutorial from code', 'codebase walkthrough', 'make a course from this project'. 产物是一个自包含的 HTML 目录：滚动式模块、动画图示、内嵌测验、代码与中文逐行对照、以及要求学员动手写的输出题。"
 ---
 
@@ -188,10 +188,13 @@ course-name/
 写完全部模块后，回头做一次一致性检查：导航点和模块对得上、模块之间的过渡连得上、
 语气没有跳变、比喻没有重复。
 
-**第 3 步：构建** —— 在仓库根目录执行：
+**第 3 步：构建** —— 执行：
 ```
-node scripts/build.mjs course-name --source <代码库路径>
+node <SKILL_DIR>/scripts/build.mjs course-name --source <代码库路径>
 ```
+`<SKILL_DIR>` 是这份 SKILL.md 所在的目录。全局安装的话通常是
+`~/.claude/skills/codebase-course-cn`；在本仓库里开发就是仓库根目录，可以直接写
+`node scripts/build.mjs`。本文档里所有 `references/...` 路径也都相对于 `<SKILL_DIR>`。
 `--source` 是必填的：每个代码块都要拿去和这个代码库逐字比对。缺了它构建直接失败，
 没有绕过去的办法——这是“代码一字不改”唯一的机械保障。
 脚本会把 `styles.css`、`main.js`、`_footer.html`、`fonts/` 复制进课程目录，
