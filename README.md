@@ -3,7 +3,14 @@
 把任意代码库变成一门**中文交互式课程**，讲给零编程基础、正在学 vibe coding 的中文学员听。
 
 基于 [zarazhangrui/codebase-to-course](https://github.com/zarazhangrui/codebase-to-course) 改造。
-原版在 `upstream/`，只读不改。
+**原版不包含在本仓库里**——开发时把它 clone 到 `upstream/` 作为只读对照，该目录已 gitignore。
+想自己对照原版：
+
+```bash
+git clone --depth 1 https://github.com/zarazhangrui/codebase-to-course.git upstream
+```
+
+授权情况见 [LICENSE](LICENSE)：上游仓库目前没有发布任何授权文件，本项目的 MIT 只覆盖自己的部分。
 
 ## 和原版的区别
 
@@ -26,7 +33,7 @@ node scripts/install.mjs
 ```
 
 装到 `~/.claude/skills/codebase-course-cn/`，然后**新开一个 Claude Code 会话**就能用。
-只复制 `SKILL.md`、`references/`、`scripts/`；`upstream/`、`output/`、`examples/`、`.git` 不会被带过去。
+只复制 `SKILL.md`、`references/`、`scripts/`；`output/`、`examples/`、`.git` 不会被带过去。
 
 ```bash
 node scripts/install.mjs --dry-run          # 先看会复制什么
@@ -83,7 +90,7 @@ node scripts/validate.mjs <课程目录> --source <代码库路径>
 |---|---|
 | `scripts/install.mjs` | 装到 `~/.claude/skills/` |
 | `scripts/build.mjs` | 拼装课程 + 复制资源 + 补 `lang="en"` + 跑校验 |
-| `scripts/validate.mjs` | 22 项校验，含代码块逐字比对、中文字数、标点、数量词清单 |
+| `scripts/validate.mjs` | **28 项校验**，含代码块逐字比对、每模块代码块与中文字数下限、找 bug 数量、比喻查重、标点、数量词清单 |
 | `scripts/fetch-fonts.mjs` | 重新抓取自托管字体（霞鹜文楷 + JetBrains Mono，均为 OFL 1.1） |
 | `scripts/measure-fonts.mjs` | 用真实 Chrome 量一门课实际下载多少字体 |
 | `scripts/test-output-task.mjs` | 输出题交互引擎的功能测试 |
@@ -95,12 +102,23 @@ SKILL.md              给模型的主指令（中文，≤500 行）
 references/           内容原则、交互元素规范、设计系统、翻车清单、字体
 scripts/              构建与校验（Node，零依赖，跨平台）
 examples/todo-api/    贯穿全程的示例代码库（Express 待办 API，约 340 行）
-output/               生成的课程（baseline / baseline-v2 / v1）
-upstream/             原版仓库，只读
+output/               生成的课程，按时间顺序：
+  baseline/           原版 skill 未经修改的英文产物（冻结的对照基线）
+  baseline-v2/        同样内容，跑在新构建链上（自托管字体 + Node 构建）
+  v1/                 第一门中文课（examples/todo-api）
+  real-1/             第一次真实仓库（Signal_LOG，Opus，整份加载 references）
+  real-2-opus/        Signal_LOG，Opus，references 按需加载
+  real-2-sonnet/      Signal_LOG，Sonnet，同上——暴露了三处校验缺口
+  real-3-sonnet/      Signal_LOG，Sonnet，校验收紧之后
 ```
 
 ## 授权
 
-课程代码本身沿用上游授权。随附字体：
-霞鹜文楷与 JetBrains Mono 均为 SIL Open Font License 1.1，
-授权原文见 `references/fonts/LICENSE-*.txt`。
+见 [LICENSE](LICENSE)。三件事分开说：
+
+- **本项目自己的部分**：MIT，Copyright (c) 2026 韩宵。
+- **上游 `codebase-to-course`**：`styles.css`、`main.js`、`_base.html`、`_footer.html`
+  以及 SKILL.md 的结构来自它。**该仓库至今没有发布任何授权文件**，按默认版权即"保留所有权利"，
+  所以上面那份 MIT 覆盖不了这部分。要 fork 或再分发，请先向原作者取得许可。
+- **随附字体**：霞鹜文楷与 JetBrains Mono 均为 SIL Open Font License 1.1，
+  授权原文随字体一起放在 `references/fonts/LICENSE-*.txt`。
