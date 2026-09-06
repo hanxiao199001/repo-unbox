@@ -9,7 +9,10 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { decodeHtml, extractCodeBlocks, findVerbatim, collectSources } from './lib/code-check.mjs';
+
+const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 // HTML comments hold template examples (the nav-dot sample in _base.html), so
 // strip them before any check that counts real elements.
@@ -280,6 +283,27 @@ export function validate(courseDir, sourceDir) {
     const count = (html.match(new RegExp(`class="${cls}"`, 'g')) || []).length;
     const missing = buttons.filter((b) => !html.includes(b));
     check(`${cls} controls present (${count} found)`, count === 0 || missing.length === 0, missing.join(', '));
+  }
+
+  /* ── 14. the element examples must not ship fixed ids ────── */
+  // Ids are global to the assembled course, so a literal id in an example is a
+  // duplicate waiting to happen the moment two modules use that element. One
+  // course hit exactly that: two spot-the-bug blocks, both id="bug-feedback".
+  const elementsDir = path.join(SKILL_ROOT, 'references', 'elements');
+  if (fs.existsSync(elementsDir)) {
+    const literals = [];
+    for (const file of fs.readdirSync(elementsDir).filter((f) => f.endsWith('.md'))) {
+      const text = fs.readFileSync(path.join(elementsDir, file), 'utf8');
+      for (const m of text.matchAll(/id="([^"]*)"/g)) {
+        // A placeholder carries {...} or <...>; anything else is a fixed value.
+        if (!/[{<]/.test(m[1])) literals.push(`${file}: id="${m[1]}"`);
+      }
+    }
+    check(
+      'element examples use placeholder ids only',
+      literals.length === 0,
+      literals.slice(0, 6).join('; ') + (literals.length > 6 ? ` … +${literals.length - 6}` : '')
+    );
   }
 
   return { errors, checks };
