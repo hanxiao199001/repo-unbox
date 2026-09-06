@@ -1189,6 +1189,174 @@ describe('角色行 kc-rolelist', async (tab) => {
   })
 })
 
+// ---------------------------------------------------------------- 术语气泡
+
+describe('术语气泡 kc-term', async (tab) => {
+  const DEF = 'middle（中间）+ ware（东西），夹在中间的那层。在这个项目里，它是请求到达路由之前依次经过的一串检查函数。国内叫中间件，口语里也直接说 middleware。'
+  const url = fixture('term', `
+<main class="kc-course"><section class="kc-module" id="kc-m1" data-kc-tone="a" data-kc-metaphor="地铁安检">
+<section class="kc-screen" style="padding-top:300px">
+  <p id="p1">请求先经过<span class="kc-term" data-kc-define="${DEF}">中间件</span>，再进到<span class="kc-term" data-kc-define="路由（route）就是分诊台：按你说的科室，把你指到对应诊室。">路由</span>里。</p>
+  <p id="p-edge" style="text-align:right"><span class="kc-term" id="t-right" data-kc-define="这个术语贴着视口右边缘，气泡必须自动向内收，不许被裁掉。">贴边的术语</span></p>
+  <p id="p-top" style="position:fixed;top:4px;left:300px;margin:0;z-index:5"><span class="kc-term" id="t-top" data-kc-define="这个术语贴着视口顶部，上方放不下，气泡必须翻到下方，小三角跟着换方向。">贴顶的术语</span></p>
+  <div class="kc-code-pair">
+    <div class="kc-code-pair__code">
+      <p class="kc-code-pair__source">src/server.js:1-3</p>
+      <pre data-kc-lang="en">app.use(express.json());</pre>
+    </div>
+    <div class="kc-code-pair__lines">
+      <p class="kc-code-pair__line">这一行装上一个<span class="kc-term" id="t-inside" data-kc-define="装在管道上的一节，请求先流过它。这里它负责把 JSON 文本变成对象。">中间件</span>，在裁剪容器内部。</p>
+    </div>
+  </div>
+  <p id="p-bad">解释为空的<span class="kc-term" id="t-empty" data-kc-define="">术语</span>，和嵌套的<span class="kc-term" id="t-nest" data-kc-define="外层解释"><span class="kc-term" data-kc-define="内层解释">术语</span></span>。</p>
+  <div style="height:1400px"></div>
+</section></section></main>`)
+  await tab.goto(url)
+
+  await it('术语可聚焦，向辅助技术说明带有解释，且鼠标指针是手型不是问号', async () => {
+    const r = await tab.eval(`var t=document.querySelector('#p1 .kc-term');var s=getComputedStyle(t);
+      return {tabbable:t.tabIndex>=0, role:t.getAttribute('role'), exp:t.getAttribute('aria-expanded'),
+              cursor:s.cursor, border:s.borderBottomStyle};`)
+    assert(r.tabbable, '术语必须可聚焦')
+    eq(r.role, 'button', '要向辅助技术说明它是可以触发的')
+    eq(r.exp, 'false', '未打开时 aria-expanded 应为 false')
+    eq(r.cursor, 'pointer', '指针必须是手型，不许用 help（问号）')
+    eq(r.border, 'dashed', '术语底下要有虚线')
+  })
+
+  await it('代码对照块内部的术语，气泡完整可见没有被裁掉', async () => {
+    await tab.click('#t-inside')
+    const r = await tab.eval(`var b=document.querySelector('.kc-term__bubble');
+      var pair=document.querySelector('.kc-code-pair');
+      var r=b.getBoundingClientRect();
+      var vw=document.documentElement.clientWidth, vh=document.documentElement.clientHeight;
+      // 气泡平时是 pointer-events:none（免得挡住底下的字），命中测试时临时打开再还原
+      var prev=b.style.pointerEvents; b.style.pointerEvents='auto';
+      var pts=[[r.left+2,r.top+2],[r.right-2,r.top+2],[r.left+2,r.bottom-2],[r.right-2,r.bottom-2],[r.left+r.width/2,r.top+r.height/2]];
+      var miss=pts.filter(function(p){var h=document.elementFromPoint(p[0],p[1]);return !(h&&h.closest('.kc-term__bubble'));});
+      b.style.pointerEvents=prev;
+      return {parent:b.parentElement.tagName, open:b.classList.contains('kc-is-open'),
+              pos:getComputedStyle(b).position, insidePair:pair.contains(b),
+              pairOverflow:getComputedStyle(pair).overflow,
+              inView:r.left>=0&&r.top>=0&&r.right<=vw&&r.bottom<=vh,
+              miss:miss.length,
+              rect:{l:Math.round(r.left),t:Math.round(r.top),w:Math.round(r.width),h:Math.round(r.height)}};`)
+    assert(r.open, '气泡应当打开')
+    eq(r.parent, 'BODY', '气泡必须挂在 body 上，才不会被祖先容器裁剪')
+    eq(r.pos, 'fixed', '气泡必须脱离文档流定位')
+    assert(r.pairOverflow.indexOf('hidden') >= 0, '这个夹具的代码对照块应当是会裁剪的容器，否则测不出问题')
+    assert(!r.insidePair, '气泡不许是裁剪容器的后代 —— 这正是原版的缺陷')
+    assert(r.inView, '气泡被挤出视口了：' + JSON.stringify(r.rect))
+    eq(r.miss, 0, '气泡有 ' + r.miss + ' 个角被盖住或裁掉了')
+  })
+
+  await it('同一时刻最多一个气泡', async () => {
+    await tab.click('#t-inside')
+    await tab.hover('#p1 .kc-term', 0)
+    await tab.hover('#p1 .kc-term', 1)
+    const r = await tab.eval(`return {bubbles:document.querySelectorAll('.kc-term__bubble').length,
+      open:document.querySelectorAll('.kc-term__bubble.kc-is-open').length,
+      terms:document.querySelectorAll('.kc-term.kc-is-open').length,
+      text:document.querySelector('.kc-term__bubble').textContent.slice(0,4)};`)
+    eq(r.bubbles, 1, '整页只应有一个气泡节点')
+    eq(r.open, 1, '同时只能有一个气泡打开')
+    eq(r.terms, 1, '同时只能有一个术语处于打开状态')
+    assert(r.text.indexOf('路由') >= 0, '气泡内容应换成后打开的那个术语，实际“' + r.text + '”')
+  })
+
+  await it('点一下能开，再点一下能关，点别处也能关', async () => {
+    await tab.eval(`document.querySelector('.kc-term__bubble').classList.remove('kc-is-open');return true;`)
+    await tab.click('#p1 .kc-term', 0)
+    const opened = await tab.eval(`return document.querySelectorAll('.kc-term__bubble.kc-is-open').length;`)
+    eq(opened, 1, '点一下应当打开')
+    await tab.click('#p1 .kc-term', 0)
+    const closed = await tab.eval(`return document.querySelectorAll('.kc-term__bubble.kc-is-open').length;`)
+    eq(closed, 0, '再点一下应当关闭')
+    await tab.click('#p1 .kc-term', 0)
+    await tab.click('#p-bad')
+    const outside = await tab.eval(`return document.querySelectorAll('.kc-term__bubble.kc-is-open').length;`)
+    eq(outside, 0, '点别处应当关闭')
+  })
+
+  await it('键盘能聚焦并打开，Esc 能关', async () => {
+    await tab.focus('#p1 .kc-term', 1)
+    const opened = await tab.eval(`return {open:document.querySelectorAll('.kc-term__bubble.kc-is-open').length,
+      exp:document.querySelectorAll('#p1 .kc-term')[1].getAttribute('aria-expanded'),
+      desc:document.querySelectorAll('#p1 .kc-term')[1].getAttribute('aria-describedby')};`)
+    eq(opened.open, 1, '聚焦应当打开气泡')
+    eq(opened.exp, 'true')
+    eq(opened.desc, 'kc-term-bubble', '打开时应把气泡指给辅助技术')
+    await tab.key('Escape')
+    const after = await tab.eval(`return {open:document.querySelectorAll('.kc-term__bubble.kc-is-open').length,
+      exp:document.querySelectorAll('#p1 .kc-term')[1].getAttribute('aria-expanded')};`)
+    eq(after.open, 0, 'Esc 应当关闭气泡')
+    eq(after.exp, 'false')
+  })
+
+  await it('气泡在视口边缘自动向内收，不许被裁掉', async () => {
+    await tab.click('#t-right')
+    const r = await tab.eval(`var b=document.querySelector('.kc-term__bubble').getBoundingClientRect();
+      var t=document.getElementById('t-right').getBoundingClientRect();
+      return {bl:b.left, br:b.right, vw:document.documentElement.clientWidth, tr:t.right,
+              arrow:getComputedStyle(document.querySelector('.kc-term__bubble')).getPropertyValue('--kc-term-arrow-x')};`)
+    assert(r.bl >= 0, '气泡左边超出视口：' + r.bl)
+    assert(r.br <= r.vw, '气泡右边超出视口：' + r.br + ' > ' + r.vw)
+    assert(parseFloat(r.arrow) > 0, '小三角应当单独对准那个词，实际 --kc-term-arrow-x=' + r.arrow)
+  })
+
+  await it('上方空间不够时翻到下方，小三角跟着换方向', async () => {
+    await tab.click('#t-top')
+    const r = await tab.eval(`var b=document.querySelector('.kc-term__bubble');
+      var br=b.getBoundingClientRect(); var tr=document.getElementById('t-top').getBoundingClientRect();
+      var a=getComputedStyle(b,'::after');
+      return {below:b.classList.contains('kc-is-below'), bubbleTop:br.top, termBottom:tr.bottom,
+              topColor:a.borderTopColor, bottomColor:a.borderBottomColor};`)
+    assert(r.below, '上方放不下时应翻到下方')
+    assert(r.bubbleTop >= r.termBottom - 1, '气泡应在术语下方，实际 ' + r.bubbleTop + ' vs ' + r.termBottom)
+    assert(r.bottomColor !== 'rgba(0, 0, 0, 0)', '翻到下方时小三角应朝上（底边着色）')
+    assert(r.topColor === 'rgba(0, 0, 0, 0)', '翻到下方时上边不该再着色，实际 ' + r.topColor)
+  })
+
+  await it('页面滚动后气泡不会孤零零留在原地', async () => {
+    await tab.click('#p1 .kc-term', 0)
+    const before = await tab.eval(`return document.querySelectorAll('.kc-term__bubble.kc-is-open').length;`)
+    eq(before, 1)
+    await tab.eval(`window.scrollTo(0, 500); return true;`)
+    await tab.wait(120)
+    const after = await tab.eval(`return document.querySelectorAll('.kc-term__bubble.kc-is-open').length;`)
+    eq(after, 0, '滚动后气泡应当跟随或消失，不许留在原地')
+    await tab.scrollTo(0)
+  })
+
+  await it('解释为空或嵌套术语时留下可见痕迹，且点不开', async () => {
+    const r = await tab.eval(`var e=document.getElementById('t-empty'), n=document.getElementById('t-nest');
+      return {emptyBroken:e.classList.contains('kc-is-broken'), nestBroken:n.classList.contains('kc-is-broken'),
+              emptyColor:getComputedStyle(e).color, okColor:getComputedStyle(document.querySelector('#p1 .kc-term')).color,
+              emptyLive:e.classList.contains('kc-is-live')};`)
+    assert(r.emptyBroken, '解释为空应留下痕迹')
+    assert(r.nestBroken, '嵌套术语应留下痕迹')
+    assert(!r.emptyLive, '有问题的术语不该被当成可用的')
+    assert(r.emptyColor !== r.okColor, '痕迹必须看得见（颜色与正常术语不同）')
+    await tab.click('#t-empty')
+    const opened = await tab.eval(`return document.querySelectorAll('.kc-term__bubble.kc-is-open').length;`)
+    eq(opened, 0, '有问题的术语不许打开气泡')
+  })
+
+  await it('脚本未运行时虚线下划线仍在，正文完整可读', async () => {
+    const nojs = fixture('term-nojs', `<main class="kc-course"><section class="kc-screen">
+      <p id="p1">请求先经过<span class="kc-term" data-kc-define="${DEF}">中间件</span>，再进到路由里。</p></section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var t=document.querySelector('.kc-term'); var s=getComputedStyle(t);
+      return {border:s.borderBottomStyle, cursor:s.cursor, display:s.display,
+              text:document.getElementById('p1').textContent, bubbles:document.querySelectorAll('.kc-term__bubble').length};`)
+    eq(r.border, 'dashed', '无脚本时虚线下划线必须还在')
+    eq(r.cursor, 'pointer')
+    assert(r.display !== 'none', '术语必须可见')
+    eq(r.text, '请求先经过中间件，再进到路由里。', '正文必须完整可读')
+    eq(r.bubbles, 0, '无脚本时不该创建气泡')
+  })
+})
+
 /* KC_GROUPS_END */
 
 // ---------------------------------------------------------------- 入口
