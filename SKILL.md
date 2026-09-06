@@ -134,7 +134,8 @@ description: "把任意代码库变成一门中文交互式课程，讲给零编
 **每个模块写一份 brief 到 `course-name/briefs/0N-slug.md`，包含：**
 - 教学线索（比喻、开场钩子、核心洞察）
 - **预先摘好的代码片段**（从代码库里原样复制，带文件路径和行号）
-- 交互元素清单，细到能照着做
+- 交互元素清单：**按文件名列出**要用的元素（如 `elements/code-translation.md`、
+  `elements/group-chat.md`），细到能照着做。写模块的人只会读你列出的这几个文件
 - **输出题类型和它的 3–4 条对照清单**
 - 前一个模块和后一个模块各讲了什么（好接上下文）
 
@@ -182,12 +183,14 @@ course-name/
 `<section class="module" id="module-N" data-metaphor="...">` 这一块及其内容。
 不要写 `<html>`、`<head>`、`<body>`、`<style>`、`<script>` 标签。
 
-交互元素的 HTML 写法见 `references/interactive-elements.md`，
+交互元素的写法：**先看索引** `references/interactive-elements.md`（61 行），
+从里面挑出这个模块要用的几种，**只读那几个** `references/elements/<名字>.md`。
+一门课通常只用 6–8 种，**不要把 `elements/` 下 18 个文件全读一遍**——那是这份 skill 最大的一笔冤枉钱。
 视觉规范见 `references/design-system.md`。
 
 复杂代码库有 brief 时，按 brief 逐个写：每个模块只需要它自己的 brief、
-`content-philosophy.md`、`gotchas.md`，以及 brief 里点名的那几节
-`interactive-elements.md` / `design-system.md`。**不需要**再读代码库（片段已在 brief 里）。
+`content-philosophy.md`、`gotchas.md`，以及 brief 里点名的那几个
+`references/elements/*.md`。**不需要**再读代码库（片段已在 brief 里）。
 
 写完全部模块后，回头做一次一致性检查：导航点和模块对得上、模块之间的过渡连得上、
 语气没有跳变、比喻没有重复。
@@ -262,9 +265,10 @@ node <SKILL_DIR>/scripts/build.mjs course-name --source <代码库路径>
 
 - **`references/content-philosophy.md`** —— 学员画像、语言关三层格式、输出题、比喻库、
   视觉密度、术语气泡、测验设计、课程末尾固定块。Phase 2.5 和 Phase 3 必读。
-- **`references/interactive-elements.md`** —— 每种交互元素的 HTML 写法：输出题、
-  代码对照、选择题、拖拽、群聊、数据流、架构图、找 bug、提示框、卡片、文件树……
-  Phase 3 按需读对应小节。
+- **`references/interactive-elements.md`** —— 交互元素**索引**，61 行，列出 18 种元素
+  各自的文件名和适用场景。Phase 2 挑元素时读它。
+- **`references/elements/*.md`** —— 每种元素一个文件，含完整 HTML 写法和规则。
+  **只读你这个模块用到的那几个。**
 - **`references/design-system.md`** —— 完整的 CSS 变量、配色、字号、间距、阴影、动画。
   Phase 3 写模块 HTML 时读。
 - **`references/gotchas.md`** —— 常见翻车点清单。Phase 3 和 Phase 4 读。

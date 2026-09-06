@@ -59,7 +59,9 @@
 
 只列这个模块用得上的小节，不要整份文件。
 
-- `references/interactive-elements.md` → [小节名，例如 "Output Tasks 输出题"、"Group Chat Animation"]
+- `references/elements/…` → [按文件名列出这个模块要用的元素，例如
+  `elements/output-task.md`、`elements/code-translation.md`、`elements/group-chat.md`。
+  写模块的人只会读这几个，漏了他就写不出来]
 - `references/design-system.md` → [只在需要 brief 里没有的 token 时列]
 - `references/content-philosophy.md` → [永远要读，内容规则在里面]
 - `references/gotchas.md` → [永远要读，翻车清单在里面]

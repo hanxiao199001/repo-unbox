@@ -96,3 +96,17 @@
 并且要说清楚它**在什么条件下**才会出现。不要写成“npm install 一定会编译失败”——
 那对一半的读者是假的。Windows 上缺 Visual Studio Build Tools 报的是另一条消息，
 在 mac 上复现不了，就不要写进去。
+
+---
+
+### 7. `design-system.md` 一次都没被读过 〔观察到〕
+
+第一次真实运行（`output/real-1`）的全程记录里，`references/design-system.md`（403 行）
+**零次**被打开。SKILL.md 明写着“视觉规范见 `references/design-system.md`”，模型没理它，
+转而去 `grep` 真实的 `references/styles.css`——四次，每次都只取片段
+（`grep -n 'color-actor\|--color-bg' ...`、`sed -n '1005,1045p' ...`），
+拿真实的 class 名和 CSS 变量。
+
+模型更信任源文件，而不是描述源文件的文档。这条现在只是记录，没有动作：
+`design-system.md` 到底该留、该缩成索引、还是该删掉让模型直接 grep `styles.css`，
+需要更多次运行的证据再定。
