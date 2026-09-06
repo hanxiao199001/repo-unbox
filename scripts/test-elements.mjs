@@ -9,7 +9,7 @@
 // 退出码 0 = 全过，1 = 有失败。
 
 import { spawn } from 'node:child_process'
-import { mkdtempSync, writeFileSync, rmSync, existsSync, readdirSync } from 'node:fs'
+import { mkdtempSync, writeFileSync, readFileSync, rmSync, existsSync, readdirSync, mkdirSync, symlinkSync, copyFileSync } from 'node:fs'
 import { tmpdir, platform, homedir } from 'node:os'
 import { join, resolve, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -2638,6 +2638,195 @@ ${LAYERS('kc-layers-m5')}
     eq(r.visible, 3)
     assert(r.ordered, '应依次纵向排列：' + JSON.stringify(r.tops))
   })
+})
+
+// ------------------------------------------------- 整页：模板真的拼得起来
+
+describe('整页 _base.html + _footer.html', async (tab) => {
+  // 按 build.mjs 将来要做的事拼一遍：base + 模块 + footer，
+  // 样式、脚本、字体都放在课程目录里，然后像学员那样双击打开。
+  const dir = mkdtempSync(join(tmpdir(), 'kc-course-'))
+  copyFileSync(STYLES, join(dir, 'styles.css'))
+  copyFileSync(MAIN, join(dir, 'main.js'))
+  symlinkSync(join(REF, 'fonts'), join(dir, 'fonts'), 'dir')
+
+  const mods = [
+    { id: 'kc-m1', num: '01', tone: 'a', metaphor: '快递驿站', title: '你点的那一下去了哪', sub: '从按钮一路追到硬盘。' },
+    { id: 'kc-m2', num: '02', tone: 'b', metaphor: '地铁安检', title: '中间那一层', sub: '每一关都能把请求拦下来。' },
+    { id: 'kc-m3', num: '03', tone: 'a', metaphor: '白板与档案柜', title: '数据存在哪', sub: '停电之后还在不在。' },
+    { id: 'kc-m4', num: '04', tone: 'b', metaphor: '自助取件柜', title: '出错的时候', sub: '看懂那行英文报错。' }
+  ]
+
+  const body = mods.map((m, i) => `
+<section class="kc-module" id="${m.id}" data-kc-tone="${m.tone}" data-kc-metaphor="${m.metaphor}">
+  <p class="kc-module__number">${m.num}</p>
+  <h2 class="kc-module__title">${m.title}</h2>
+  <p class="kc-module__subtitle">${m.sub}</p>
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">这一屏讲一个概念</h3>
+    <p>你在输入框里打了“买牛奶”，点了添加。这句话接下来去了哪里？先经过<span class="kc-term" data-kc-define="middle（中间）+ ware（东西），夹在中间的那层。在这个项目里，它是请求到达路由之前依次经过的一串检查函数。国内叫中间件。">中间件</span>，再进到路由里。</p>
+    ${i === 0 ? MAP() : ''}
+    ${i === 0 ? `<div class="kc-rolelist"><div class="kc-rolelist__row" data-kc-accent="1"><span class="kc-rolelist__icon">A</span><p class="kc-rolelist__name">app.js</p><p class="kc-rolelist__note">收你敲的字，画页面。</p></div><div class="kc-rolelist__row" data-kc-accent="2"><span class="kc-rolelist__icon">S</span><p class="kc-rolelist__name">server.js</p><p class="kc-rolelist__note">分诊台。</p></div><div class="kc-rolelist__row" data-kc-accent="3"><span class="kc-rolelist__icon">T</span><p class="kc-rolelist__name">store.js</p><p class="kc-rolelist__note">只有它碰硬盘。</p></div></div>` : ''}
+    ${i === 1 ? CHAT('kc-chat-' + m.id) : ''}
+    ${i === 1 ? FLOW(FLOW_STEPS).replace(/kc-flow-m2/g, 'kc-flow-' + m.id) : ''}
+    ${i === 2 ? MATCH('kc-match-' + m.id) : ''}
+    ${i === 2 ? LAYERS('kc-layers-' + m.id) : ''}
+    ${i === 3 ? BUG('kc-bughunt-' + m.id, 2) : ''}
+    ${i === 3 ? `<div class="kc-deflist"><div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">404</code><p class="kc-deflist__value">你要的东西不在这个地址上。</p></div><div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">Error: listen EADDRINUSE: address already in use :::3000</code><p class="kc-deflist__value">端口被占了。</p></div><div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">500</code><p class="kc-deflist__value">服务器自己出错了。</p></div></div>` : ''}
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/store.js:12-19</p>
+        <pre data-kc-lang="en">${CODE_SAMPLE.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">这一行给函数起名 create，意思是“造一个出来”。</p>
+        <p class="kc-code-pair__line">原作者自己写的注释：空标题要挡在门外。</p>
+        <p class="kc-code-pair__line">这里才真正拼出一条待办。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="insight"><span class="kc-note__icon">✦</span><p class="kc-note__title">关注点分离</p><p class="kc-note__body">每一块只管一件事，出问题的时候你才知道该去哪找。</p></div>
+    <div class="kc-cards"><div class="kc-cards__item" data-kc-accent="1"><span class="kc-cards__icon">◆</span><p class="kc-cards__title">读</p><p class="kc-cards__body">把数据取出来。</p></div><div class="kc-cards__item" data-kc-accent="2"><span class="kc-cards__icon">◇</span><p class="kc-cards__title">写</p><p class="kc-cards__body">把新东西存进去。</p></div><div class="kc-cards__item" data-kc-accent="3"><span class="kc-cards__icon">○</span><p class="kc-cards__title">删</p><p class="kc-cards__body">去掉一条。</p></div></div>
+    <div class="kc-steps"><div class="kc-steps__item"><span class="kc-steps__num">1</span><p class="kc-steps__title">你点了添加</p><p class="kc-steps__body">浏览器收下你打的字。</p></div><div class="kc-steps__item"><span class="kc-steps__num">2</span><p class="kc-steps__title">发给 server.js</p><p class="kc-steps__body">走 POST /todos。</p></div><div class="kc-steps__item"><span class="kc-steps__num">3</span><p class="kc-steps__title">页面重新问一遍</p><p class="kc-steps__body">画出来的才是真的。</p></div></div>
+    <div class="kc-chain"><div class="kc-chain__step"><span class="kc-chain__num">1</span>你点了按钮</div><span class="kc-chain__arrow">→</span><div class="kc-chain__step"><span class="kc-chain__num">2</span>请求发出去</div><span class="kc-chain__arrow">→</span><div class="kc-chain__step"><span class="kc-chain__num">3</span>页面重新画</div></div>
+    <div class="kc-tree"><div class="kc-tree__dir"><code class="kc-tree__name" data-kc-lang="en">src/</code><span class="kc-tree__note">代码都在这儿。</span></div><div class="kc-tree__children"><div class="kc-tree__file"><code class="kc-tree__name" data-kc-lang="en">server.js</code><span class="kc-tree__note">大门口。</span></div></div></div>
+  </section>
+  <section class="kc-screen">
+    <div class="kc-scenario"><span class="kc-scenario__label">场景</span><p class="kc-scenario__body">同学跑起来是白屏，终端里写着 <code class="kc-code" data-kc-lang="en">EADDRINUSE</code>。</p>${QUIZ('kc-quiz-' + m.id)}</div>
+    ${OUT('kc-output-' + m.id, ['retell', 'instruct', 'explain', 'retell'][i], 80)}
+  </section>
+</section>`).join('\n')
+
+  const dots = mods.map((m) => `<button class="kc-nav__dot" type="button" data-kc-target="${m.id}" data-kc-label="${m.title}"></button>`).join('')
+  const base = readFileSync(join(REF, '_base.html'), 'utf8')
+    .replace(/\{\{KC_COURSE_TITLE\}\}/g, '待办 API 是怎么跑起来的')
+    .replace(/\{\{KC_NAV_DOTS\}\}/g, dots)
+  const footer = readFileSync(join(REF, '_footer.html'), 'utf8')
+  writeFileSync(join(dir, 'index.html'), base + body + footer, 'utf8')
+
+  const url = pathToFileURL(join(dir, 'index.html')).href
+  await tab.goto(url)
+  await tab.wait(300)
+
+  await it('模板里的占位符全部被替换，没有残留，也没有给模型看的说明', async () => {
+    const html = readFileSync(join(dir, 'index.html'), 'utf8')
+    assert(html.indexOf('{{') < 0, '还有没替换的占位符：' + (html.match(/\{\{[^}]*\}\}/g) || []).join(', '))
+    const tpl = readFileSync(join(REF, '_base.html'), 'utf8') + readFileSync(join(REF, '_footer.html'), 'utf8')
+    const comments = tpl.match(/<!--[\s\S]*?-->/g) || []
+    eq(comments.length, 0, '模板里不许有 HTML 注释（会原样进产物给学员看到）：' + JSON.stringify(comments))
+    assert(/<html lang="zh-CN">/.test(html), '页面主语言必须是 zh-CN')
+  })
+
+  await it('断网打开：整页没有发出任何非 file:// 的请求，字体也是本地的', async () => {
+    const outside = tab.requests.filter((u) => !u.startsWith('file://'))
+    eq(outside.length, 0, '发出了外部请求：' + JSON.stringify(outside.slice(0, 5)))
+    const fonts = tab.requests.filter((u) => /\.woff2?$/.test(u))
+    assert(fonts.length > 0, '应当加载了本地字体分片，实际一个都没有')
+    const r = await tab.eval(`return {loaded:document.fonts.status,
+      zh:getComputedStyle(document.body).fontFamily,
+      ok:document.fonts.check('17px "LXGW WenKai"'),
+      mono:document.fonts.check('15px "JetBrains Mono"')};`)
+    assert(r.zh.indexOf('LXGW WenKai') >= 0, '正文应当用霞鹜文楷')
+    assert(r.ok, '霞鹜文楷没有真正加载上')
+    assert(r.mono, 'JetBrains Mono 没有真正加载上')
+  })
+
+  await it('页面加载没有抛任何错', async () => {
+    eq(tab.errors.length, 0, '页面抛错：' + JSON.stringify(tab.errors))
+  })
+
+  await it('十八种元素在同一页上全部初始化成功，没有一处可见错误痕迹', async () => {
+    const r = await tab.eval(`
+      var want=['kc-code-pair','kc-output','kc-quiz','kc-chat','kc-flow','kc-term','kc-scenario',
+                'kc-bughunt','kc-match','kc-map','kc-layers','kc-note','kc-cards','kc-steps',
+                'kc-chain','kc-deflist','kc-tree','kc-rolelist'];
+      var out={}, missing=[], dead=[];
+      want.forEach(function(c){
+        var all=document.querySelectorAll('.'+c);
+        var liveN=document.querySelectorAll('.'+c+'.kc-is-live').length;
+        out[c]=[all.length, liveN];
+        if(!all.length) missing.push(c);
+        else if(liveN!==all.length) dead.push(c+' '+liveN+'/'+all.length);
+      });
+      return {out:out, missing:missing, dead:dead,
+              broken:[].map.call(document.querySelectorAll('.kc-broken'),function(b){return b.textContent;})};`)
+    eq(r.missing.length, 0, '这几种元素在整页夹具里没出现，测不到：' + JSON.stringify(r.missing))
+    eq(r.dead.length, 0, '这几种元素没有全部初始化：' + JSON.stringify(r.dead))
+    eq(r.broken.length, 0, '页面上出现了可见错误痕迹：' + JSON.stringify(r.broken))
+  })
+
+  await it('导航圆点与模块双向对应，滚动时状态跟着变', async () => {
+    await tab.eval(`document.documentElement.style.scrollBehavior='auto'; return true;`)
+    const r = await tab.eval(`
+      var dots=[].slice.call(document.querySelectorAll('.kc-nav__dot'));
+      var mods=[].slice.call(document.querySelectorAll('.kc-module'));
+      var t=dots.map(function(d){return d.getAttribute('data-kc-target');});
+      var ids=mods.map(function(m){return m.id;});
+      return {dots:dots.length, mods:mods.length,
+              dangling:t.filter(function(x){return ids.indexOf(x)<0;}),
+              orphan:ids.filter(function(x){return t.indexOf(x)<0;})};`)
+    eq(r.dots, 4)
+    eq(r.mods, 4)
+    eq(r.dangling.length + r.orphan.length, 0, '导航与模块对不上：' + JSON.stringify(r))
+
+    await tab.eval(`var m=document.getElementById('kc-m3'); window.scrollTo(0, m.getBoundingClientRect().top+window.scrollY+200); return true;`)
+    await tab.wait(200)
+    const cur = await tab.eval(`var d=document.querySelector('.kc-nav__dot.kc-is-current');
+      return {target:d?d.getAttribute('data-kc-target'):null,
+              visited:document.querySelectorAll('.kc-nav__dot.kc-is-visited').length,
+              pct:document.querySelector('.kc-nav__progress').getAttribute('aria-valuenow')};`)
+    eq(cur.target, 'kc-m3', '滚到第三个模块，当前圆点应是第三个')
+    assert(cur.visited >= 2, '前两个模块应标为已读过，实际 ' + cur.visited)
+    assert(Number(cur.pct) > 0 && Number(cur.pct) < 100, '进度应在中间，实际 ' + cur.pct)
+  })
+
+  await it('相邻模块背景色交替，四个模块两两不同', async () => {
+    const bgs = await tab.eval(`return [].map.call(document.querySelectorAll('.kc-module'),function(m){return getComputedStyle(m).backgroundColor;});`)
+    for (let i = 1; i < bgs.length; i++) assert(bgs[i] !== bgs[i - 1], '第 ' + (i + 1) + ' 个模块与前一个同色')
+  })
+
+  await it('三种宽度下整页都不出现横向滚动条', async () => {
+    for (const w of [1400, 900, 375]) {
+      await tab.viewport(w, 900)
+      await tab.wait(120)
+      const r = await tab.eval(`var wide=[];
+        [].forEach.call(document.querySelectorAll('.kc-course *'),function(n){
+          var r=n.getBoundingClientRect();
+          if(r.width>0 && r.right>document.documentElement.clientWidth+1) wide.push(n.className+' right='+Math.round(r.right));});
+        return {sw:document.documentElement.scrollWidth, cw:document.documentElement.clientWidth, wide:wide.slice(0,5)};`)
+      assert(r.sw <= r.cw + 1, w + 'px 下整页出现横向滚动条（' + r.sw + ' > ' + r.cw + '）')
+      eq(r.wide.length, 0, w + 'px 下这些元素超出了视口：' + JSON.stringify(r.wide))
+    }
+    await tab.viewport(1100, 800)
+  })
+
+  await it('禁用 JavaScript 打开，所有文字和代码依然可读', async () => {
+    const nojsPath = join(dir, 'nojs.html')
+    writeFileSync(nojsPath, (base + body + footer).replace('<script src="main.js"></script>', ''), 'utf8')
+    await tab.goto(pathToFileURL(nojsPath).href)
+    const r = await tab.eval(`var hidden=[];
+      [].forEach.call(document.querySelectorAll('.kc-course p, .kc-course pre, .kc-course h2, .kc-course h3, .kc-course code, .kc-course button, .kc-course textarea'),function(n){
+        var s=getComputedStyle(n); var r=n.getBoundingClientRect();
+        if(s.display==='none'||s.visibility==='hidden'||parseFloat(s.opacity)===0||(r.width===0&&r.height===0))
+          hidden.push((n.className||n.tagName)+' :: '+(n.textContent||'').slice(0,18));});
+      return {hidden:hidden.slice(0,8), total:document.querySelectorAll('.kc-course *').length};`)
+    eq(r.hidden.length, 0, '无脚本时这些内容不可见：' + JSON.stringify(r.hidden))
+  })
+
+  await it('课程目录是自包含的：只有 index.html、styles.css、main.js 和 fonts/', async () => {
+    const files = readdirSync(dir).sort()
+    assert(files.includes('index.html') && files.includes('styles.css') && files.includes('main.js') && files.includes('fonts'),
+      '课程目录缺文件：' + JSON.stringify(files))
+    const css = readFileSync(join(dir, 'styles.css'), 'utf8')
+    const js = readFileSync(join(dir, 'main.js'), 'utf8')
+    const html = readFileSync(join(dir, 'index.html'), 'utf8')
+    for (const [name, text] of [['styles.css', css], ['main.js', js], ['index.html', html]]) {
+      const urls = text.match(/https?:\/\/[^\s'"()]+/g) || []
+      eq(urls.length, 0, name + ' 里有在线地址：' + JSON.stringify(urls.slice(0, 3)))
+    }
+    assert(!/type\s*=\s*["']module["']/.test(html), 'main.js 不许用 type="module"：file:// 下会被 CORS 拦死')
+  })
+
+  rmSync(dir, { recursive: true, force: true })
 })
 
 /* KC_GROUPS_END */
