@@ -170,10 +170,14 @@ written by `main.js` from `data-type` — leave the span empty or it will be ove
 **Rules:**
 - **3–4 checklist items**, never more. Each one names something concrete: a filename, a function
   name, a term they were supposed to acquire, a step in the order.
+- **At least one checklist item must name a file or a code identifier**, wrapped in
+  `<code lang="en">`. Validation enforces this: a checklist of four vague statements
+  ("说清楚了顺序", "讲明白了原理") gives the learner nothing to check themselves against.
 - Checklist items are written in Chinese, but the things they name — filenames, function names,
   status codes — stay in English inside `<code lang="en">`.
-- `data-min` between 60 and 120. Long enough that they cannot type "就是那样" and move on;
-  short enough that it does not feel like homework.
+- `data-min` between 60 and 120, and **never below 60** — validation fails under that.
+  Long enough that they cannot type "就是那样" and move on; short enough that it does not
+  feel like homework.
 - The `placeholder` should lower the stakes. They are not being marked.
 - Put the output task **last** in the module, after the multiple-choice quiz. The quiz is the
   warm-up; this is the thing that proves it stuck.

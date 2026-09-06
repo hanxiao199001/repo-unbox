@@ -174,8 +174,12 @@ course-name/
 一口气写完所有模块会导致后面的模块越来越薄——这是最常见的质量塌方方式。
 
 先读 `references/content-philosophy.md` 和 `references/gotchas.md`。
+
+**不要读 `output/` 下其他课程的产物当参考。** 那些是别的代码库的课，
+照着它们对齐格式的结果是：比喻、开场、句式一起被搬过来，你这门课会变成上一门的翻版。
+元素的写法看 `references/interactive-elements.md`，那才是规范；`output/` 里的是成品，不是模板。
 每个模块写成 `course-name/modules/0N-slug.html`，只包含
-`<section class="module" id="module-N">` 这一块及其内容。
+`<section class="module" id="module-N" data-metaphor="...">` 这一块及其内容。
 不要写 `<html>`、`<head>`、`<body>`、`<style>`、`<script>` 标签。
 
 交互元素的 HTML 写法见 `references/interactive-elements.md`，
@@ -228,6 +232,9 @@ node <SKILL_DIR>/scripts/build.mjs course-name --source <代码库路径>
   要展示不相邻的代码，就开两个代码块，各自连续，**永远不拼接**。
   写完自己跑构建，校验通不过不算写完。
 - 标点用大陆规范：引号 `“”` / `‘’`，不用 `「」`
+- 每个 `<section class="module">` 必须有 `data-metaphor="<这个模块的比喻>"`，
+  五个模块的比喻**不许重复**，校验会卡
+- 输出题的 `data-min` 不得低于 60；对照清单里**至少一条**要点名一个文件名或代码标识符
 - `data-steps` 的 label 里**不能出现英文单引号**，会把属性提前截断，动画会静默失效
 
 ---

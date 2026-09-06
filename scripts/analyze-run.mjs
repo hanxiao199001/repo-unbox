@@ -22,6 +22,7 @@ const writtenFiles = new Set();
 const commands = [];
 let first = null;
 let last = null;
+let model = null;
 
 // Classification works off whatever the turn actually touched, including the
 // text of Bash commands — this run did all of its reading and writing through
@@ -48,6 +49,7 @@ for (const line of lines) {
   if (e.timestamp) { first ??= e.timestamp; last = e.timestamp; }
   const usage = e?.message?.usage;
   if (!usage) continue;
+  model ??= e.message.model;
   const id = e.message.id || Math.random().toString(36);
   if (!byMessage.has(id)) byMessage.set(id, { usage, tools: [] });
   const rec = byMessage.get(id);
@@ -89,6 +91,32 @@ console.log(`${'TOTAL'.padEnd(16)} ${String(g.turns).padStart(5)} ${n(g.input).p
 console.log('');
 console.log(`input总计 (fresh + cache write + cache read): ${n(g.input + g.cacheWrite + g.cacheRead)}`);
 console.log(`output总计: ${n(g.output)}`);
+// ── Cost ──────────────────────────────────────────────────────
+// Rates in USD per million tokens. Derived from this run and checked against the
+// figure the SDK reported: 58 fresh + 158,649 1h-cache-write + 2,751,962
+// cache-read + 63,179 output priced at 5 / 10 / 0.5 / 25 comes to $4.542236,
+// which is what result.json said to the last cent. Cache write here is the
+// one-hour TTL (2x input); a 5-minute write would be 1.25x.
+const RATES = {
+  'claude-opus-5': { input: 5, cacheWrite1h: 10, cacheRead: 0.5, output: 25 },
+};
+const rate = RATES[model];
+if (rate) {
+  const usd = {
+    'fresh input': (g.input / 1e6) * rate.input,
+    'cache write (1h)': (g.cacheWrite / 1e6) * rate.cacheWrite1h,
+    'cache read': (g.cacheRead / 1e6) * rate.cacheRead,
+    output: (g.output / 1e6) * rate.output,
+  };
+  const total = Object.values(usd).reduce((a, b) => a + b, 0);
+  console.log(`cost (${model}, $${rate.input}/$${rate.cacheWrite1h}/$${rate.cacheRead}/$${rate.output} per M):`);
+  for (const [k, v] of Object.entries(usd)) {
+    console.log(`  ${k.padEnd(18)} $${v.toFixed(4).padStart(8)}   ${((v / total) * 100).toFixed(1).padStart(5)}%`);
+  }
+  console.log(`  ${'TOTAL'.padEnd(18)} $${total.toFixed(4).padStart(8)}`);
+  console.log('');
+}
+
 console.log('');
 console.log(`files read (${readFiles.size}):`);
 for (const f of [...readFiles].sort()) console.log(`  ${f}`);

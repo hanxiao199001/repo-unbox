@@ -129,8 +129,15 @@ export function validate(courseDir, sourceDir) {
   }).length;
   check(`output tasks have a valid data-type (${TASK_TYPES.join('/')})`, badType === 0, `${badType} without one`);
 
-  const noMin = taskAttrs.filter((a) => !/data-min="\d+"/.test(a)).length;
-  check('output tasks have data-min', noMin === 0, `${noMin} without one`);
+  // 60 is the floor: shorter than that and the learner types 就是那样 and moves on,
+  // which defeats the only element that makes them produce anything.
+  const mins = taskAttrs.map((a) => Number(a.match(/data-min="(\d+)"/)?.[1] ?? NaN));
+  const badMin = mins.filter((m) => !Number.isFinite(m) || m < 60);
+  check(
+    'output tasks have data-min of at least 60',
+    badMin.length === 0,
+    badMin.length ? `${badMin.length} below 60 or missing: ${badMin.join(', ')}` : ''
+  );
 
   const noId = taskAttrs.filter((a) => !/\sid="/.test(a)).length;
   check('output tasks have an id (localStorage key)', noId === 0, `${noId} without one`);
@@ -150,6 +157,37 @@ export function validate(courseDir, sourceDir) {
     .map((m) => (m[1].match(/type="checkbox"/g) || []).length)
     .filter((n) => n < 3 || n > 4).length;
   check('every checklist has 3-4 items', wrongSize === 0, `${wrongSize} outside that range`);
+
+  // A checklist of four vague statements gives the learner nothing to check
+  // themselves against. At least one item has to name a real file or identifier.
+  const vagueLists = checklistBlocks.filter((m) => !/<code lang="en">/.test(m[1])).length;
+  check(
+    'every checklist names a file or identifier',
+    vagueLists === 0,
+    vagueLists ? `${vagueLists} checklist(s) with no <code lang="en"> item` : ''
+  );
+
+  /* ── 12b. one metaphor per module, never twice in a course ── */
+  // content-philosophy bans reusing a metaphor; nothing could enforce it until
+  // each module declared its own. The first real run carried three metaphors
+  // straight over from an unrelated course, and no check noticed.
+  const metaphors = [...html.matchAll(/<section class="module"([^>]*)>/g)].map((m) => {
+    const id = m[1].match(/id="([^"]+)"/)?.[1] || '?';
+    return { id, metaphor: m[1].match(/data-metaphor="([^"]*)"/)?.[1]?.trim() || '' };
+  });
+  const missingMetaphor = metaphors.filter((m) => !m.metaphor).map((m) => m.id);
+  check(
+    `every module declares data-metaphor (${metaphors.length} modules)`,
+    missingMetaphor.length === 0,
+    missingMetaphor.join(', ')
+  );
+  const metaphorCounts = new Map();
+  for (const m of metaphors) {
+    if (!m.metaphor) continue;
+    metaphorCounts.set(m.metaphor, (metaphorCounts.get(m.metaphor) || 0) + 1);
+  }
+  const repeated = [...metaphorCounts].filter(([, n]) => n > 1).map(([k, n]) => `${k} (${n}x)`);
+  check('no metaphor used twice in one course', repeated.length === 0, repeated.join(', '));
 
   /* ── 9. the course is actually in Chinese ──────────────────── */
   const bodyText = html
