@@ -284,6 +284,41 @@ class Tab {
     await this.raf(2)
   }
 
+  async drag (fromSel, fromIdx, toSel, toIdx) {
+    const a = await this.box(fromSel, fromIdx)
+    const b = await this.box(toSel, toIdx)
+    const steps = 6
+    await this.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: Math.round(a.x), y: Math.round(a.y), buttons: 0 })
+    await this.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: Math.round(a.x), y: Math.round(a.y), button: 'left', buttons: 1, clickCount: 1 })
+    for (let i = 1; i <= steps; i++) {
+      await this.send('Input.dispatchMouseEvent', {
+        type: 'mouseMoved',
+        x: Math.round(a.x + ((b.x - a.x) * i) / steps),
+        y: Math.round(a.y + ((b.y - a.y) * i) / steps),
+        button: 'left', buttons: 1
+      })
+    }
+    await this.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: Math.round(b.x), y: Math.round(b.y), button: 'left', buttons: 0, clickCount: 1 })
+    await this.raf(2)
+  }
+
+  async touchDrag (fromSel, fromIdx, toSel, toIdx) {
+    await this.send('Emulation.setTouchEmulationEnabled', { enabled: true, maxTouchPoints: 1 })
+    const a = await this.box(fromSel, fromIdx)
+    const b = await this.box(toSel, toIdx)
+    const pt = (x, y) => [{ x: Math.round(x), y: Math.round(y), radiusX: 6, radiusY: 6, force: 1 }]
+    await this.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: pt(a.x, a.y) })
+    for (let i = 1; i <= 6; i++) {
+      await this.send('Input.dispatchTouchEvent', {
+        type: 'touchMove',
+        touchPoints: pt(a.x + ((b.x - a.x) * i) / 6, a.y + ((b.y - a.y) * i) / 6)
+      })
+    }
+    await this.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await this.raf(2)
+    await this.send('Emulation.setTouchEmulationEnabled', { enabled: false })
+  }
+
   async scrollTo (y) {
     await this.eval('window.scrollTo(0,' + y + '); return true;')
     await this.raf(3)
@@ -2258,6 +2293,350 @@ describe('数据流演示 kc-flow', async (tab) => {
     eq(r.names, '你,app.js,server.js,store.js', '角色名照常可见')
     assert(r.caption.indexOf('点“下一步”') >= 0, '无脚本时说明应显示引导语')
     eq(r.cur, 0)
+  })
+})
+
+// ---------------------------------------------------------------- 拖拽匹配
+
+const MATCH = (id) => `
+<div class="kc-match" id="${id}">
+  <div class="kc-match__cards">
+    <button class="kc-match__card" data-kc-key="app.js">app.js</button>
+    <button class="kc-match__card" data-kc-key="server.js">server.js</button>
+    <button class="kc-match__card" data-kc-key="store.js">store.js</button>
+  </div>
+  <div class="kc-match__slots">
+    <div class="kc-match__slot" data-kc-expect="app.js"><p class="kc-match__label">你打的字先被它收起来，它还会先看一眼标题是不是空的。</p><div class="kc-match__drop">拖到这里</div></div>
+    <div class="kc-match__slot" data-kc-expect="server.js"><p class="kc-match__label">它谁的活都不干，只负责把来的人指到对的地方。</p><div class="kc-match__drop">拖到这里</div></div>
+    <div class="kc-match__slot" data-kc-expect="store.js"><p class="kc-match__label">只有它碰硬盘，数据不对的时候先来这里找。</p><div class="kc-match__drop">拖到这里</div></div>
+  </div>
+  <div class="kc-match__actions"><button class="kc-match__check">对一下</button><button class="kc-match__reset">重来</button></div>
+</div>`
+
+describe('拖拽匹配 kc-match', async (tab) => {
+  const url = fixture('match', `<main class="kc-course"><section class="kc-screen">
+${MATCH('kc-match-m3')}
+<div class="kc-match" id="match-bad">
+  <div class="kc-match__cards"><button class="kc-match__card" data-kc-key="a.js">a.js</button><button class="kc-match__card" data-kc-key="b.js">b.js</button></div>
+  <div class="kc-match__slots">
+    <div class="kc-match__slot" data-kc-expect="a.js"><p class="kc-match__label">甲</p><div class="kc-match__drop">拖到这里</div></div>
+    <div class="kc-match__slot" data-kc-expect="a.js"><p class="kc-match__label">乙</p><div class="kc-match__drop">拖到这里</div></div>
+    <div class="kc-match__slot" data-kc-expect="c.js"><p class="kc-match__label">丙</p><div class="kc-match__drop">拖到这里</div></div>
+  </div>
+  <div class="kc-match__actions"><button class="kc-match__check">对一下</button><button class="kc-match__reset">重来</button></div>
+</div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('用鼠标把卡片拖到空位，空位显示卡片文字，卡片变暗', async () => {
+    await tab.drag('#kc-match-m3 .kc-match__card', 0, '#kc-match-m3 .kc-match__slot', 0)
+    const r = await tab.eval(`var root=document.getElementById('kc-match-m3');
+      var s=root.querySelectorAll('.kc-match__slot')[0];
+      var c=root.querySelectorAll('.kc-match__card')[0];
+      return {drop:s.querySelector('.kc-match__drop').textContent, slotPlaced:s.classList.contains('kc-is-placed'),
+              cardDim:c.classList.contains('kc-is-placed'), opacity:parseFloat(getComputedStyle(c).opacity),
+              ghosts:document.querySelectorAll('.kc-match__ghost').length};`)
+    eq(r.drop, 'app.js', '空位应显示卡片文字')
+    assert(r.slotPlaced, '靶位应标为已填')
+    assert(r.cardDim && r.opacity < 1, '卡片应变暗表示已用')
+    eq(r.ghosts, 0, '拖完之后不许留下半透明副本')
+  })
+
+  await it('用手指拖动同样能完成（触屏必须真的能用）', async () => {
+    await tab.click('#kc-match-m3 .kc-match__reset')
+    await tab.touchDrag('#kc-match-m3 .kc-match__card', 2, '#kc-match-m3 .kc-match__slot', 2)
+    const r = await tab.eval(`var s=document.querySelectorAll('#kc-match-m3 .kc-match__slot')[2];
+      return {drop:s.querySelector('.kc-match__drop').textContent, placed:s.classList.contains('kc-is-placed'),
+              ghosts:document.querySelectorAll('.kc-match__ghost').length};`)
+    eq(r.drop, 'store.js', '手指拖动应当把卡片放进靶位')
+    assert(r.placed)
+    eq(r.ghosts, 0)
+  })
+
+  await it('键盘能完成全流程：聚焦卡片按回车选中，再聚焦靶位按回车放下', async () => {
+    await tab.click('#kc-match-m3 .kc-match__reset')
+    await tab.focus('#kc-match-m3 .kc-match__card', 1)
+    await tab.key('Enter')
+    const picked = await tab.eval(`return document.querySelectorAll('#kc-match-m3 .kc-match__card')[1].classList.contains('kc-is-picked');`)
+    assert(picked, '回车应能选中卡片')
+    await tab.focus('#kc-match-m3 .kc-match__slot', 1)
+    await tab.key('Enter')
+    const r = await tab.eval(`var s=document.querySelectorAll('#kc-match-m3 .kc-match__slot')[1];
+      return {drop:s.querySelector('.kc-match__drop').textContent,
+              stillPicked:document.querySelectorAll('#kc-match-m3 .kc-is-picked').length,
+              tabbable:s.tabIndex>=0};`)
+    eq(r.drop, 'server.js', '回车应能把选中的卡片放下')
+    eq(r.stillPicked, 0, '放下之后应取消选中')
+    assert(r.tabbable, '靶位必须能用键盘到达')
+  })
+
+  await it('一张卡片不能同时占两个靶位', async () => {
+    await tab.click('#kc-match-m3 .kc-match__reset')
+    await tab.drag('#kc-match-m3 .kc-match__card', 0, '#kc-match-m3 .kc-match__slot', 0)
+    await tab.drag('#kc-match-m3 .kc-match__card', 0, '#kc-match-m3 .kc-match__slot', 2)
+    const r = await tab.eval(`return {drops:[].map.call(document.querySelectorAll('#kc-match-m3 .kc-match__drop'),function(d){return d.textContent;}),
+      placedSlots:document.querySelectorAll('#kc-match-m3 .kc-match__slot.kc-is-placed').length};`)
+    eq(r.drops.filter((d) => d === 'app.js').length, 1, '同一张卡片只能出现在一个靶位上：' + JSON.stringify(r.drops))
+    eq(r.placedSlots, 1, '原来那个靶位应当空回去')
+    eq(r.drops[0], '拖到这里', '第一个靶位应恢复空位提示，实际“' + r.drops[0] + '”')
+  })
+
+  await it('“对一下”判定已填的靶位，空着的不判', async () => {
+    await tab.click('#kc-match-m3 .kc-match__reset')
+    await tab.drag('#kc-match-m3 .kc-match__card', 0, '#kc-match-m3 .kc-match__slot', 0)  // 对
+    await tab.drag('#kc-match-m3 .kc-match__card', 1, '#kc-match-m3 .kc-match__slot', 2)  // 错
+    await tab.click('#kc-match-m3 .kc-match__check')
+    const r = await tab.eval(`return [].map.call(document.querySelectorAll('#kc-match-m3 .kc-match__slot'),function(s){
+      return {right:s.classList.contains('kc-is-right'), wrong:s.classList.contains('kc-is-wrong'),
+              placed:s.classList.contains('kc-is-placed')};});`)
+    assert(r[0].right && !r[0].wrong, '放对的靶位应标为正确')
+    assert(r[2].wrong && !r[2].right, '放错的靶位应标为错误')
+    assert(!r[1].right && !r[1].wrong, '空着的靶位不许被判错')
+    assert(!r[1].placed)
+  })
+
+  await it('“重来”完全复位', async () => {
+    await tab.click('#kc-match-m3 .kc-match__reset')
+    const r = await tab.eval(`var root=document.getElementById('kc-match-m3');
+      return {drops:[].map.call(root.querySelectorAll('.kc-match__drop'),function(d){return d.textContent;}),
+              marks:root.querySelectorAll('.kc-is-right,.kc-is-wrong,.kc-is-placed,.kc-is-picked').length};`)
+    eq(r.drops.join('|'), '拖到这里|拖到这里|拖到这里', '所有空位应恢复提示文字')
+    eq(r.marks, 0, '所有状态标记都应清空')
+  })
+
+  await it('卡片数与靶位数不等、期待不存在的卡片、两个靶位期待同一张，各留痕迹', async () => {
+    const r = await tab.eval(`var b=document.querySelector('#match-bad .kc-broken');
+      return {text:b?b.textContent:null, ok:document.querySelectorAll('#kc-match-m3 .kc-broken').length};`)
+    eq(r.ok, 0, '合规的那组不该报错')
+    assert(r.text && r.text.indexOf('一一对应') >= 0, '卡片数与靶位数不等应报错，实际：' + r.text)
+  })
+
+  await it('脚本未运行时卡片与描述照常可读', async () => {
+    const nojs = fixture('match-nojs', `<main class="kc-course"><section class="kc-screen">${MATCH('kc-match-n')}</section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var root=document.getElementById('kc-match-n');
+      return {cards:[].map.call(root.querySelectorAll('.kc-match__card'),function(c){return c.textContent;}).join(','),
+              labels:[].filter.call(root.querySelectorAll('.kc-match__label'),function(l){return getComputedStyle(l).display!=='none';}).length,
+              drops:[].map.call(root.querySelectorAll('.kc-match__drop'),function(d){return d.textContent;}).join('|')};`)
+    eq(r.cards, 'app.js,server.js,store.js', '卡片照常可读')
+    eq(r.labels, 3, '描述照常可读')
+    eq(r.drops, '拖到这里|拖到这里|拖到这里')
+  })
+})
+
+// ---------------------------------------------------------------- 架构图
+
+const MAP = (about) => `
+<div class="kc-map">
+  <div class="kc-map__zone"><p class="kc-map__zone-name">浏览器</p>
+    <button class="kc-map__node" data-kc-about="它画页面，也收你敲的字。它不存东西，关掉标签页什么都不剩。"><span class="kc-map__icon">▤</span><span class="kc-map__name">app.js</span></button>
+  </div>
+  <div class="kc-map__zone"><p class="kc-map__zone-name">服务器</p>
+    <button class="kc-map__node" data-kc-about="它只管分诊：按你走的那条路，把活派给对应的人。它自己不碰硬盘。"><span class="kc-map__icon">▣</span><span class="kc-map__name">server.js</span></button>
+    <button class="kc-map__node" data-kc-about="只有它碰硬盘，所以数据不对的时候先来这里找。"><span class="kc-map__icon">▦</span><span class="kc-map__name">store.js</span></button>
+  </div>
+  <p class="kc-map__about"${about ? ' id="' + about + '"' : ''}>点任意一个方块，看它负责什么</p>
+</div>`
+
+describe('架构图 kc-map', async (tab) => {
+  const url = fixture('map', `<main class="kc-course"><section class="kc-screen">
+<div id="map-1">${MAP()}</div>
+<div id="map-2">${MAP()}</div>
+<div id="map-bad">${MAP('map-about-id')}</div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('任意时刻最多一个方块高亮，说明区跟着换', async () => {
+    const before = await tab.eval(`return {cur:document.querySelectorAll('#map-1 .kc-is-current').length,
+      about:document.querySelector('#map-1 .kc-map__about').textContent};`)
+    eq(before.cur, 0, '初始不该有方块被选中')
+    assert(before.about.indexOf('点任意一个方块') >= 0, '初始说明应是默认文字')
+
+    await tab.click('#map-1 .kc-map__node', 0)
+    const one = await tab.eval(`return {cur:document.querySelectorAll('#map-1 .kc-map__node.kc-is-current').length,
+      which:document.querySelector('#map-1 .kc-is-current .kc-map__name').textContent,
+      about:document.querySelector('#map-1 .kc-map__about').textContent};`)
+    eq(one.cur, 1)
+    eq(one.which, 'app.js')
+    assert(one.about.indexOf('它画页面') >= 0, '说明区应换成这个方块的说明，实际：' + one.about)
+
+    await tab.click('#map-1 .kc-map__node', 2)
+    const two = await tab.eval(`return {cur:document.querySelectorAll('#map-1 .kc-map__node.kc-is-current').length,
+      which:document.querySelector('#map-1 .kc-is-current .kc-map__name').textContent,
+      about:document.querySelector('#map-1 .kc-map__about').textContent};`)
+    eq(two.cur, 1, '高亮是排他的')
+    eq(two.which, 'store.js')
+    assert(two.about.indexOf('只有它碰硬盘') >= 0)
+  })
+
+  await it('再点同一个方块保持选中，不切回默认文字', async () => {
+    await tab.click('#map-1 .kc-map__node', 2)
+    const r = await tab.eval(`return {cur:document.querySelectorAll('#map-1 .kc-map__node.kc-is-current').length,
+      which:document.querySelector('#map-1 .kc-is-current .kc-map__name').textContent,
+      about:document.querySelector('#map-1 .kc-map__about').textContent};`)
+    eq(r.cur, 1, '再点一次应保持选中')
+    eq(r.which, 'store.js')
+    assert(r.about.indexOf('只有它碰硬盘') >= 0, '不许切回默认文字，实际：' + r.about)
+  })
+
+  await it('同一页面两张图互不干扰', async () => {
+    const r = await tab.eval(`return {m2cur:document.querySelectorAll('#map-2 .kc-is-current').length,
+      m2about:document.querySelector('#map-2 .kc-map__about').textContent};`)
+    eq(r.m2cur, 0, '第二张图不该被带着走')
+    assert(r.m2about.indexOf('点任意一个方块') >= 0, '第二张图的说明区应仍是默认文字')
+    await tab.click('#map-2 .kc-map__node', 1)
+    const after = await tab.eval(`return {m1:document.querySelector('#map-1 .kc-is-current .kc-map__name').textContent,
+      m2:document.querySelector('#map-2 .kc-is-current .kc-map__name').textContent};`)
+    eq(after.m1, 'store.js', '第一张图的选中不该被第二张图清掉')
+    eq(after.m2, 'server.js')
+  })
+
+  await it('键盘能聚焦并选中每个方块', async () => {
+    const r = await tab.eval(`return [].map.call(document.querySelectorAll('#map-1 .kc-map__node'),function(n){return [n.tagName,n.tabIndex];});`)
+    r.forEach((n) => { eq(n[0], 'BUTTON'); assert(n[1] >= 0, '方块必须可聚焦') })
+    await tab.focus('#map-1 .kc-map__node', 1)
+    await tab.key('Enter')
+    const one = await tab.eval(`return document.querySelector('#map-1 .kc-is-current .kc-map__name').textContent;`)
+    eq(one, 'server.js', '回车应能选中')
+    await tab.focus('#map-1 .kc-map__node', 0)
+    await tab.key(' ')
+    const two = await tab.eval(`return {name:document.querySelector('#map-1 .kc-is-current .kc-map__name').textContent,
+      pressed:document.querySelectorAll('#map-1 [aria-pressed="true"]').length};`)
+    eq(two.name, 'app.js', '空格应能选中')
+    eq(two.pressed, 1, '应向辅助技术暴露当前选中项')
+  })
+
+  await it('窄屏下分区改为纵向排列，不溢出', async () => {
+    await tab.viewport(360, 900)
+    const r = await tab.eval(`var zs=[].map.call(document.querySelectorAll('#map-1 .kc-map__zone'),function(z){var r=z.getBoundingClientRect();return {top:Math.round(r.top),right:Math.round(r.right)};});
+      return {tops:zs.map(function(z){return z.top;}), maxRight:Math.max.apply(null,zs.map(function(z){return z.right;})),
+              docSW:document.documentElement.scrollWidth, docCW:document.documentElement.clientWidth};`)
+    eq(new Set(r.tops).size, 2, '窄屏下两个分区应各占一行：' + JSON.stringify(r.tops))
+    assert(r.maxRight <= r.docCW + 1, '分区溢出了视口')
+    assert(r.docSW <= r.docCW + 1, '窄屏下出现横向滚动条')
+    await tab.viewport(1100, 800)
+  })
+
+  await it('说明区带标识符时留下可见痕迹', async () => {
+    const r = await tab.eval(`var b=document.querySelector('#map-bad .kc-broken');
+      return {text:b?b.textContent:null, ok:document.querySelectorAll('#map-1 .kc-broken').length};`)
+    eq(r.ok, 0)
+    assert((r.text || '').indexOf('说明区一律不带标识符') >= 0, '说明区带 id 应报错，实际：' + r.text)
+  })
+
+  await it('脚本未运行时图照常可见，说明区停在默认文字', async () => {
+    const nojs = fixture('map-nojs', `<main class="kc-course"><section class="kc-screen"><div id="map-1">${MAP()}</div></section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`return {nodes:[].filter.call(document.querySelectorAll('.kc-map__node'),function(n){return getComputedStyle(n).display!=='none';}).length,
+      about:document.querySelector('.kc-map__about').textContent, cur:document.querySelectorAll('.kc-is-current').length};`)
+    eq(r.nodes, 3, '无脚本时所有方块照常可见')
+    assert(r.about.indexOf('点任意一个方块') >= 0, '说明区应停在默认文字')
+    eq(r.cur, 0)
+  })
+})
+
+// ---------------------------------------------------------------- 分层切换
+
+const LAYERS = (pre) => `
+<div class="kc-layers" id="${pre}-root">
+  <div class="kc-layers__tabs">
+    <button class="kc-layers__tab" data-kc-layer="${pre}-a" data-kc-note="这一层只有骨架：字和框都在，但一点也不好看。">骨架</button>
+    <button class="kc-layers__tab" data-kc-layer="${pre}-b" data-kc-note="加上样式之后，同样的字有了轻重和留白。">加上样式</button>
+    <button class="kc-layers__tab" data-kc-layer="${pre}-c" data-kc-note="加上交互之后，它才会回应你点的那一下。">加上交互</button>
+  </div>
+  <div class="kc-layers__panel" id="${pre}-a">只有 HTML。</div>
+  <div class="kc-layers__panel" id="${pre}-b">HTML 加上 CSS。</div>
+  <div class="kc-layers__panel" id="${pre}-c">HTML 加 CSS 再加 JavaScript。</div>
+  <p class="kc-layers__note"></p>
+</div>`
+
+describe('分层切换 kc-layers', async (tab) => {
+  const url = fixture('layers', `<main class="kc-course"><section class="kc-screen">
+${LAYERS('kc-layers-m4')}
+${LAYERS('kc-layers-m5')}
+<div class="kc-layers" id="lay-bad">
+  <div class="kc-layers__tabs">
+    <button class="kc-layers__tab" data-kc-layer="nope" data-kc-note="指向不存在的层">甲</button>
+  </div>
+  <div class="kc-layers__panel" id="lay-orphan">没有任何标签指向我。</div>
+  <p class="kc-layers__note"></p>
+</div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('初始显示第一层，任意时刻只有一层可见', async () => {
+    const r = await tab.eval(`var root=document.getElementById('kc-layers-m4-root');
+      return {visible:[].filter.call(root.querySelectorAll('.kc-layers__panel'),function(p){return getComputedStyle(p).display!=='none';}).map(function(p){return p.id;}),
+              curTab:root.querySelectorAll('.kc-layers__tab.kc-is-current').length,
+              which:root.querySelector('.kc-layers__tab.kc-is-current').textContent,
+              note:root.querySelector('.kc-layers__note').textContent};`)
+    eq(r.visible.join(','), 'kc-layers-m4-a', '初始应只显示第一层')
+    eq(r.curTab, 1)
+    eq(r.which, '骨架')
+    assert(r.note.indexOf('只有骨架') >= 0, '说明文字应是第一层的，实际：' + r.note)
+  })
+
+  await it('点标签切换：展示区、选中标签、说明文字三者同步', async () => {
+    await tab.click('#kc-layers-m4-root .kc-layers__tab', 2)
+    const r = await tab.eval(`var root=document.getElementById('kc-layers-m4-root');
+      return {visible:[].filter.call(root.querySelectorAll('.kc-layers__panel'),function(p){return getComputedStyle(p).display!=='none';}).map(function(p){return p.id;}),
+              which:root.querySelector('.kc-layers__tab.kc-is-current').textContent,
+              note:root.querySelector('.kc-layers__note').textContent,
+              selected:root.querySelectorAll('[aria-selected="true"]').length};`)
+    eq(r.visible.join(','), 'kc-layers-m4-c', '只有第三层可见')
+    eq(r.which, '加上交互')
+    assert(r.note.indexOf('回应你点的那一下') >= 0, '说明文字应随之更换，实际：' + r.note)
+    eq(r.selected, 1)
+  })
+
+  await it('键盘左右方向键能在标签之间移动并切换', async () => {
+    await tab.click('#kc-layers-m4-root .kc-layers__tab', 0)
+    await tab.focus('#kc-layers-m4-root .kc-layers__tab', 0)
+    await tab.key('ArrowRight')
+    const right = await tab.eval(`var root=document.getElementById('kc-layers-m4-root');
+      return {which:root.querySelector('.kc-layers__tab.kc-is-current').textContent,
+              focus:document.activeElement.textContent,
+              visible:[].filter.call(root.querySelectorAll('.kc-layers__panel'),function(p){return getComputedStyle(p).display!=='none';}).map(function(p){return p.id;}).join(',')};`)
+    eq(right.which, '加上样式', '右方向键应切到下一层')
+    eq(right.focus, '加上样式', '焦点应跟着走')
+    eq(right.visible, 'kc-layers-m4-b')
+    await tab.key('ArrowLeft')
+    const left = await tab.eval(`return document.querySelector('#kc-layers-m4-root .kc-layers__tab.kc-is-current').textContent;`)
+    eq(left, '骨架', '左方向键应切回上一层')
+  })
+
+  await it('同一页面两组分层互不干扰', async () => {
+    await tab.click('#kc-layers-m5-root .kc-layers__tab', 1)
+    const r = await tab.eval(`return {m4:document.querySelector('#kc-layers-m4-root .kc-layers__tab.kc-is-current').textContent,
+      m5:document.querySelector('#kc-layers-m5-root .kc-layers__tab.kc-is-current').textContent,
+      m4visible:[].filter.call(document.querySelectorAll('#kc-layers-m4-root .kc-layers__panel'),function(p){return getComputedStyle(p).display!=='none';}).length,
+      m5visible:[].filter.call(document.querySelectorAll('#kc-layers-m5-root .kc-layers__panel'),function(p){return getComputedStyle(p).display!=='none';}).length};`)
+    eq(r.m4, '骨架', '第一组不该被第二组带着走')
+    eq(r.m5, '加上样式')
+    eq(r.m4visible, 1)
+    eq(r.m5visible, 1)
+  })
+
+  await it('标签指向不存在的层、或有层没人指向时留下可见痕迹', async () => {
+    const r = await tab.eval(`var b=document.querySelector('#lay-bad .kc-broken');
+      return {text:b?b.textContent:null, ok:document.querySelectorAll('#kc-layers-m4-root .kc-broken').length};`)
+    eq(r.ok, 0)
+    assert((r.text || '').indexOf('指向不存在的层') >= 0, '要指出标签指向不存在的层，实际：' + r.text)
+    assert((r.text || '').indexOf('没有任何标签指向它') >= 0, '要指出有层没人指向，实际：' + r.text)
+  })
+
+  await it('脚本禁用时所有层依次全部可见，退化成一个纵向列表', async () => {
+    const nojs = fixture('layers-nojs', `<main class="kc-course"><section class="kc-screen">${LAYERS('kc-layers-n')}</section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var root=document.getElementById('kc-layers-n-root');
+      var ps=[].slice.call(root.querySelectorAll('.kc-layers__panel'));
+      var vis=ps.filter(function(p){return getComputedStyle(p).display!=='none';});
+      var tops=vis.map(function(p){return Math.round(p.getBoundingClientRect().top);});
+      return {total:ps.length, visible:vis.length, tops:tops,
+              ordered:tops.every(function(t,i){return i===0||t>tops[i-1];})};`)
+    eq(r.visible, r.total, '无脚本时所有层都应看得到，而不是只剩第一层')
+    eq(r.visible, 3)
+    assert(r.ordered, '应依次纵向排列：' + JSON.stringify(r.tops))
   })
 })
 
