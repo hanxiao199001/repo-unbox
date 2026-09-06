@@ -121,6 +121,30 @@ export function validate(courseDir, sourceDir) {
     withoutTask.length ? `no output task in: ${withoutTask.join(', ')}` : ''
   );
 
+  // Whole-course totals hide a thin module. Sonnet's first six-module course had
+  // a final module with no code block at all and every course-wide count still
+  // passed, so these are per module.
+  const moduleText = (block) => block
+    .replace(/<pre lang="en">[\s\S]*?<\/pre>/g, '')
+    .replace(/<[^>]+>/g, '');
+
+  const thinCode = [];
+  const thinProse = [];
+  moduleBlocks.forEach((block, i) => {
+    const id = moduleIds[i] || `module ${i + 1}`;
+    const codeBlocks = (block.match(/<pre lang="en">/g) || []).length;
+    if (codeBlocks === 0) thinCode.push(id);
+    const hanzi = (moduleText(block).match(/[\u4e00-\u9fa5]/g) || []).length;
+    if (hanzi < 800) thinProse.push(`${id} (${hanzi})`);
+  });
+  check('every module has a code block', thinCode.length === 0, thinCode.join(', '));
+  check('every module has at least 800 Chinese characters', thinProse.length === 0, thinProse.join(', '));
+
+  // The element that makes the learner point at a real mistake. Two is the floor
+  // because one across a whole course reads as decoration.
+  const bugChallenges = (html.match(/class="bug-challenge"/g) || []).length;
+  check(`at least 2 spot-the-bug challenges (${bugChallenges} found)`, bugChallenges >= 2);
+
   const TASK_TYPES = ['retell', 'instruct', 'explain'];
   const taskAttrs = [...html.matchAll(/<div class="output-task"([^>]*)>/g)].map((m) => m[1]);
   const badType = taskAttrs.filter((a) => {
@@ -159,10 +183,13 @@ export function validate(courseDir, sourceDir) {
   check('every checklist has 3-4 items', wrongSize === 0, `${wrongSize} outside that range`);
 
   // A checklist of four vague statements gives the learner nothing to check
-  // themselves against. At least one item has to name a real file or identifier.
+  // themselves against. At least one item must name something in English inside
+  // <code lang="en">: a file or function for retell and instruct tasks, and for
+  // an explain task the English word for the concept itself — that task asks the
+  // learner to avoid jargon, so demanding a filename would fight its purpose.
   const vagueLists = checklistBlocks.filter((m) => !/<code lang="en">/.test(m[1])).length;
   check(
-    'every checklist names a file or identifier',
+    'every checklist names a file, function or English term',
     vagueLists === 0,
     vagueLists ? `${vagueLists} checklist(s) with no <code lang="en"> item` : ''
   );

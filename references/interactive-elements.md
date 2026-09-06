@@ -27,8 +27,12 @@
 | `elements/quiz-multiple-choice.md` | **选择题** | 每个模块至少一道，放在输出题之前当热身 |
 | `elements/group-chat.md` | **群聊动画** | 全课至少一处。组件之间像微信群一样对话 |
 | `elements/flow-animation.md` | **数据流动画** | 全课至少一处。数据在角色之间一步步移动 |
+| `elements/spot-the-bug.md` | **找 bug** | **全课至少 2 处。**让学员亲手点出错误行 |
 
 外加**术语气泡**（`elements/glossary-tooltip.md`）：每个技术术语、每个英文单词，每模块首次出现都要有。
+
+另外两条按模块查、不是按全课查的硬指标：**每个模块都要有代码对照块**，
+**每个模块正文中文不少于 800 字**。全课总数达标但某个模块很薄，校验一样会卡。
 
 ---
 
@@ -38,7 +42,6 @@
 |---|---|---|
 | `elements/scenario-quiz.md` | 场景题 | 题干比较长、要先铺一段情境时，套在选择题外面 |
 | `elements/drag-and-drop.md` | 拖拽匹配 | 要学员把「职责」和「文件」对应起来时 |
-| `elements/spot-the-bug.md` | 找 bug | 有一处适合让学员亲手点出来的错误时 |
 | `elements/architecture-diagram.md` | 架构图 | 讲「有哪些角色、各在哪一层」时，点一下看说明 |
 | `elements/layer-toggle.md` | 分层切换 | 讲「HTML→CSS→JS 一层层叠上去」这类递进关系时 |
 | `elements/callout.md` | 提示框 | 「原来如此」的通用原理，每模块最多 2 个 |
