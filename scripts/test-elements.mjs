@@ -1357,6 +1357,345 @@ describe('术语气泡 kc-term', async (tab) => {
   })
 })
 
+// ---------------------------------------------------------------- 选择题
+
+const QUIZ = (id, opts) => `
+<div class="kc-quiz" id="${id}">
+  <div class="kc-quiz__question" data-kc-answer="b"
+       data-kc-right="对。因为只有 store.js 碰硬盘，数据不对的时候就该先去那里看。"
+       data-kc-wrong="再看一眼提交函数的最后一行——页面不是自己把新待办画上去的，它是重新问了一遍。">
+    <p class="kc-quiz__prompt">用户说“加了待办刷新就没了”，你先去哪个文件找？</p>
+    <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>app.js，因为页面是它画的</button>
+    <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>store.js，因为只有它往硬盘上写</button>
+    <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>server.js，因为请求是它收的</button>
+    <div class="kc-quiz__feedback"></div>
+  </div>
+  <div class="kc-quiz__question" data-kc-answer="y"
+       data-kc-right="对。校验放后端，前端绕不过去。"
+       data-kc-wrong="想想学员自己改浏览器里的代码有多容易——前端的检查拦不住有心的人。">
+    <p class="kc-quiz__prompt">“标题不能为空”这个检查，放前端还是后端？</p>
+    <button class="kc-quiz__option" data-kc-value="x"><span class="kc-quiz__marker"></span>只放前端就够了</button>
+    <button class="kc-quiz__option" data-kc-value="y"><span class="kc-quiz__marker"></span>后端一定要有，前端可以再加一层</button>
+    <div class="kc-quiz__feedback"></div>
+  </div>
+  <div class="kc-quiz__actions">
+    <button class="kc-quiz__check">看看答案</button>
+    <button class="kc-quiz__reset">再来一次</button>
+  </div>
+</div>`
+
+describe('选择题 kc-quiz', async (tab) => {
+  const url = fixture('quiz', `<main class="kc-course"><section class="kc-screen">
+${QUIZ('kc-quiz-m1')}
+<div class="kc-quiz" id="quiz-bad">
+  <div class="kc-quiz__question" data-kc-answer="zzz" data-kc-right="对" data-kc-wrong="错">
+    <p class="kc-quiz__prompt">正确答案对不上任何选项</p>
+    <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>甲</button>
+    <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>乙</button>
+    <div class="kc-quiz__feedback"></div>
+  </div>
+  <div class="kc-quiz__question" data-kc-answer="a">
+    <p class="kc-quiz__prompt">缺解释文字</p>
+    <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>甲</button>
+    <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>乙</button>
+    <div class="kc-quiz__feedback"></div>
+  </div>
+  <div class="kc-quiz__actions"><button class="kc-quiz__check">看看答案</button><button class="kc-quiz__reset">再来一次</button></div>
+</div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('一题只能选一个', async () => {
+    await tab.click('#kc-quiz-m1 .kc-quiz__option', 0)
+    await tab.click('#kc-quiz-m1 .kc-quiz__option', 2)
+    const r = await tab.eval(`var q=document.querySelector('#kc-quiz-m1 .kc-quiz__question');
+      return {sel:q.querySelectorAll('.kc-is-selected').length,
+              which:[].map.call(q.querySelectorAll('.kc-quiz__option'),function(o){return o.getAttribute('aria-checked');}).join(',')};`)
+    eq(r.sel, 1, '同一题里只能有一个被选中')
+    eq(r.which, 'false,false,true', 'aria-checked 应跟着走')
+  })
+
+  await it('对答案后选错的题同时标出正确项，并展开解释', async () => {
+    await tab.click('#kc-quiz-m1 .kc-quiz__check')
+    const r = await tab.eval(`var q=document.querySelectorAll('#kc-quiz-m1 .kc-quiz__question')[0];
+      var opts=[].map.call(q.querySelectorAll('.kc-quiz__option'),function(o){
+        return {v:o.getAttribute('data-kc-value'), right:o.classList.contains('kc-is-right'),
+                wrong:o.classList.contains('kc-is-wrong'), disabled:o.disabled};});
+      var f=q.querySelector('.kc-quiz__feedback');
+      return {opts:opts, fb:f.textContent, open:f.classList.contains('kc-is-open'),
+              visible:getComputedStyle(f).display!=='none'};`)
+    const wrong = r.opts.find((o) => o.v === 'c')
+    const right = r.opts.find((o) => o.v === 'b')
+    assert(wrong.wrong, '选错的那一项要标为错误')
+    assert(right.right, '选错时必须同时把正确项标出来')
+    assert(r.opts.every((o) => o.disabled), '对完答案所有选项都不可点')
+    assert(r.open && r.visible, '解释应当展开')
+    assert(r.fb.indexOf('再看一眼提交函数') >= 0, '答错时应显示"往哪儿想"的解释，实际：' + r.fb)
+  })
+
+  await it('未作答的题不产生任何负面反馈', async () => {
+    const r = await tab.eval(`var q=document.querySelectorAll('#kc-quiz-m1 .kc-quiz__question')[1];
+      var f=q.querySelector('.kc-quiz__feedback');
+      return {marks:q.querySelectorAll('.kc-is-right,.kc-is-wrong').length, fb:f.textContent,
+              open:f.classList.contains('kc-is-open')};`)
+    eq(r.marks, 0, '没作答的题不许被标对错')
+    eq(r.fb, '', '没作答的题不该展开解释')
+    assert(!r.open)
+  })
+
+  await it('页面上找不到任何分数', async () => {
+    const r = await tab.eval(`var t=document.getElementById('kc-quiz-m1').textContent;
+      var hits=[]; ['答对了','得分','分数','正确率','/5','score','Score'].forEach(function(w){if(t.indexOf(w)>=0)hits.push(w);});
+      if(/\\d+\\s*\\/\\s*\\d+/.test(t)) hits.push('N/M 形式的计分');
+      return hits;`)
+    eq(r.length, 0, '出现了计分：' + JSON.stringify(r))
+  })
+
+  await it('“再来一次”完全复原', async () => {
+    await tab.click('#kc-quiz-m1 .kc-quiz__reset')
+    const r = await tab.eval(`var root=document.getElementById('kc-quiz-m1');
+      return {marks:root.querySelectorAll('.kc-is-selected,.kc-is-right,.kc-is-wrong').length,
+              open:root.querySelectorAll('.kc-quiz__feedback.kc-is-open').length,
+              fbText:[].map.call(root.querySelectorAll('.kc-quiz__feedback'),function(f){return f.textContent;}).join(''),
+              disabled:[].filter.call(root.querySelectorAll('.kc-quiz__option'),function(o){return o.disabled;}).length,
+              checkDisabled:root.querySelector('.kc-quiz__check').disabled};`)
+    eq(r.marks, 0, '所有选择与判定都应清空')
+    eq(r.open, 0, '所有解释都应收起')
+    eq(r.fbText, '', '解释文字应清空')
+    eq(r.disabled, 0, '选项应恢复可点')
+    assert(!r.checkDisabled, '“看看答案”应恢复可点')
+  })
+
+  await it('键盘能选中选项并触发两个按钮', async () => {
+    await tab.focus('#kc-quiz-m1 .kc-quiz__option', 1)
+    await tab.key(' ')
+    const sel = await tab.eval(`return document.querySelectorAll('#kc-quiz-m1 .kc-quiz__option')[1].classList.contains('kc-is-selected');`)
+    assert(sel, '空格应能选中选项')
+    await tab.focus('#kc-quiz-m1 .kc-quiz__check')
+    await tab.key('Enter')
+    const judged = await tab.eval(`return document.querySelectorAll('#kc-quiz-m1 .kc-quiz__feedback.kc-is-open').length;`)
+    assert(judged >= 1, '回车应能触发“看看答案”')
+    await tab.focus('#kc-quiz-m1 .kc-quiz__reset')
+    await tab.key('Enter')
+    const cleared = await tab.eval(`return document.querySelectorAll('#kc-quiz-m1 .kc-quiz__feedback.kc-is-open').length;`)
+    eq(cleared, 0, '回车应能触发“再来一次”')
+  })
+
+  await it('答案对不上选项、缺解释时留下可见痕迹', async () => {
+    const r = await tab.eval(`var b=document.querySelectorAll('#quiz-bad .kc-broken');
+      return {n:b.length, texts:[].map.call(b,function(x){return x.textContent;}),
+              ok:document.querySelectorAll('#kc-quiz-m1 .kc-broken').length};`)
+    eq(r.ok, 0, '合规的那组不该报错')
+    assert(r.n >= 2, '两处问题各应留下一条痕迹，实际 ' + r.n + '：' + JSON.stringify(r.texts))
+    assert(r.texts.join('').indexOf('对不上任何选项') >= 0, '要说清楚是答案对不上选项')
+  })
+
+  await it('脚本未运行时题目可读，解释直接可见', async () => {
+    const nojs = fixture('quiz-nojs', `<main class="kc-course"><section class="kc-screen">${QUIZ('kc-quiz-m1')}</section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var q=document.querySelector('.kc-quiz__question');
+      var after=getComputedStyle(q,'::after');
+      return {content:after.content, display:after.display,
+              opts:document.querySelectorAll('.kc-quiz__option').length,
+              promptVisible:getComputedStyle(document.querySelector('.kc-quiz__prompt')).display!=='none'};`)
+    eq(r.opts, 5, '所有选项照常可读')
+    assert(r.promptVisible, '题干照常可读')
+    assert(r.content.indexOf('只有 store.js 碰硬盘') >= 0, '无脚本时解释应当直接可见，实际 content=' + r.content)
+    assert(r.display !== 'none', '解释区不许被隐藏')
+  })
+})
+
+// ---------------------------------------------------------------- 场景题
+
+describe('场景题 kc-scenario', async (tab) => {
+  const url = fixture('scenario', `<main class="kc-course"><section class="kc-screen">
+<div class="kc-scenario" id="sc-ok">
+  <span class="kc-scenario__label">场景</span>
+  <p class="kc-scenario__body">同学把项目跑起来，浏览器打开 localhost:3000 是白的。终端里最后一行写着 <code class="kc-code" data-kc-lang="en">Error: listen EADDRINUSE: address already in use :::3000</code>。他上一个终端窗口还开着。</p>
+  ${QUIZ('kc-quiz-sc')}
+</div>
+<div class="kc-scenario" id="sc-bad"><span class="kc-scenario__label">场景</span><p class="kc-scenario__body"></p></div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('场景块本身不可交互，判定完全由内部选择题负责', async () => {
+    const r = await tab.eval(`var s=document.getElementById('sc-ok');
+      return {label:!!s.querySelector('.kc-scenario__label'), body:!!s.querySelector('.kc-scenario__body'),
+              quiz:s.querySelectorAll('.kc-quiz').length,
+              buttonsOutsideQuiz:[].filter.call(s.querySelectorAll('button'),function(b){return !b.closest('.kc-quiz');}).length,
+              live:s.classList.contains('kc-is-live')};`)
+    assert(r.label && r.body, '场景块要有标签和描述')
+    eq(r.quiz, 1, '场景块里应当正好有一道选择题')
+    eq(r.buttonsOutsideQuiz, 0, '场景部分本身不可交互')
+    assert(r.live)
+  })
+
+  await it('内部选择题的行为与独立选择题完全一致', async () => {
+    await tab.click('#sc-ok .kc-quiz__option', 2)
+    await tab.click('#sc-ok .kc-quiz__check')
+    const r = await tab.eval(`var q=document.querySelector('#sc-ok .kc-quiz__question');
+      return {wrong:q.querySelectorAll('.kc-quiz__option.kc-is-wrong').length, right:q.querySelectorAll('.kc-quiz__option.kc-is-right').length,
+              fb:q.querySelector('.kc-quiz__feedback').classList.contains('kc-is-open')};`)
+    eq(r.wrong, 1)
+    eq(r.right, 1, '选错时必须同时标出正确项')
+    assert(r.fb, '解释应展开')
+  })
+
+  await it('报错原文保持英文原样，不被中文排版规则改动', async () => {
+    const r = await tab.eval(`var c=document.querySelector('#sc-ok code.kc-code');
+      return {text:c.textContent, lang:c.getAttribute('lang'),
+              lat:c.querySelectorAll('.kc-lat').length, pun:c.querySelectorAll('.kc-pun').length};`)
+    eq(r.text, 'Error: listen EADDRINUSE: address already in use :::3000', '报错原文被改动了')
+    eq(r.lang, 'en')
+    eq(r.lat + r.pun, 0, '报错里不许注入中文排版')
+  })
+
+  await it('场景描述为空或没有选择题时留下可见痕迹', async () => {
+    const r = await tab.eval(`var b=document.querySelectorAll('#sc-bad .kc-broken');
+      return {n:b.length, texts:[].map.call(b,function(x){return x.textContent;}),
+              ok:document.querySelectorAll('#sc-ok .kc-broken').length};`)
+    eq(r.ok, 0)
+    assert(r.n >= 2, '空描述与缺选择题各应留一条痕迹，实际 ' + r.n + '：' + JSON.stringify(r.texts))
+  })
+})
+
+// ---------------------------------------------------------------- 找 bug
+
+const BUG = (id, bugLine) => `
+<div class="kc-bughunt" id="${id}">
+  <p class="kc-bughunt__lead">这段代码被人悄悄改坏了，点一下你觉得有问题的那一行。</p>
+  <div class="kc-bughunt__code" data-kc-lang="en">
+    <button class="kc-bughunt__line" data-kc-hint="这一行只是给函数起名字，名字本身不会出错。"><span class="kc-bughunt__lineno">1</span>async function create(title) {</button>
+    <button class="kc-bughunt__line" ${bugLine === 2 ? 'data-kc-bug data-kc-explain="检查的是原始的 title，不是 trim 之后的。用户敲一串空格就能存进来。把判断改成 title.trim() 就对了。"' : 'data-kc-hint="空标题确实该挡住，问题在于挡的是哪个值。"'}><span class="kc-bughunt__lineno">2</span>  if (!title) return null;</button>
+    <button class="kc-bughunt__line" data-kc-hint="这一行只是把几个字段拼成一个对象，拼错了会在别处炸出来。"><span class="kc-bughunt__lineno">3</span>  const todo = { id: nextId++, title: title.trim(), done: false };</button>
+    <button class="kc-bughunt__line" data-kc-hint="写盘这一步有 await，该等的都等了。"><span class="kc-bughunt__lineno">4</span>  await persist(todo);</button>
+    <button class="kc-bughunt__line" data-kc-hint="把结果还回去，这一行没什么可挑的。"><span class="kc-bughunt__lineno">5</span>  return todo;</button>
+  </div>
+  <div class="kc-bughunt__feedback"></div>
+</div>`
+
+describe('找 bug kc-bughunt', async (tab) => {
+  const url = fixture('bughunt', `<main class="kc-course"><section class="kc-screen">
+${BUG('bh-1', 2)}
+${BUG('bh-2', 2)}
+<div class="kc-bughunt" id="bh-bad">
+  <p class="kc-bughunt__lead">两处问题：反馈区带了标识符，而且没有一行标为问题行。</p>
+  <div class="kc-bughunt__code" data-kc-lang="en">
+    <button class="kc-bughunt__line" data-kc-hint="甲"><span class="kc-bughunt__lineno">1</span>const a = 1;</button>
+    <button class="kc-bughunt__line" data-kc-hint="乙"><span class="kc-bughunt__lineno">2</span>const b = 2;</button>
+  </div>
+  <div class="kc-bughunt__feedback" id="bh-bad-feedback"></div>
+</div>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('有且只有一行是正确答案，每一行的提示各不相同', async () => {
+    const r = await tab.eval(`var root=document.getElementById('bh-1');
+      var lines=[].slice.call(root.querySelectorAll('.kc-bughunt__line'));
+      var hints=lines.filter(function(l){return !l.hasAttribute('data-kc-bug');}).map(function(l){return l.getAttribute('data-kc-hint');});
+      return {bugs:root.querySelectorAll('[data-kc-bug]').length, lines:lines.length,
+              hints:hints.length, unique:new Set(hints).size,
+              explain:root.querySelector('[data-kc-bug]').getAttribute('data-kc-explain')};`)
+    eq(r.bugs, 1, '有且只能有一行标 data-kc-bug')
+    eq(r.hints, r.unique, '每一行的提示必须各不相同，不许共用一句"不是这行"')
+    assert(r.explain.indexOf('title.trim()') >= 0, '找到后的解释要说清楚怎么改')
+  })
+
+  await it('点错约 2 秒后自动恢复，可以继续点，不计次不锁定', async () => {
+    await tab.click('#bh-1 .kc-bughunt__line', 3)
+    const hit = await tab.eval(`var root=document.getElementById('bh-1');
+      return {wrong:root.querySelectorAll('.kc-bughunt__line.kc-is-wrong').length,
+              fb:root.querySelector('.kc-bughunt__feedback').textContent,
+              disabled:[].filter.call(root.querySelectorAll('.kc-bughunt__line'),function(l){return l.disabled;}).length};`)
+    eq(hit.wrong, 1, '点错的那一行应短暂标红')
+    assert(hit.fb.indexOf('await') >= 0, '应给出这一行专属的提示，实际：' + hit.fb)
+    eq(hit.disabled, 0, '点错不许锁定任何行')
+
+    await tab.wait(2300)
+    const back = await tab.eval(`var root=document.getElementById('bh-1');
+      return {wrong:root.querySelectorAll('.kc-bughunt__line.kc-is-wrong').length, fb:root.querySelector('.kc-bughunt__feedback').textContent};`)
+    eq(back.wrong, 0, '约 2 秒后应自动恢复')
+    eq(back.fb, '', '提示应一并收掉')
+
+    await tab.click('#bh-1 .kc-bughunt__line', 0)
+    const again = await tab.eval(`return document.querySelectorAll('#bh-1 .kc-bughunt__line.kc-is-wrong').length;`)
+    eq(again, 1, '恢复后必须还能继续点')
+  })
+
+  await it('找到之后标为找到、展开完整解释、全部行不可点', async () => {
+    await tab.click('#bh-1 .kc-bughunt__line', 1)
+    const r = await tab.eval(`var root=document.getElementById('bh-1');
+      var fb=root.querySelector('.kc-bughunt__feedback');
+      return {found:root.querySelectorAll('.kc-bughunt__line.kc-is-found').length,
+              wrong:root.querySelectorAll('.kc-bughunt__line.kc-is-wrong').length,
+              disabled:[].filter.call(root.querySelectorAll('.kc-bughunt__line'),function(l){return l.disabled;}).length,
+              total:root.querySelectorAll('.kc-bughunt__line').length,
+              fb:fb.textContent, cls:fb.className};`)
+    eq(r.found, 1, '正确行应标为找到')
+    eq(r.wrong, 0, '找到后不该还留着标红')
+    eq(r.disabled, r.total, '找到后全部行不可点')
+    assert(r.fb.indexOf('trim') >= 0, '应展开完整解释，实际：' + r.fb)
+    assert(/kc-is-right/.test(r.cls), '反馈区应标为正确')
+  })
+
+  await it('同一页面上两处找 bug 互不干扰', async () => {
+    const r = await tab.eval(`return {
+      one:{found:document.querySelectorAll('#bh-1 .kc-bughunt__line.kc-is-found').length,
+           fb:document.querySelector('#bh-1 .kc-bughunt__feedback').textContent.length},
+      two:{found:document.querySelectorAll('#bh-2 .kc-bughunt__line.kc-is-found').length,
+           fb:document.querySelector('#bh-2 .kc-bughunt__feedback').textContent.length,
+           disabled:[].filter.call(document.querySelectorAll('#bh-2 .kc-bughunt__line'),function(l){return l.disabled;}).length}};`)
+    eq(r.one.found, 1)
+    eq(r.two.found, 0, '第二处不该受影响')
+    eq(r.two.fb, 0, '第二处的反馈区应仍是空的')
+    eq(r.two.disabled, 0, '第二处的行应仍可点')
+    await tab.click('#bh-2 .kc-bughunt__line', 1)
+    const after = await tab.eval(`return {two:document.querySelectorAll('#bh-2 .kc-bughunt__line.kc-is-found').length,
+      oneFb:document.querySelector('#bh-1 .kc-bughunt__feedback').textContent.length};`)
+    eq(after.two, 1, '第二处应能独立完成')
+    assert(after.oneFb > 0, '第一处的结果不该被第二处清掉')
+  })
+
+  await it('键盘能逐行聚焦并触发', async () => {
+    const url2 = fixture('bughunt-kbd', `<main class="kc-course"><section class="kc-screen">${BUG('bh-k', 2)}</section></main>`)
+    await tab.goto(url2)
+    const tabbable = await tab.eval(`return [].map.call(document.querySelectorAll('#bh-k .kc-bughunt__line'),function(l){return [l.tagName,l.tabIndex];});`)
+    tabbable.forEach((t) => { eq(t[0], 'BUTTON', '每一行都要能用键盘到达'); assert(t[1] >= 0) })
+    await tab.focus('#bh-k .kc-bughunt__line', 4)
+    await tab.key('Enter')
+    const wrong = await tab.eval(`return document.querySelectorAll('#bh-k .kc-bughunt__line.kc-is-wrong').length;`)
+    eq(wrong, 1, '回车应能触发点错')
+    await tab.focus('#bh-k .kc-bughunt__line', 1)
+    await tab.key(' ')
+    const found = await tab.eval(`return {found:document.querySelectorAll('#bh-k .kc-bughunt__line.kc-is-found').length,
+      fb:document.querySelector('#bh-k .kc-bughunt__feedback').textContent.length};`)
+    eq(found.found, 1, '空格应能触发找到')
+    assert(found.fb > 0)
+  })
+
+  await it('反馈区带标识符、或没有唯一的问题行时留下可见痕迹', async () => {
+    await tab.goto(url)
+    const r = await tab.eval(`var b=document.querySelectorAll('#bh-bad .kc-broken');
+      return {n:b.length, texts:[].map.call(b,function(x){return x.textContent;}),
+              ok:document.querySelectorAll('#bh-1 .kc-broken').length+document.querySelectorAll('#bh-2 .kc-broken').length};`)
+    eq(r.ok, 0, '合规的两处不该报错')
+    assert(r.n >= 2, '两处问题各应留一条痕迹，实际 ' + r.n + '：' + JSON.stringify(r.texts))
+    assert(r.texts.join('').indexOf('反馈区一律不带标识符') >= 0, '要说清楚反馈区不许带标识符')
+  })
+
+  await it('脚本未运行时代码照常可读，解释直接可见', async () => {
+    const nojs = fixture('bughunt-nojs', `<main class="kc-course"><section class="kc-screen">${BUG('bh-n', 2)}</section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var bug=document.querySelector('#bh-n [data-kc-bug]');
+      var after=getComputedStyle(bug,'::after');
+      return {content:after.content, lines:document.querySelectorAll('#bh-n .kc-bughunt__line').length,
+              visible:getComputedStyle(document.querySelector('#bh-n .kc-bughunt__code')).display!=='none'};`)
+    eq(r.lines, 5, '代码照常可读')
+    assert(r.visible)
+    assert(r.content.indexOf('title.trim()') >= 0, '无脚本时解释应直接可见，实际 content=' + r.content)
+  })
+})
+
 /* KC_GROUPS_END */
 
 // ---------------------------------------------------------------- 入口
