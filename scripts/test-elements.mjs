@@ -1696,6 +1696,202 @@ ${BUG('bh-2', 2)}
   })
 })
 
+// ---------------------------------------------------------------- 输出题
+
+const OUT = (id, kind, min) => `
+<div class="kc-output" id="${id}" data-kc-kind="${kind}" data-kc-min="${min}">
+  <span class="kc-output__label"></span>
+  <p class="kc-output__prompt">用你自己的话说一遍：点了“添加”之后，这句话经过了哪些文件？</p>
+  <textarea class="kc-output__input"></textarea>
+  <p class="kc-output__meter"></p>
+  <button class="kc-output__reveal">我说完了，看对照清单</button>
+  <ul class="kc-output__checklist">
+    <li class="kc-output__item">说出了 app.js 这个文件名，以及它负责把你打的字收起来</li>
+    <li class="kc-output__item">提到了请求走的是 POST /todos 这条路</li>
+    <li class="kc-output__item">说清楚了只有 store.js 会往硬盘上写</li>
+  </ul>
+</div>`
+
+describe('输出题 kc-output', async (tab) => {
+  const url = fixture('output', `<main class="kc-course"><section class="kc-screen">
+${OUT('kc-output-m1', 'retell', 80)}
+${OUT('kc-output-m2', 'instruct', 60)}
+<div class="kc-output" id="out-bad" data-kc-kind="freeform" data-kc-min="10">
+  <span class="kc-output__label"></span>
+  <p class="kc-output__prompt">类别不合法、下限太低、清单只有两条且没有英文</p>
+  <textarea class="kc-output__input"></textarea>
+  <p class="kc-output__meter"></p>
+  <button class="kc-output__reveal">我说完了，看对照清单</button>
+  <ul class="kc-output__checklist">
+    <li class="kc-output__item">说清楚了顺序</li>
+    <li class="kc-output__item">讲明白了原理</li>
+  </ul>
+</div>
+</section></main>`)
+  await tab.goto(url)
+  await tab.eval(`try{localStorage.clear()}catch(e){}; return true;`)
+  await tab.goto(url)
+
+  await it('标签文字与声明的类别一致，由实现生成不由作者手写', async () => {
+    const r = await tab.eval(`
+      function lab(id){var e=document.querySelector('#'+id+' .kc-output__label');
+        return {html:e.textContent, css:getComputedStyle(e,'::before').content};}
+      return {m1:lab('kc-output-m1'), m2:lab('kc-output-m2')};`)
+    eq(r.m1.html, '', '标签在 HTML 里应当留空')
+    assert(r.m1.css.indexOf('复述路径') >= 0, 'retell 的标签应是“复述路径”，实际 ' + r.m1.css)
+    assert(r.m2.css.indexOf('给 AI 下指令') >= 0, 'instruct 的标签应是“给 AI 下指令”，实际 ' + r.m2.css)
+  })
+
+  await it('未写够字数时按钮点不动，提示还差多少字', async () => {
+    const r = await tab.eval(`var root=document.getElementById('kc-output-m1');
+      return {disabled:root.querySelector('.kc-output__reveal').disabled,
+              meter:root.querySelector('.kc-output__meter').textContent,
+              listVisible:getComputedStyle(root.querySelector('.kc-output__checklist')).display!=='none'};`)
+    assert(r.disabled, '未写够时按钮必须点不动')
+    eq(r.meter, '还差 80 字', '应提示还差多少字，实际：' + r.meter)
+    assert(!r.listVisible, '清单初始不可见')
+    await tab.focus('#kc-output-m1 .kc-output__input')
+    await tab.typeText('我点了添加以后')
+    const after = await tab.eval(`var root=document.getElementById('kc-output-m1');
+      return {disabled:root.querySelector('.kc-output__reveal').disabled, meter:root.querySelector('.kc-output__meter').textContent};`)
+    assert(after.disabled, '还没写够，按钮仍应点不动')
+    eq(after.meter, '还差 73 字', '字数按去掉首尾空白后的字符数算，一个汉字算一个；实际：' + after.meter)
+    await tab.click('#kc-output-m1 .kc-output__reveal')
+    const clicked = await tab.eval(`return document.querySelector('#kc-output-m1 .kc-output__checklist').classList.contains('kc-is-open');`)
+    assert(!clicked, '点不动的按钮不许把清单打开')
+  })
+
+  await it('写够后按钮可点，提示文字改变', async () => {
+    await tab.focus('#kc-output-m1 .kc-output__input')
+    await tab.typeText('，浏览器里的 app.js 把这句话收起来，走 POST /todos 交给后端。server.js 收下之后转手给 store.js，只有它会往硬盘上写。写完页面又重新问了一遍，才把新的那一条画出来。所以刷新之后它还在。')
+    const r = await tab.eval(`var root=document.getElementById('kc-output-m1');
+      return {disabled:root.querySelector('.kc-output__reveal').disabled,
+              meter:root.querySelector('.kc-output__meter').textContent,
+              listVisible:getComputedStyle(root.querySelector('.kc-output__checklist')).display!=='none'};`)
+    assert(!r.disabled, '写够字数后按钮应可点，当前提示是“' + r.meter + '”')
+    assert(/^写了 \d+ 字，可以看对照清单了$/.test(r.meter), '提示文字应改变，实际：' + r.meter)
+    assert(!r.listVisible, '还没点按钮，清单仍应隐藏')
+  })
+
+  await it('点开清单后再删字，清单不会收回（已揭晓是终态）', async () => {
+    await tab.click('#kc-output-m1 .kc-output__reveal')
+    const opened = await tab.eval(`var root=document.getElementById('kc-output-m1');
+      return {visible:getComputedStyle(root.querySelector('.kc-output__checklist')).display!=='none',
+              disabled:root.querySelector('.kc-output__reveal').disabled};`)
+    assert(opened.visible, '点按钮后清单应出现')
+    assert(opened.disabled, '揭晓后按钮应永久不可点')
+
+    await tab.eval(`var t=document.querySelector('#kc-output-m1 .kc-output__input');
+      t.value='短'; t.dispatchEvent(new Event('input',{bubbles:true})); return true;`)
+    const after = await tab.eval(`var root=document.getElementById('kc-output-m1');
+      return {visible:getComputedStyle(root.querySelector('.kc-output__checklist')).display!=='none',
+              disabled:root.querySelector('.kc-output__reveal').disabled,
+              meter:root.querySelector('.kc-output__meter').textContent};`)
+    assert(after.visible, '删字之后清单不许收回')
+    assert(after.disabled, '揭晓后按钮不许重新变成可点')
+    assert(after.meter.indexOf('还差') === 0, '字数提示可以退回“还差 N 字”，实际：' + after.meter)
+  })
+
+  await it('勾选后出现计数，且不出现任何“对/错”“得分”字样', async () => {
+    const boxes = await tab.eval(`return document.querySelectorAll('#kc-output-m1 .kc-output__tick').length;`)
+    eq(boxes, 3, '每一条清单都应有一个勾选框，由实现创建')
+    await tab.click('#kc-output-m1 .kc-output__tick', 0)
+    await tab.click('#kc-output-m1 .kc-output__tick', 2)
+    const r = await tab.eval(`var root=document.getElementById('kc-output-m1');
+      var t=root.querySelector('.kc-output__tally');
+      var text=root.textContent;
+      var bad=[]; ['答对','答错','正确','错误','得分','分数','score'].forEach(function(w){if(text.indexOf(w)>=0)bad.push(w);});
+      return {tally:t.textContent, visible:getComputedStyle(t).display!=='none', bad:bad};`)
+    eq(r.tally, '你勾了 2 / 3 项', '计数不对，实际：' + r.tally)
+    assert(r.visible, '计数应当可见')
+    eq(r.bad.length, 0, '出现了评判字样：' + JSON.stringify(r.bad))
+  })
+
+  await it('刷新页面，之前写的字还在', async () => {
+    const before = await tab.eval(`return document.querySelector('#kc-output-m1 .kc-output__input').value;`)
+    await tab.eval(`var t=document.querySelector('#kc-output-m1 .kc-output__input');
+      t.value='刷新之后这段字必须还在，这是输出题唯一需要落盘的东西。';
+      t.dispatchEvent(new Event('input',{bubbles:true})); return true;`)
+    await tab.goto(url)
+    const after = await tab.eval(`return {v:document.querySelector('#kc-output-m1 .kc-output__input').value,
+      other:document.querySelector('#kc-output-m2 .kc-output__input').value};`)
+    eq(after.v, '刷新之后这段字必须还在，这是输出题唯一需要落盘的东西。', '草稿没有恢复（之前是“' + before.slice(0, 8) + '…”）')
+    eq(after.other, '', '另一道输出题的草稿不许被串到一起')
+  })
+
+  await it('存储被禁时不报错，功能照常', async () => {
+    const nostore = fixture('output-nostore', `<main class="kc-course"><section class="kc-screen">${OUT('kc-output-p', 'explain', 60)}</section></main>`)
+    await tab.goto('about:blank')
+    // 在脚本跑起来之前把 localStorage 打瘸，模拟隐私模式
+    await tab.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `Object.defineProperty(window,'localStorage',{get:function(){throw new DOMException('denied','SecurityError');}});`
+    }).then((r) => { tab._removeStub = r.identifier })
+    await tab.goto(nostore)
+    const r = await tab.eval(`var root=document.getElementById('kc-output-p');
+      return {live:root.classList.contains('kc-is-live'), broken:root.querySelectorAll('.kc-broken').length,
+              meter:root.querySelector('.kc-output__meter').textContent,
+              ticks:root.querySelectorAll('.kc-output__tick').length};`)
+    eq(tab.errors.length, 0, '存储被禁时不许抛错：' + JSON.stringify(tab.errors))
+    assert(r.live, '其余功能应照常初始化')
+    eq(r.broken, 0, '存储不可用不是数据错误，不该报错')
+    eq(r.meter, '还差 60 字')
+    eq(r.ticks, 3)
+    await tab.focus('#kc-output-p .kc-output__input')
+    await tab.typeText('一'.repeat(60))
+    const ok = await tab.eval(`return document.querySelector('#kc-output-p .kc-output__reveal').disabled;`)
+    assert(!ok, '存储被禁时揭晓流程仍应能走通')
+    await tab.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: tab._removeStub })
+  })
+
+  await it('键盘可以走完全流程', async () => {
+    const kurl = fixture('output-kbd', `<main class="kc-course"><section class="kc-screen">${OUT('kc-output-k', 'explain', 60)}</section></main>`)
+    await tab.goto(kurl)
+    await tab.eval(`try{localStorage.removeItem('kc-output:'+location.pathname+':kc-output-k')}catch(e){}; return true;`)
+    await tab.goto(kurl)
+    await tab.focus('#kc-output-k .kc-output__input')
+    await tab.typeText('服务器（server）就是一台一直开着的电脑，别人问它要东西，它就把东西找出来给别人。你自己的电脑一关就没了，它不关，所以别人随时都能找到它。')
+    await tab.focus('#kc-output-k .kc-output__reveal')
+    await tab.key('Enter')
+    const opened = await tab.eval(`return getComputedStyle(document.querySelector('#kc-output-k .kc-output__checklist')).display!=='none';`)
+    assert(opened, '回车应能揭晓清单')
+    await tab.focus('#kc-output-k .kc-output__tick', 1)
+    await tab.key(' ')
+    const r = await tab.eval(`return {checked:document.querySelectorAll('#kc-output-k .kc-output__tick:checked').length,
+      tally:document.querySelector('#kc-output-k .kc-output__tally').textContent};`)
+    eq(r.checked, 1, '空格应能勾选')
+    eq(r.tally, '你勾了 1 / 3 项')
+  })
+
+  await it('类别不合法、下限小于 60、清单条数不对、没有英文标注，四条各留一条痕迹', async () => {
+    await tab.goto(url)
+    const r = await tab.eval(`var b=document.querySelectorAll('#out-bad .kc-broken');
+      return {n:b.length, texts:[].map.call(b,function(x){return x.textContent;}),
+              ok:document.querySelectorAll('#kc-output-m1 .kc-broken').length};`)
+    eq(r.ok, 0, '合规的输出题不该报错')
+    assert(r.n >= 4, '四处问题各应留一条痕迹，实际 ' + r.n + '：' + JSON.stringify(r.texts))
+    const all = r.texts.join('')
+    assert(all.indexOf('retell') >= 0, '要说清楚类别的合法取值')
+    assert(all.indexOf('60') >= 0, '要说清楚下限不得小于 60')
+    assert(all.indexOf('3–4 条') >= 0, '要说清楚清单条数')
+    assert(all.indexOf('英文标注') >= 0, '要说清楚缺英文标注')
+  })
+
+  await it('脚本未运行时文本框仍可输入，清单直接可见', async () => {
+    const nojs = fixture('output-nojs', `<main class="kc-course"><section class="kc-screen">${OUT('kc-output-n', 'retell', 80)}</section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var root=document.getElementById('kc-output-n');
+      var ta=root.querySelector('.kc-output__input');
+      return {listVisible:getComputedStyle(root.querySelector('.kc-output__checklist')).display!=='none',
+              items:root.querySelectorAll('.kc-output__item').length,
+              disabled:ta.disabled||ta.readOnly,
+              label:getComputedStyle(root.querySelector('.kc-output__label'),'::before').content};`)
+    assert(r.listVisible, '无脚本时清单应当直接可见，而不是永远打不开')
+    eq(r.items, 3)
+    assert(!r.disabled, '文本框仍可输入')
+    assert(r.label.indexOf('复述路径') >= 0, '无脚本时类别标签也应显示')
+  })
+})
+
 /* KC_GROUPS_END */
 
 // ---------------------------------------------------------------- 入口
