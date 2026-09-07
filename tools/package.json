@@ -1,0 +1,7 @@
+{
+  "name": "repo-unbox-tools",
+  "private": true,
+  "type": "module",
+  "description": "Repo maintenance only. Never installed with the skill — scripts/ stays zero-dependency.",
+  "dependencies": { "subset-font": "^2.3.0" }
+}

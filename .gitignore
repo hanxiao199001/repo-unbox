@@ -3,3 +3,4 @@ examples/*/data/
 examples/signal-log/
 node_modules/
 output/*/fonts/
+tools/node_modules/

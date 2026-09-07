@@ -6,6 +6,15 @@
 **启发**（方法论）。**本仓库不包含该项目的任何代码**——页面层已按 [`spec/`](spec/)
 里的黑盒规格从零重写，class、id、data 属性全部重新命名。授权见 [LICENSE](LICENSE)。
 
+## 先看一眼产物
+
+**[在线示例：SIGNAL LOG 是怎么收信号的](https://hanxiao199001.github.io/repo-unbox/)**
+——用这个 skill 从 [`sdg5-hub/Signal_LOG`](https://github.com/sdg5-hub/Signal_LOG)（852 行）
+端到端生成的一门课，5 个模块。
+
+页面 778 KB（传输 594 KB），字体由 `tools/publish-pages.mjs` 子集化到这门课真正用到的
+897 个汉字，渲染与完整字体版逐像素一致。零外部请求。
+
 ## 和原版的区别
 
 | | 原版 | 这个版本 |
