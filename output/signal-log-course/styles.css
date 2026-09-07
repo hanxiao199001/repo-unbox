@@ -1,0 +1,1797 @@
+/* =============================================================================
+   repo-unbox（开箱）— 课程页面全部样式
+   零外部请求：字体来自同目录的 fonts/fonts.css，没有任何在线资源。
+   命名全部遵循 spec/README.md 的 kc- 契约。
+   ============================================================================= */
+
+@layer reset, tokens, typography, shell, elements, states, motion, responsive;
+
+/* ------------------------------------------------------------------ reset */
+@layer reset {
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html { -webkit-text-size-adjust: 100%; }
+
+  body,
+  h1, h2, h3, h4, h5, h6,
+  p, figure, blockquote, dl, dd, ol, ul {
+    margin: 0;
+    padding: 0;
+  }
+
+  ul, ol { list-style: none; }
+
+  button, input, textarea, select {
+    font: inherit;
+    color: inherit;
+    background: none;
+    border: 0;
+    margin: 0;
+  }
+
+  button { cursor: pointer; }
+
+  img, svg { display: block; max-width: 100%; }
+
+  /* 楷体没有真斜体，浏览器只会几何倾斜，中文字形会变形。全站关掉倾斜。 */
+  i, em, cite, dfn, address, var { font-style: normal; }
+}
+
+/* ----------------------------------------------------------------- tokens */
+@layer tokens {
+  :root {
+    /* ---- 字族：只有本地两个族，各两档字重 ---- */
+    --kc-font-zh: 'LXGW WenKai', 'Songti SC', serif;
+    --kc-font-mono: 'JetBrains Mono', ui-monospace, 'SFMono-Regular', Consolas, monospace;
+
+    /* ---- 字号 ---- */
+    --kc-fs-body: 17px;
+    --kc-fs-small: 0.8235em;      /* 14px */
+    --kc-fs-tiny: 0.7059em;       /* 12px */
+    --kc-fs-code: 0.9em;          /* 行内代码：比周围中文小一档（typography-zh 第四条） */
+    --kc-fs-code-block: 15px;
+    --kc-fs-screen-title: 1.4118em;   /* 24px */
+    --kc-fs-module-title: 2.1176em;   /* 36px */
+    --kc-fs-module-sub: 1.0588em;     /* 18px */
+    --kc-fs-module-num: 5.8824em;     /* 100px */
+
+    /* ---- 行高：中文正文 / 标题 / 代码 / 小字各自独立，禁止一个值贯穿全站 ---- */
+    --kc-lh-body: 1.8;
+    --kc-lh-title: 1.3;
+    --kc-lh-code: 1.7;
+    --kc-lh-small: 1.7;
+    --kc-para-gap: 1.8em;         /* 段间距 = 一个行高 */
+
+    /* ---- 版心：正文每行 30–40 个汉字 ---- */
+    --kc-measure: 34em;
+
+    /* ---- 行内代码的垂直修正 ----
+       实测值，不是抄来的：Chrome 131 + 霞鹜文楷 17px 下，
+       中文墨色中心在基线上方 6.069px，JetBrains Mono 0.9em 的 'await' 在 5.207px，
+       差 0.862px = 0.0507em。取 0.05em 上移。测试会重新实测并卡住这个数。 */
+    --kc-code-inline-shift: -0.05em;
+
+    /* ---- 暖纸配色 ---- */
+    --kc-paper-a: #fbf6ec;
+    --kc-paper-b: #f2e9da;
+    --kc-paper-raised: #fffdf8;
+    --kc-ink: #26201a;
+    --kc-ink-soft: #574c40;
+    --kc-ink-faint: #8a7c6c;
+    --kc-ink-ghost: #b9ac9a;
+    --kc-rule: #ddd0bb;
+    --kc-rule-soft: #ebe1d2;
+
+    --kc-code-bg: #2a2521;
+    --kc-code-ink: #ede2cf;
+    --kc-code-faint: #8d8375;
+
+    /* 语法高亮 */
+    --kc-syn-keyword: #d99a6c;
+    --kc-syn-string: #a3c087;
+    --kc-syn-comment: #857a6c;
+    --kc-syn-number: #cf9fc9;
+    --kc-syn-punct: #b0a596;
+
+    /* 五档强调色，data-kc-accent 取 1–5 */
+    --kc-accent-1: #c0504a;
+    --kc-accent-2: #46708c;
+    --kc-accent-3: #67874f;
+    --kc-accent-4: #ac7930;
+    --kc-accent-5: #7b6193;
+
+    --kc-good: #48733f;
+    --kc-good-bg: #eaf0e4;
+    --kc-bad: #b04138;
+    --kc-bad-bg: #f7e8e5;
+    --kc-warn: #a4701f;
+    --kc-warn-bg: #f8efdc;
+    --kc-focus: #2f6f9f;
+
+    /* ---- 间距阶梯 ---- */
+    --kc-s1: 4px;
+    --kc-s2: 8px;
+    --kc-s3: 12px;
+    --kc-s4: 16px;
+    --kc-s5: 24px;
+    --kc-s6: 32px;
+    --kc-s7: 48px;
+    --kc-s8: 72px;
+    --kc-s9: 112px;
+
+    /* ---- 圆角、描边、阴影 ---- */
+    --kc-r1: 3px;
+    --kc-r2: 6px;
+    --kc-r3: 12px;
+    --kc-r-pill: 999px;
+    --kc-shadow-1: 0 1px 2px rgba(60, 45, 25, 0.06);
+    --kc-shadow-2: 0 4px 16px rgba(60, 45, 25, 0.09);
+    --kc-shadow-3: 0 10px 34px rgba(52, 38, 20, 0.16);
+
+    /* ---- 动效 ---- */
+    --kc-t-fast: 0.14s;
+    --kc-t: 0.24s;
+    --kc-t-packet: 0.8s;
+    --kc-ease: cubic-bezier(0.32, 0.72, 0.3, 1);
+
+    /* ---- 层叠顺序 ---- */
+    --kc-z-packet: 40;
+    --kc-z-nav: 100;
+    --kc-z-term: 1000;
+    --kc-z-skip: 1100;
+
+    --kc-nav-h: 56px;
+  }
+
+  /* data-kc-accent 把编号翻成实际颜色，1–5 之外不给值，元素自己报可见错误 */
+  [data-kc-accent="1"] { --kc-accent: var(--kc-accent-1); }
+  [data-kc-accent="2"] { --kc-accent: var(--kc-accent-2); }
+  [data-kc-accent="3"] { --kc-accent: var(--kc-accent-3); }
+  [data-kc-accent="4"] { --kc-accent: var(--kc-accent-4); }
+  [data-kc-accent="5"] { --kc-accent: var(--kc-accent-5); }
+}
+
+/* ------------------------------------------------------------- typography */
+@layer typography {
+  body {
+    font-family: var(--kc-font-zh);
+    font-size: var(--kc-fs-body);
+    line-height: var(--kc-lh-body);
+    font-weight: 400;
+    color: var(--kc-ink);
+    background: var(--kc-paper-a);
+
+    /* 中文正文不加字距 */
+    letter-spacing: 0;
+    /* 只有 400/700 两个真实字面，禁止浏览器伪造字重与斜体 */
+    font-synthesis: none;
+    /* 全角标点不悬挂 */
+    hanging-punctuation: none;
+    /* 行首/行尾禁则：交给浏览器的 CJK 断行规则，strict 收紧到最严 */
+    line-break: strict;
+    word-break: normal;
+    overflow-wrap: break-word;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* 段间距 = 一个行高，不用首行缩进 */
+  p { margin-block-end: var(--kc-para-gap); }
+  p:last-child { margin-block-end: 0; }
+
+  h1, h2, h3, h4, h5, h6,
+  .kc-module__number, .kc-module__title, .kc-screen__title {
+    line-height: var(--kc-lh-title);
+    font-weight: 700;
+    letter-spacing: 0;
+  }
+
+  strong, b { font-weight: 700; }
+
+  /* 英文区：代码、报错、终端输出、单独出现的标识符。
+     中文排版规则一律不作用于这里。 */
+  [data-kc-lang="en"], [lang="en"] {
+    font-family: var(--kc-font-mono);
+    line-height: var(--kc-lh-code);
+    letter-spacing: 0;
+    line-break: auto;
+    word-break: normal;
+    hanging-punctuation: none;
+  }
+
+  /* 行内代码：小一档、视觉居中、不撑行高。
+     padding 与 position:relative 作用在 inline 盒上，都不改变行框高度。 */
+  .kc-code {
+    display: inline;
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-code);
+    font-weight: 400;
+    line-height: inherit;
+    padding: 0.1em 0.3em;
+    border-radius: var(--kc-r1);
+    background: #efe6d6;
+    color: #4a3a26;
+    position: relative;
+    top: var(--kc-code-inline-shift);
+    white-space: pre-wrap;
+  }
+
+  /* 中西文之间的视觉间距。由 main.js 包裹，只加外边距、不插入任何字符，
+     学员复制走的文本与源文完全一致。 */
+  .kc-lat { margin-inline: 0.14em; }
+  .kc-lat--nostart { margin-inline-start: 0; }
+  .kc-lat--noend { margin-inline-end: 0; }
+
+  /* 连续全角标点的压缩量，由 main.js 按前后字符实测判定后挂上。 */
+  .kc-pun--half { margin-inline-start: -0.5em; }
+  .kc-pun--quarter { margin-inline-start: -0.25em; }
+
+  /* 禁则兜底：把不许拆开的两个字符钉在一起。 */
+  .kc-nb { white-space: nowrap; }
+
+  /* 文本必须可选中可复制 —— 学员要去复制文件名、报错、命令 */
+  ::selection { background: #f3dfae; color: var(--kc-ink); }
+}
+
+/* ------------------------------------------------------------------ shell */
+@layer shell {
+  .kc-skip {
+    position: fixed;
+    top: var(--kc-s2);
+    left: var(--kc-s2);
+    z-index: var(--kc-z-skip);
+    padding: var(--kc-s2) var(--kc-s4);
+    background: var(--kc-ink);
+    color: var(--kc-paper-a);
+    border-radius: var(--kc-r2);
+    text-decoration: none;
+    transform: translateY(-200%);
+  }
+  .kc-skip:focus-visible { transform: none; }
+
+  html {
+    /* 弱吸附：proximity 只在已经很接近边界时才帮一把，
+       内容高于视口的模块，学员停得住中间（page-shell 的硬要求）。 */
+    scroll-snap-type: y proximity;
+    scroll-padding-top: var(--kc-nav-h);
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    html { scroll-behavior: smooth; }
+  }
+
+  .kc-course { display: block; }
+
+  .kc-module {
+    scroll-snap-align: start;
+    scroll-snap-stop: normal;
+    min-height: 100vh;
+    padding: var(--kc-s9) var(--kc-s5) var(--kc-s9);
+    background: var(--kc-module-bg, var(--kc-paper-a));
+    border-block-start: 1px solid var(--kc-rule-soft);
+  }
+  .kc-module[data-kc-tone="a"] { --kc-module-bg: var(--kc-paper-a); }
+  .kc-module[data-kc-tone="b"] { --kc-module-bg: var(--kc-paper-b); }
+
+  .kc-module__number {
+    font-size: var(--kc-fs-module-num);
+    color: var(--kc-ink-ghost);
+    opacity: 0.5;
+    line-height: 1;
+    margin-block-end: calc(var(--kc-s3) * -1);
+    user-select: none;
+  }
+  .kc-module__title {
+    font-size: var(--kc-fs-module-title);
+    margin-block-end: var(--kc-s3);
+  }
+  .kc-module__subtitle {
+    font-size: var(--kc-fs-module-sub);
+    color: var(--kc-ink-soft);
+    max-width: var(--kc-measure);
+    margin-block-end: var(--kc-s8);
+  }
+  .kc-module__number, .kc-module__title, .kc-module__subtitle {
+    max-width: calc(var(--kc-measure) + 12em);
+    margin-inline: auto;
+  }
+
+  .kc-screen {
+    max-width: calc(var(--kc-measure) + 12em);
+    margin-inline: auto;
+    margin-block-end: var(--kc-s8);
+  }
+  .kc-screen:last-child { margin-block-end: 0; }
+  .kc-screen__title {
+    font-size: var(--kc-fs-screen-title);
+    margin-block-end: var(--kc-s4);
+  }
+  /* 正文段落收到中文可读宽度；视觉元素可以铺满整屏 */
+  .kc-screen > p { max-width: var(--kc-measure); }
+}
+
+/* ------------------------------------------------------------------- nav */
+@layer shell {
+  .kc-nav {
+    position: fixed;
+    inset-block-start: 0;
+    inset-inline: 0;
+    z-index: var(--kc-z-nav);
+    background: color-mix(in srgb, var(--kc-paper-a) 88%, transparent);
+    backdrop-filter: blur(8px);
+    border-block-end: 1px solid var(--kc-rule-soft);
+  }
+
+  .kc-nav__progress {
+    height: 3px;
+    background: var(--kc-rule-soft);
+  }
+  .kc-nav__progress-fill {
+    display: block;
+    height: 100%;
+    width: 0%;
+    background: var(--kc-accent-1);
+    transition: width 0.1s linear;
+  }
+
+  .kc-nav__row {
+    height: calc(var(--kc-nav-h) - 3px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--kc-s4);
+    padding-inline: var(--kc-s5);
+  }
+
+  .kc-nav__title {
+    font-weight: 700;
+    font-size: var(--kc-fs-small);
+    color: var(--kc-ink-soft);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .kc-nav__dots {
+    display: flex;
+    align-items: center;
+    gap: var(--kc-s3);
+  }
+
+  /* 三种状态靠形状与明暗区分，不靠颜色：
+     未到达 = 空心细环；已读过 = 实心中灰；当前 = 实心深色 + 外扩光晕 + 变大。
+     灰度截图里三者依然可分。 */
+  .kc-nav__dot {
+    position: relative;
+    width: 22px;
+    height: 22px;
+    display: grid;
+    place-items: center;
+    border-radius: var(--kc-r-pill);
+  }
+  .kc-nav__dot::before {
+    content: '';
+    width: 9px;
+    height: 9px;
+    border-radius: var(--kc-r-pill);
+    background: transparent;
+    border: 1.5px solid var(--kc-ink-ghost);
+    box-shadow: none;
+    transition: all var(--kc-t) var(--kc-ease);
+  }
+  .kc-nav__dot::after {
+    content: attr(data-kc-label);
+    position: absolute;
+    inset-block-start: calc(100% + 6px);
+    inset-inline-end: 0;
+    white-space: nowrap;
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-small);
+    padding: 4px 8px;
+    border-radius: var(--kc-r2);
+    background: var(--kc-ink);
+    color: var(--kc-paper-a);
+    box-shadow: var(--kc-shadow-2);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--kc-t-fast);
+  }
+  .kc-nav__dot:hover::after,
+  .kc-nav__dot:focus-visible::after { opacity: 1; visibility: visible; }
+}
+
+@layer states {
+  .kc-nav__dot.kc-is-visited::before {
+    background: var(--kc-ink-faint);
+    border-color: var(--kc-ink-faint);
+    width: 9px;
+    height: 9px;
+  }
+  .kc-nav__dot.kc-is-current::before {
+    background: var(--kc-ink);
+    border-color: var(--kc-ink);
+    width: 12px;
+    height: 12px;
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--kc-ink) 22%, transparent);
+  }
+}
+
+/* ----------------------------------------------------------------- motion */
+@layer motion {
+  /* 入场动画。kc-reveal 只由 main.js 在确认 IntersectionObserver 可用后才挂上，
+     所以脚本没跑 / 挂了 / 被禁用时，内容一律照常可见。 */
+  .kc-reveal {
+    opacity: 0;
+    transform: translateY(14px);
+  }
+  .kc-reveal.kc-is-in {
+    opacity: 1;
+    transform: none;
+    transition: opacity 0.5s var(--kc-ease), transform 0.5s var(--kc-ease);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--kc-focus);
+    outline-offset: 2px;
+    border-radius: var(--kc-r1);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .kc-reveal, .kc-reveal.kc-is-in { opacity: 1; transform: none; transition: none; }
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+}
+
+/* ------------------------------------------------------- 可见的失败痕迹 */
+@layer elements {
+  /* 无声失败是最严重的缺陷：数据缺失时必须在页面上留下看得见的痕迹。 */
+  .kc-broken {
+    display: block;
+    margin-block: var(--kc-s2);
+    padding: var(--kc-s3) var(--kc-s4);
+    border: 1px dashed var(--kc-bad);
+    border-radius: var(--kc-r2);
+    background: var(--kc-bad-bg);
+    color: var(--kc-bad);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+  }
+}
+
+/* --------------------------------------------------------------- 页脚署名 */
+@layer shell {
+  .kc-colophon {
+    padding: var(--kc-s7) var(--kc-s5);
+    border-block-start: 1px solid var(--kc-rule-soft);
+    background: var(--kc-paper-a);
+    color: var(--kc-ink-faint);
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-small);
+    text-align: center;
+  }
+}
+
+/* ------------------------------------------------------------- responsive */
+@layer responsive {
+  @media (max-width: 720px) {
+    :root {
+      --kc-fs-body: 16px;
+      --kc-fs-module-num: 4.5em;
+      --kc-fs-module-title: 1.75em;
+      --kc-nav-h: 50px;
+    }
+    .kc-module { padding: var(--kc-s8) var(--kc-s4); }
+    .kc-nav__row { padding-inline: var(--kc-s4); }
+    .kc-nav__title { max-width: 40%; }
+  }
+}
+
+/* =============================================================================
+   静态元素
+   ============================================================================= */
+
+/* -------------------------------------------------- 提示框 kc-note (12) */
+@layer elements {
+  .kc-note {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--kc-s3) var(--kc-s4);
+    align-items: start;
+    margin-block: var(--kc-s6);
+    padding: var(--kc-s4) var(--kc-s5);
+    border-inline-start: 4px solid var(--kc-note-color, var(--kc-ink-faint));
+    border-radius: 0 var(--kc-r2) var(--kc-r2) 0;
+    background: var(--kc-note-bg, var(--kc-paper-raised));
+    box-shadow: var(--kc-shadow-1);
+  }
+  .kc-note[data-kc-tone="insight"] { --kc-note-color: var(--kc-accent-5); --kc-note-bg: #f4f0f7; }
+  .kc-note[data-kc-tone="info"]    { --kc-note-color: var(--kc-accent-2); --kc-note-bg: #eef3f7; }
+  .kc-note[data-kc-tone="warning"] { --kc-note-color: var(--kc-warn);     --kc-note-bg: var(--kc-warn-bg); }
+
+  .kc-note__icon {
+    grid-row: 1 / span 2;
+    font-size: 1.2em;
+    line-height: var(--kc-lh-title);
+    color: var(--kc-note-color, var(--kc-ink-faint));
+  }
+  .kc-note__title {
+    font-weight: 700;
+    line-height: var(--kc-lh-title);
+    color: var(--kc-note-color, var(--kc-ink));
+  }
+  .kc-note__body {
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+    max-width: var(--kc-measure);
+  }
+}
+
+/* -------------------------------------------- 概念卡片 kc-cards (13) */
+@layer elements {
+  .kc-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: var(--kc-s4);
+    margin-block: var(--kc-s6);
+    align-items: stretch;
+  }
+  .kc-cards__item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kc-s2);
+    padding: var(--kc-s5) var(--kc-s4) var(--kc-s4);
+    border: 1px solid var(--kc-rule-soft);
+    border-block-start: 3px solid var(--kc-accent, var(--kc-ink-faint));
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-raised);
+    box-shadow: var(--kc-shadow-1);
+    transition: transform var(--kc-t) var(--kc-ease), box-shadow var(--kc-t) var(--kc-ease);
+  }
+  .kc-cards__item:hover {
+    transform: translateY(-3px);
+    box-shadow: var(--kc-shadow-2);
+  }
+  .kc-cards__icon { font-size: 1.4em; line-height: 1.2; color: var(--kc-accent, var(--kc-ink-faint)); }
+  .kc-cards__title { font-weight: 700; line-height: var(--kc-lh-title); }
+  .kc-cards__body {
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+    margin-block-start: auto;
+  }
+}
+
+/* ---------------------------------------- 编号步骤卡 kc-steps (14) */
+@layer elements {
+  .kc-steps {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kc-s3);
+    margin-block: var(--kc-s6);
+    padding-inline-start: var(--kc-s4);
+    border-inline-start: 2px solid var(--kc-rule);
+  }
+  .kc-steps__item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--kc-s2) var(--kc-s4);
+    align-items: start;
+    padding: var(--kc-s3) var(--kc-s4);
+    border: 1px solid var(--kc-rule-soft);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-raised);
+  }
+  .kc-steps__num {
+    grid-row: 1 / span 2;
+    width: 2em;
+    height: 2em;
+    display: grid;
+    place-items: center;
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-ink);
+    color: var(--kc-paper-a);
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-small);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .kc-steps__title { font-weight: 700; line-height: var(--kc-lh-title); }
+  .kc-steps__body {
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+    max-width: var(--kc-measure);
+  }
+}
+
+/* ---------------------------------------- 箭头流程 kc-chain (15) */
+@layer elements {
+  .kc-chain {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: var(--kc-s3);
+    margin-block: var(--kc-s6);
+  }
+  .kc-chain__step {
+    flex: 1 1 0;
+    min-width: 0;
+    display: flex;
+    align-items: center;
+    gap: var(--kc-s2);
+    padding: var(--kc-s3);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-raised);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+  }
+  .kc-chain__num {
+    flex: none;
+    width: 1.7em;
+    height: 1.7em;
+    display: grid;
+    place-items: center;
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-accent-2);
+    color: #fff;
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-tiny);
+    font-weight: 700;
+  }
+  .kc-chain__arrow {
+    flex: none;
+    align-self: center;
+    color: var(--kc-ink-ghost);
+    font-size: 1.1em;
+    line-height: 1;
+    user-select: none;
+    transition: transform var(--kc-t);
+  }
+}
+
+/* ---------------------------------------- 代号表 kc-deflist (16) */
+@layer elements {
+  .kc-deflist {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kc-s2);
+    margin-block: var(--kc-s6);
+  }
+  .kc-deflist__row {
+    display: grid;
+    grid-template-columns: minmax(0, auto) 1fr;
+    gap: var(--kc-s2) var(--kc-s4);
+    align-items: baseline;
+    padding: var(--kc-s3) var(--kc-s4);
+    border: 1px solid var(--kc-rule-soft);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-raised);
+    transition: border-color var(--kc-t);
+  }
+  .kc-deflist__row:hover { border-color: var(--kc-accent-2); }
+  .kc-deflist__key {
+    display: inline-block;
+    max-width: 100%;
+    padding: 0.15em 0.5em;
+    border-radius: var(--kc-r1);
+    background: var(--kc-code-bg);
+    color: var(--kc-code-ink);
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-code);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    user-select: text;
+  }
+  .kc-deflist__value {
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+  }
+}
+
+/* ---------------------------------------- 文件树 kc-tree (17) */
+@layer elements {
+  .kc-tree {
+    margin-block: var(--kc-s6);
+    padding: var(--kc-s4) var(--kc-s5);
+    border: 1px solid var(--kc-rule-soft);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-raised);
+  }
+  .kc-tree__children {
+    margin-inline-start: 0.6em;
+    padding-inline-start: var(--kc-s4);
+    border-inline-start: 1px dashed var(--kc-rule);
+  }
+  .kc-tree__dir, .kc-tree__file {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0 var(--kc-s3);
+    padding-block: var(--kc-s1);
+  }
+  .kc-tree__dir::before, .kc-tree__file::before {
+    flex: none;
+    width: 1.3em;
+    color: var(--kc-ink-ghost);
+  }
+  .kc-tree__dir::before { content: '▸'; color: var(--kc-accent-4); }
+  .kc-tree__file::before { content: '·'; }
+  .kc-tree__name {
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-code);
+    color: var(--kc-ink);
+    user-select: text;
+  }
+  .kc-tree__dir > .kc-tree__name { font-weight: 700; }
+  .kc-tree__note {
+    flex: 1 1 16em;
+    min-width: 0;
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+  }
+}
+
+/* ---------------------------------------- 角色行 kc-rolelist (18) */
+@layer elements {
+  .kc-rolelist {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kc-s2);
+    margin-block: var(--kc-s6);
+  }
+  .kc-rolelist__row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: var(--kc-s1) var(--kc-s4);
+    align-items: center;
+    padding: var(--kc-s3) var(--kc-s4);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-raised);
+    border: 1px solid var(--kc-rule-soft);
+  }
+  .kc-rolelist__icon {
+    grid-row: 1 / span 2;
+    width: 2.2em;
+    height: 2.2em;
+    display: grid;
+    place-items: center;
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-accent, var(--kc-ink-faint));
+    color: #fff;
+    font-size: 1em;
+    line-height: 1;
+  }
+  .kc-rolelist__name {
+    font-weight: 700;
+    line-height: var(--kc-lh-title);
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-small);
+  }
+  .kc-rolelist__note {
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+  }
+}
+
+/* ---------------------------------------- 代码对照 kc-code-pair (01) */
+@layer elements {
+  .kc-code-pair {
+    display: grid;
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+    gap: 1px;
+    margin-block: var(--kc-s6);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r3);
+    background: var(--kc-rule);
+    overflow: hidden;
+  }
+
+  .kc-code-pair__code {
+    min-width: 0;
+    padding: var(--kc-s4) var(--kc-s5) var(--kc-s5);
+    background: var(--kc-code-bg);
+  }
+  .kc-code-pair__source {
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-code);
+    color: var(--kc-code-faint);
+    margin-block-end: var(--kc-s3);
+    padding-block-end: var(--kc-s2);
+    border-block-end: 1px solid rgba(255, 255, 255, 0.08);
+    user-select: text;
+    overflow-wrap: anywhere;
+  }
+  .kc-code-pair__code pre {
+    margin: 0;
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-code-block);
+    line-height: var(--kc-lh-code);
+    color: var(--kc-code-ink);
+    /* 给非技术人员看的课，永远不出现横向滚动条 */
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    overflow-x: hidden;
+    tab-size: 2;
+    user-select: text;
+  }
+
+  .kc-syn--keyword { color: var(--kc-syn-keyword); }
+  .kc-syn--string  { color: var(--kc-syn-string); }
+  .kc-syn--comment { color: var(--kc-syn-comment); }
+  .kc-syn--number  { color: var(--kc-syn-number); }
+  .kc-syn--punct   { color: var(--kc-syn-punct); }
+
+  .kc-code-pair__lines {
+    min-width: 0;
+    padding: var(--kc-s4) var(--kc-s5) var(--kc-s5);
+    background: var(--kc-paper-raised);
+  }
+  .kc-code-pair__lines::before {
+    content: '中文逐行';
+    display: block;
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-faint);
+    margin-block-end: var(--kc-s3);
+    padding-block-end: var(--kc-s2);
+    border-block-end: 1px solid var(--kc-rule-soft);
+  }
+  .kc-code-pair__line {
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+    padding-block: var(--kc-s2);
+    border-block-end: 1px dashed var(--kc-rule-soft);
+  }
+  .kc-code-pair__line:last-child { border-block-end: 0; padding-block-end: 0; }
+}
+
+/* ---------------------------------------------------- 静态元素的窄屏行为 */
+@layer responsive {
+  @media (max-width: 720px) {
+    /* 代码对照：改为上下排布，中文在代码下方 */
+    .kc-code-pair { grid-template-columns: minmax(0, 1fr); }
+
+    /* 卡片：单列 */
+    .kc-cards { grid-template-columns: minmax(0, 1fr); }
+
+    /* 箭头流程：纵向排列，箭头方向跟着转成向下 */
+    .kc-chain { flex-direction: column; align-items: stretch; }
+    .kc-chain__arrow { align-self: center; transform: rotate(90deg); }
+
+    /* 文件树：说明换行到名字下方 */
+    .kc-tree__note { flex-basis: 100%; padding-inline-start: 1.3em; }
+
+    /* 代号表、角色行：代号与说明上下排 */
+    .kc-deflist__row { grid-template-columns: minmax(0, 1fr); }
+  }
+}
+
+/* ---------------------------------------- 术语气泡 kc-term (06) */
+@layer elements {
+  .kc-term {
+    /* 虚线下划线用 border 而不是 text-decoration：border 作用在行内盒上，不撑行高。
+       颜色跟着 currentColor 走，所以在深色代码块里也看得见。 */
+    border-block-end: 1px dashed color-mix(in srgb, currentColor 55%, transparent);
+    /* 手型，不是问号型：问号显得冷冰冰，手型让人想点 */
+    cursor: pointer;
+    transition: color var(--kc-t-fast);
+  }
+  .kc-term:hover,
+  .kc-term:focus-visible,
+  .kc-term.kc-is-open {
+    color: var(--kc-accent-2);
+    border-block-end-color: var(--kc-accent-2);
+  }
+
+  /* 数据不对时的可见痕迹。术语是行内的，不能塞进块级的 .kc-broken，
+     所以在原地标红并挂一个警示号。 */
+  .kc-term.kc-is-broken {
+    color: var(--kc-bad);
+    border-block-end: 1px dashed var(--kc-bad);
+    background: var(--kc-bad-bg);
+    cursor: not-allowed;
+  }
+  .kc-term.kc-is-broken::after { content: '⚠'; font-size: 0.8em; }
+
+  /* 气泡挂在 <body> 末尾并用 fixed 定位：彻底脱离代码对照块这类
+     内部裁剪容器的裁剪范围。规格点名的原版缺陷就在这里。 */
+  .kc-term__bubble {
+    position: fixed;
+    z-index: var(--kc-z-term);
+    inset-block-start: 0;
+    inset-inline-start: 0;
+    max-width: 22em;
+    padding: var(--kc-s3) var(--kc-s4);
+    border-radius: var(--kc-r2);
+    background: var(--kc-code-bg);
+    color: var(--kc-code-ink);
+    font-family: var(--kc-font-zh);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    font-weight: 400;
+    box-shadow: var(--kc-shadow-3);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity var(--kc-t-fast);
+  }
+  .kc-term__bubble.kc-is-open { opacity: 1; visibility: visible; }
+
+  /* 小三角。横向被视口挤回来之后，三角靠 --kc-term-arrow-x 单独对准那个词。 */
+  .kc-term__bubble::after {
+    content: '';
+    position: absolute;
+    inset-block-start: 100%;
+    inset-inline-start: var(--kc-term-arrow-x, 50%);
+    margin-inline-start: -6px;
+    border: 6px solid transparent;
+    border-block-start-color: var(--kc-code-bg);
+  }
+  .kc-term__bubble.kc-is-below::after {
+    inset-block-start: auto;
+    inset-block-end: 100%;
+    border-block-start-color: transparent;
+    border-block-end-color: var(--kc-code-bg);
+  }
+}
+
+/* =============================================================================
+   交互元素
+   ============================================================================= */
+
+/* ------------------------------------------------------------ 共用按钮外观 */
+/* 不新造一个 .kc-btn 契约：直接把规格里已有的按钮名字列出来共用一套外观。 */
+@layer elements {
+  .kc-quiz__check, .kc-quiz__reset,
+  .kc-output__reveal,
+  .kc-chat__next, .kc-chat__all, .kc-chat__replay,
+  .kc-flow__next, .kc-flow__reset,
+  .kc-match__check, .kc-match__reset {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--kc-s2);
+    padding: var(--kc-s2) var(--kc-s5);
+    border: 1px solid var(--kc-ink);
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-ink);
+    color: var(--kc-paper-a);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    font-weight: 700;
+    transition: background var(--kc-t-fast), color var(--kc-t-fast), opacity var(--kc-t-fast);
+  }
+  .kc-quiz__reset, .kc-chat__replay, .kc-flow__reset, .kc-match__reset, .kc-chat__all {
+    background: transparent;
+    color: var(--kc-ink);
+    border-color: var(--kc-rule);
+  }
+  .kc-quiz__check:hover, .kc-output__reveal:hover, .kc-chat__next:hover,
+  .kc-flow__next:hover, .kc-match__check:hover { background: var(--kc-accent-2); border-color: var(--kc-accent-2); }
+  .kc-quiz__reset:hover, .kc-chat__replay:hover, .kc-chat__all:hover,
+  .kc-flow__reset:hover, .kc-match__reset:hover { border-color: var(--kc-ink); }
+
+  .kc-quiz__check[disabled], .kc-output__reveal[disabled],
+  .kc-chat__next[disabled], .kc-chat__all[disabled],
+  .kc-flow__next[disabled], .kc-match__check[disabled] {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+
+  /* 元素通用的外框 */
+  .kc-quiz, .kc-output, .kc-chat, .kc-flow, .kc-bughunt, .kc-match, .kc-map, .kc-layers {
+    margin-block: var(--kc-s6);
+    padding: var(--kc-s5);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r3);
+    background: var(--kc-paper-raised);
+  }
+  .kc-quiz__actions, .kc-chat__actions, .kc-flow__actions, .kc-match__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--kc-s3);
+    margin-block-start: var(--kc-s4);
+  }
+}
+
+/* ---------------------------------------- 选择题 kc-quiz (03) */
+@layer elements {
+  .kc-quiz__question {
+    padding-block-end: var(--kc-s5);
+    margin-block-end: var(--kc-s5);
+    border-block-end: 1px dashed var(--kc-rule-soft);
+  }
+  .kc-quiz__question:last-of-type { border-block-end: 0; margin-block-end: 0; }
+
+  .kc-quiz__prompt {
+    font-weight: 700;
+    line-height: var(--kc-lh-title);
+    margin-block-end: var(--kc-s3);
+    max-width: var(--kc-measure);
+  }
+
+  .kc-quiz__option {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--kc-s3);
+    width: 100%;
+    text-align: start;
+    padding: var(--kc-s3) var(--kc-s4);
+    margin-block-end: var(--kc-s2);
+    border: 1px solid var(--kc-rule-soft);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    transition: border-color var(--kc-t-fast), background var(--kc-t-fast);
+  }
+  .kc-quiz__option:hover:not([disabled]) { border-color: var(--kc-ink-faint); }
+  .kc-quiz__option[disabled] { cursor: default; }
+
+  /* 圆点靠形状与符号区分对错，不只靠颜色 */
+  .kc-quiz__marker {
+    flex: none;
+    width: 1.15em;
+    height: 1.15em;
+    margin-block-start: 0.28em;
+    display: grid;
+    place-items: center;
+    border: 1.5px solid var(--kc-ink-ghost);
+    border-radius: var(--kc-r-pill);
+    font-size: 0.8em;
+    line-height: 1;
+    color: transparent;
+  }
+
+  .kc-quiz__feedback {
+    margin-block-start: var(--kc-s3);
+    padding: var(--kc-s3) var(--kc-s4);
+    border-inline-start: 3px solid var(--kc-ink-ghost);
+    border-radius: 0 var(--kc-r2) var(--kc-r2) 0;
+    background: var(--kc-paper-a);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+    max-width: var(--kc-measure);
+  }
+
+  /* 脚本没跑时，把两段解释直接摊在页面上：宁可剧透，也不要变成死页面。 */
+  .kc-quiz__question::after {
+    content: '答对时：' attr(data-kc-right) '　｜　答错时：' attr(data-kc-wrong);
+    display: block;
+    margin-block-start: var(--kc-s3);
+    padding: var(--kc-s3) var(--kc-s4);
+    border-inline-start: 3px solid var(--kc-ink-ghost);
+    background: var(--kc-paper-a);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+  }
+  .kc-quiz.kc-is-live .kc-quiz__question::after { content: none; display: none; }
+  .kc-quiz.kc-is-live .kc-quiz__feedback { display: none; }
+  .kc-quiz.kc-is-live .kc-quiz__feedback.kc-is-open { display: block; }
+}
+
+@layer states {
+  .kc-quiz__option.kc-is-selected {
+    border-color: var(--kc-accent-2);
+    background: color-mix(in srgb, var(--kc-accent-2) 8%, var(--kc-paper-a));
+  }
+  .kc-quiz__option.kc-is-selected .kc-quiz__marker {
+    border-color: var(--kc-accent-2);
+    background: var(--kc-accent-2);
+  }
+  .kc-quiz__option.kc-is-right {
+    border-color: var(--kc-good);
+    background: var(--kc-good-bg);
+  }
+  .kc-quiz__option.kc-is-right .kc-quiz__marker {
+    border-color: var(--kc-good);
+    background: var(--kc-good);
+    color: #fff;
+  }
+  .kc-quiz__option.kc-is-right .kc-quiz__marker::before { content: '✓'; }
+  .kc-quiz__option.kc-is-wrong {
+    border-color: var(--kc-bad);
+    background: var(--kc-bad-bg);
+  }
+  .kc-quiz__option.kc-is-wrong .kc-quiz__marker {
+    border-color: var(--kc-bad);
+    background: var(--kc-bad);
+    color: #fff;
+  }
+  .kc-quiz__option.kc-is-wrong .kc-quiz__marker::before { content: '✕'; }
+  .kc-quiz__feedback.kc-is-right { border-inline-start-color: var(--kc-good); }
+  .kc-quiz__feedback.kc-is-wrong { border-inline-start-color: var(--kc-bad); }
+}
+
+/* ---------------------------------------- 场景题 kc-scenario (07) */
+@layer elements {
+  .kc-scenario {
+    margin-block: var(--kc-s6);
+    padding: var(--kc-s5);
+    border-inline-start: 4px solid var(--kc-accent-4);
+    border-radius: 0 var(--kc-r3) var(--kc-r3) 0;
+    background: color-mix(in srgb, var(--kc-accent-4) 6%, var(--kc-paper-raised));
+  }
+  .kc-scenario__label {
+    display: inline-block;
+    padding: 0.1em 0.7em;
+    margin-block-end: var(--kc-s3);
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-accent-4);
+    color: #fff;
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-small);
+    font-weight: 700;
+  }
+  .kc-scenario__body { max-width: var(--kc-measure); }
+  .kc-scenario .kc-quiz {
+    margin-block-end: 0;
+    border: 0;
+    padding: var(--kc-s4) 0 0;
+    background: none;
+  }
+}
+
+/* ---------------------------------------- 找 bug kc-bughunt (08) */
+@layer elements {
+  .kc-bughunt__lead { margin-block-end: var(--kc-s4); max-width: var(--kc-measure); }
+
+  .kc-bughunt__code {
+    border-radius: var(--kc-r2);
+    background: var(--kc-code-bg);
+    padding: var(--kc-s3) 0;
+    overflow: hidden;
+  }
+  .kc-bughunt__line {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--kc-s4);
+    width: 100%;
+    text-align: start;
+    padding: 0.1em var(--kc-s5);
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-code-block);
+    line-height: var(--kc-lh-code);
+    color: var(--kc-code-ink);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    transition: background var(--kc-t-fast);
+  }
+  .kc-bughunt__line:hover:not([disabled]) { background: rgba(255, 255, 255, 0.06); }
+  .kc-bughunt__line[disabled] { cursor: default; }
+  .kc-bughunt__lineno {
+    flex: none;
+    width: 2ch;
+    text-align: end;
+    color: var(--kc-code-faint);
+    user-select: none;
+  }
+
+  .kc-bughunt__feedback {
+    margin-block-start: var(--kc-s4);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+    max-width: var(--kc-measure);
+  }
+  .kc-bughunt.kc-is-live .kc-bughunt__feedback:empty { display: none; }
+  .kc-bughunt.kc-is-live .kc-bughunt__feedback {
+    padding: var(--kc-s3) var(--kc-s4);
+    border-inline-start: 3px solid var(--kc-ink-ghost);
+    background: var(--kc-paper-a);
+  }
+  .kc-bughunt.kc-is-live .kc-bughunt__feedback.kc-is-right { border-inline-start-color: var(--kc-good); }
+  .kc-bughunt.kc-is-live .kc-bughunt__feedback.kc-is-wrong { border-inline-start-color: var(--kc-bad); }
+
+  /* 脚本没跑时把答案直接摊出来，页面不许变成死的 */
+  .kc-bughunt__line[data-kc-bug]::after {
+    content: '　← 就是这一行。' attr(data-kc-explain);
+    color: var(--kc-syn-keyword);
+    font-family: var(--kc-font-zh);
+    white-space: normal;
+  }
+  .kc-bughunt.kc-is-live .kc-bughunt__line[data-kc-bug]::after { content: none; }
+}
+
+@layer states {
+  .kc-bughunt__line.kc-is-found {
+    background: color-mix(in srgb, var(--kc-good) 30%, transparent);
+    outline: 1px solid var(--kc-good);
+  }
+  .kc-bughunt__line.kc-is-found .kc-bughunt__lineno::before { content: '✓'; margin-inline-end: 0.3em; color: var(--kc-good); }
+  .kc-bughunt__line.kc-is-wrong {
+    background: color-mix(in srgb, var(--kc-bad) 34%, transparent);
+    outline: 1px solid var(--kc-bad);
+  }
+}
+
+/* ---------------------------------------- 输出题 kc-output (02) */
+@layer elements {
+  .kc-output { border-color: var(--kc-accent-5); }
+
+  /* 类别标签由实现按 data-kc-kind 生成，不由写内容的人手打 ——
+     手写就会出现类别和文字对不上。用 CSS 生成的好处是脚本没跑也照样有。 */
+  .kc-output__label {
+    display: inline-block;
+    padding: 0.1em 0.7em;
+    margin-block-end: var(--kc-s3);
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-accent-5);
+    color: #fff;
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-small);
+    font-weight: 700;
+  }
+  .kc-output[data-kc-kind="retell"]  .kc-output__label::before { content: '复述路径'; }
+  .kc-output[data-kc-kind="instruct"] .kc-output__label::before { content: '给 AI 下指令'; }
+  .kc-output[data-kc-kind="explain"]  .kc-output__label::before { content: '解释给朋友听'; }
+
+  .kc-output__prompt {
+    font-weight: 700;
+    line-height: var(--kc-lh-title);
+    margin-block-end: var(--kc-s4);
+    max-width: var(--kc-measure);
+  }
+
+  .kc-output__input {
+    display: block;
+    width: 100%;
+    min-height: 8.5em;
+    padding: var(--kc-s3) var(--kc-s4);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+    font-family: var(--kc-font-zh);
+    font-size: var(--kc-fs-body);
+    line-height: var(--kc-lh-body);
+    resize: vertical;
+  }
+  .kc-output__input:focus-visible { border-color: var(--kc-accent-5); }
+
+  .kc-output__meter {
+    margin-block: var(--kc-s2) var(--kc-s4);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-faint);
+  }
+
+  .kc-output__checklist {
+    margin-block-start: var(--kc-s5);
+    padding: var(--kc-s4);
+    border: 1px dashed var(--kc-rule);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+  }
+  .kc-output__item {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--kc-s3);
+    padding-block: var(--kc-s2);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+  }
+  .kc-output__tick {
+    flex: none;
+    width: 1.05em;
+    height: 1.05em;
+    margin-block-start: 0.3em;
+    accent-color: var(--kc-accent-5);
+  }
+  .kc-output__tally {
+    margin-block-start: var(--kc-s3);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-faint);
+  }
+
+  /* 脚本没跑时清单直接可见，而不是永远打不开 */
+  .kc-output.kc-is-live .kc-output__checklist { display: none; }
+  .kc-output.kc-is-live .kc-output__checklist.kc-is-open { display: block; }
+  .kc-output.kc-is-live .kc-output__tally { display: none; }
+  .kc-output.kc-is-live .kc-output__tally.kc-is-open { display: block; }
+}
+
+/* ---------------------------------------- 组件群聊 kc-chat (04) */
+@layer elements {
+  .kc-chat__stream {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kc-s4);
+    min-height: 6em;
+    padding: var(--kc-s4);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+  }
+  .kc-chat__message {
+    display: flex;
+    align-items: flex-start;
+    gap: var(--kc-s3);
+  }
+  .kc-chat__avatar {
+    flex: none;
+    width: 2.2em;
+    height: 2.2em;
+    display: grid;
+    place-items: center;
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-accent, var(--kc-ink-faint));
+    color: #fff;
+    font-size: var(--kc-fs-small);
+    font-weight: 700;
+    line-height: 1;
+  }
+  .kc-chat__bubble {
+    max-width: 30em;
+    padding: var(--kc-s3) var(--kc-s4);
+    border-radius: var(--kc-r3);
+    border-start-start-radius: var(--kc-r1);
+    background: var(--kc-paper-raised);
+    border: 1px solid var(--kc-rule-soft);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+  }
+  .kc-chat__speaker {
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-tiny);
+    font-weight: 700;
+    line-height: var(--kc-lh-code);
+    color: var(--kc-accent, var(--kc-ink-faint));
+    margin-block-end: var(--kc-s1);
+  }
+
+  /* 打字指示。头像是"即将发言那个角色"的，不是通用问号 —— 这是让"谁在说话"被看见的关键。 */
+  .kc-chat__typing {
+    display: flex;
+    align-items: center;
+    gap: var(--kc-s3);
+    margin-block-start: var(--kc-s4);
+    min-height: 2.2em;
+  }
+  .kc-chat__typing-dots {
+    display: inline-flex;
+    gap: 4px;
+    padding: var(--kc-s3) var(--kc-s4);
+    border-radius: var(--kc-r3);
+    background: var(--kc-paper-raised);
+    border: 1px solid var(--kc-rule-soft);
+  }
+  .kc-chat__typing-dots span {
+    width: 6px;
+    height: 6px;
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-ink-ghost);
+    animation: kc-typing 1.1s infinite ease-in-out;
+  }
+  .kc-chat__typing-dots span:nth-child(2) { animation-delay: 0.16s; }
+  .kc-chat__typing-dots span:nth-child(3) { animation-delay: 0.32s; }
+  @keyframes kc-typing {
+    0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+    30% { opacity: 1; transform: translateY(-3px); }
+  }
+
+  .kc-chat__progress, .kc-flow__progress {
+    margin-block-start: var(--kc-s3);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-faint);
+  }
+
+  /* 脚本没跑时所有消息直接全部可见，按钮无效但不消失 */
+  .kc-chat.kc-is-live .kc-chat__message { display: none; }
+  .kc-chat.kc-is-live .kc-chat__message.kc-is-shown {
+    display: flex;
+    animation: kc-rise 0.35s var(--kc-ease) both;
+  }
+  .kc-chat.kc-is-live .kc-chat__typing { display: none; }
+  .kc-chat.kc-is-live .kc-chat__typing.kc-is-shown { display: flex; }
+  @keyframes kc-rise {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: none; }
+  }
+}
+
+/* ---------------------------------------- 数据流演示 kc-flow (05) */
+@layer elements {
+  .kc-flow { position: relative; }
+
+  .kc-flow__actors {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    align-items: stretch;
+    gap: var(--kc-s4);
+    margin-block-end: var(--kc-s5);
+  }
+  .kc-flow__actor {
+    flex: 0 1 8.5em;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--kc-s2);
+    padding: var(--kc-s3);
+    border: 1px solid var(--kc-rule-soft);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+    text-align: center;
+    transition: border-color var(--kc-t), background var(--kc-t), transform var(--kc-t);
+  }
+  .kc-flow__icon { font-size: 1.5em; line-height: 1.2; }
+  .kc-flow__name {
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-code);
+    overflow-wrap: anywhere;
+  }
+
+  /* 数据包的轨迹按实际元素位置算，不写死坐标 —— 窄屏下角色会换行 */
+  .kc-flow__packet {
+    position: absolute;
+    z-index: var(--kc-z-packet);
+    width: 14px;
+    height: 14px;
+    margin: -7px 0 0 -7px;
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-accent-1);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--kc-accent-1) 25%, transparent);
+    opacity: 0;
+    pointer-events: none;
+  }
+  .kc-flow__packet.kc-is-flying { opacity: 1; }
+
+  .kc-flow__caption {
+    min-height: 3.4em;
+    padding: var(--kc-s3) var(--kc-s4);
+    border-inline-start: 3px solid var(--kc-accent-1);
+    border-radius: 0 var(--kc-r2) var(--kc-r2) 0;
+    background: var(--kc-paper-a);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    max-width: var(--kc-measure);
+  }
+}
+
+@layer states {
+  .kc-flow__actor.kc-is-current {
+    border-color: var(--kc-accent-1);
+    background: color-mix(in srgb, var(--kc-accent-1) 10%, var(--kc-paper-a));
+    transform: translateY(-3px);
+  }
+}
+
+/* ---------------------------------------- 拖拽匹配 kc-match (09) */
+@layer elements {
+  .kc-match__cards {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kc-s3);
+    margin-block-end: var(--kc-s5);
+  }
+  .kc-match__card {
+    padding: var(--kc-s2) var(--kc-s4);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+    box-shadow: var(--kc-shadow-1);
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-code);
+    /* 触屏上按住拖动时不许把页面也跟着滚走 */
+    touch-action: none;
+    transition: opacity var(--kc-t-fast), border-color var(--kc-t-fast);
+  }
+  .kc-match__cards.kc-is-empty::after {
+    content: '卡片都放完了';
+    font-size: var(--kc-fs-small);
+    color: var(--kc-ink-faint);
+  }
+
+  .kc-match__slots {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: var(--kc-s4);
+  }
+  .kc-match__slot {
+    display: flex;
+    flex-direction: column;
+    gap: var(--kc-s3);
+    padding: var(--kc-s4);
+    border: 1px solid var(--kc-rule-soft);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+    transition: border-color var(--kc-t-fast), background var(--kc-t-fast);
+  }
+  .kc-match__label {
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+  }
+  .kc-match__drop {
+    display: grid;
+    place-items: center;
+    min-height: 2.6em;
+    margin-block-start: auto;
+    padding: var(--kc-s2) var(--kc-s3);
+    border: 1px dashed var(--kc-rule);
+    border-radius: var(--kc-r2);
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-code);
+    color: var(--kc-ink-faint);
+    overflow-wrap: anywhere;
+  }
+
+  /* 拖动时跟在手指/鼠标下面的半透明副本 */
+  .kc-match__ghost {
+    position: fixed;
+    z-index: var(--kc-z-term);
+    pointer-events: none;
+    opacity: 0.75;
+    transform: translate(-50%, -50%);
+    box-shadow: var(--kc-shadow-3);
+  }
+}
+
+@layer states {
+  .kc-match__card.kc-is-placed { opacity: 0.4; }
+  .kc-match__card.kc-is-picked {
+    border-color: var(--kc-accent-2);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--kc-accent-2) 25%, transparent);
+  }
+  .kc-match__slot.kc-is-over {
+    border-color: var(--kc-accent-2);
+    background: color-mix(in srgb, var(--kc-accent-2) 8%, var(--kc-paper-a));
+  }
+  .kc-match__slot.kc-is-placed .kc-match__drop {
+    border-style: solid;
+    border-color: var(--kc-ink-faint);
+    color: var(--kc-ink);
+  }
+  .kc-match__slot.kc-is-right { border-color: var(--kc-good); background: var(--kc-good-bg); }
+  .kc-match__slot.kc-is-right .kc-match__drop::after { content: '　✓'; color: var(--kc-good); }
+  .kc-match__slot.kc-is-wrong { border-color: var(--kc-bad); background: var(--kc-bad-bg); }
+  .kc-match__slot.kc-is-wrong .kc-match__drop::after { content: '　✕'; color: var(--kc-bad); }
+}
+
+/* ---------------------------------------- 架构图 kc-map (10) */
+@layer elements {
+  .kc-map {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kc-s4);
+  }
+  .kc-map__zone {
+    flex: 1 1 220px;
+    padding: var(--kc-s4);
+    border: 1px dashed var(--kc-rule);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+  }
+  .kc-map__zone-name {
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-small);
+    font-weight: 700;
+    color: var(--kc-ink-faint);
+    margin-block-end: var(--kc-s3);
+  }
+  .kc-map__node {
+    display: flex;
+    align-items: center;
+    gap: var(--kc-s3);
+    width: 100%;
+    text-align: start;
+    padding: var(--kc-s3);
+    margin-block-end: var(--kc-s2);
+    border: 1px solid var(--kc-rule-soft);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-raised);
+    transition: border-color var(--kc-t-fast), background var(--kc-t-fast), transform var(--kc-t-fast);
+  }
+  .kc-map__node:last-child { margin-block-end: 0; }
+  .kc-map__icon { font-size: 1.2em; line-height: 1.2; }
+  .kc-map__name {
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-code);
+    overflow-wrap: anywhere;
+  }
+  .kc-map__about {
+    flex: 1 1 100%;
+    padding: var(--kc-s3) var(--kc-s4);
+    border-inline-start: 3px solid var(--kc-accent-3);
+    border-radius: 0 var(--kc-r2) var(--kc-r2) 0;
+    background: var(--kc-paper-a);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    min-height: 3.4em;
+    max-width: var(--kc-measure);
+  }
+}
+
+@layer states {
+  .kc-map__node.kc-is-current {
+    border-color: var(--kc-accent-3);
+    background: color-mix(in srgb, var(--kc-accent-3) 12%, var(--kc-paper-raised));
+    transform: translateX(3px);
+  }
+}
+
+/* ---------------------------------------- 分层切换 kc-layers (11) */
+@layer elements {
+  .kc-layers__tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kc-s2);
+    margin-block-end: var(--kc-s4);
+    padding-block-end: var(--kc-s3);
+    border-block-end: 1px solid var(--kc-rule-soft);
+  }
+  .kc-layers__tab {
+    padding: var(--kc-s2) var(--kc-s4);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-paper-a);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    transition: background var(--kc-t-fast), border-color var(--kc-t-fast), color var(--kc-t-fast);
+  }
+  .kc-layers__tab:hover { border-color: var(--kc-ink-faint); }
+
+  .kc-layers__panel {
+    padding: var(--kc-s4);
+    border: 1px solid var(--kc-rule-soft);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+    margin-block-end: var(--kc-s3);
+  }
+  .kc-layers__note {
+    margin-block-start: var(--kc-s3);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+    max-width: var(--kc-measure);
+  }
+
+  /* 脚本没跑时所有层依次全部可见，退化成一个纵向列表，而不是只剩第一层 */
+  .kc-layers.kc-is-live .kc-layers__panel { display: none; }
+  .kc-layers.kc-is-live .kc-layers__panel.kc-is-current { display: block; }
+}
+
+@layer states {
+  .kc-layers__tab.kc-is-current {
+    background: var(--kc-ink);
+    border-color: var(--kc-ink);
+    color: var(--kc-paper-a);
+    font-weight: 700;
+  }
+}
+
+/* ---------------------------------------- 这里没看懂 kc-feedback (19) */
+@layer elements {
+  /* 屏是按钮的定位参照。按钮安静地待在右上角，不抢内容。 */
+  .kc-screen { position: relative; }
+
+  .kc-feedback {
+    position: absolute;
+    inset-block-start: -0.2em;
+    inset-inline-end: 0;
+    z-index: 2;
+    display: inline-flex;
+    align-items: center;
+    gap: var(--kc-s1);
+    padding: 0.15em 0.7em;
+    border: 1px dashed var(--kc-rule);
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-paper-raised);
+    color: var(--kc-ink-faint);
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-small);
+    transition: color var(--kc-t-fast), border-color var(--kc-t-fast), background var(--kc-t-fast);
+  }
+  .kc-feedback::before { content: '？'; }
+  .kc-feedback:hover { color: var(--kc-accent-1); border-color: var(--kc-accent-1); }
+
+  .kc-feedback__panel {
+    position: absolute;
+    inset-block-start: calc(100% + 6px);
+    inset-inline-end: 0;
+    z-index: 3;
+    display: none;
+    width: min(20em, 70vw);
+    padding: var(--kc-s3);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-raised);
+    box-shadow: var(--kc-shadow-2);
+    text-align: start;
+  }
+  .kc-feedback__panel.kc-is-open { display: block; }
+  .kc-feedback__note {
+    width: 100%;
+    padding: var(--kc-s2);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r1);
+    background: var(--kc-paper-a);
+    font-family: var(--kc-font-zh);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+  }
+  .kc-feedback__hint {
+    margin-block-start: var(--kc-s2);
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-faint);
+  }
+
+  /* 课末那一块 */
+  .kc-feedback-export {
+    max-width: calc(var(--kc-measure) + 12em);
+    margin: 0 auto;
+    padding: var(--kc-s6) var(--kc-s5);
+    border-block-start: 1px dashed var(--kc-rule);
+    text-align: center;
+  }
+  .kc-feedback-export__count {
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-soft);
+    margin-block-end: var(--kc-s3);
+  }
+  .kc-feedback-export__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--kc-s3);
+    justify-content: center;
+  }
+  .kc-feedback-export__button, .kc-feedback-export__clear {
+    padding: var(--kc-s2) var(--kc-s5);
+    border: 1px solid var(--kc-ink);
+    border-radius: var(--kc-r-pill);
+    background: var(--kc-ink);
+    color: var(--kc-paper-a);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    font-weight: 700;
+  }
+  .kc-feedback-export__clear {
+    background: transparent;
+    color: var(--kc-ink);
+    border-color: var(--kc-rule);
+  }
+  .kc-feedback-export__fallback {
+    display: none;
+    width: 100%;
+    min-height: 9em;
+    margin-block-start: var(--kc-s4);
+    padding: var(--kc-s3);
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r2);
+    background: var(--kc-paper-a);
+    font-family: var(--kc-font-mono);
+    font-size: var(--kc-fs-tiny);
+    line-height: var(--kc-lh-code);
+  }
+  .kc-feedback-export__fallback.kc-is-open { display: block; }
+}
+
+@layer states {
+  .kc-feedback.kc-is-marked {
+    border-style: solid;
+    border-color: var(--kc-accent-1);
+    background: color-mix(in srgb, var(--kc-accent-1) 12%, var(--kc-paper-raised));
+    color: var(--kc-accent-1);
+    font-weight: 700;
+  }
+  .kc-feedback.kc-is-marked::before { content: '✓'; }
+}

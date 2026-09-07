@@ -23,10 +23,12 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(path.join(process.cwd(), 'tools', 'noop.js'));
 let subsetFont;
+let sharp;
 try {
   subsetFont = (await import(require.resolve('subset-font'))).default;
+  sharp = (await import(require.resolve('sharp'))).default;
 } catch (err) {
-  console.error('publish-pages needs subset-font:\n  cd tools && npm install\n');
+  console.error('publish-pages needs its dependencies:\n  cd tools && npm install\n');
   process.exit(1);
 }
 
@@ -105,11 +107,33 @@ for (const licence of fs.readdirSync(path.join(courseDir, 'fonts')).filter((f) =
 for (const file of ['styles.css', 'main.js']) {
   fs.copyFileSync(path.join(courseDir, file), path.join(outDir, file));
 }
+// Any images the course ships — normally one screenshot of the project running.
+// A raw Chrome screenshot is a lossless PNG of a mostly-flat dark UI: correct on
+// disk, far too heavy over the wire. WebP at the same pixel size cuts it by ~80%
+// with nothing visible lost, so the budget goes to the fonts instead.
+const IMAGE_MAX_BYTES = 60 * 1024;
+const IMAGE_MAX_WIDTH = 1600;
+const imageSwaps = [];
+for (const img of fs.readdirSync(courseDir).filter((f) => /\.(png|jpe?g)$/i.test(f))) {
+  const src = fs.readFileSync(path.join(courseDir, img));
+  if (src.length <= IMAGE_MAX_BYTES) {
+    fs.writeFileSync(path.join(outDir, img), src);
+    continue;
+  }
+  const out = img.replace(/\.(png|jpe?g)$/i, '.webp');
+  const buf = await sharp(src).resize({ width: IMAGE_MAX_WIDTH, withoutEnlargement: true }).webp({ quality: 82 }).toBuffer();
+  fs.writeFileSync(path.join(outDir, out), buf);
+  imageSwaps.push({ from: img, to: out, before: src.length, after: buf.length });
+}
+for (const img of fs.readdirSync(courseDir).filter((f) => /\.(webp|gif|svg)$/i.test(f))) {
+  fs.copyFileSync(path.join(courseDir, img), path.join(outDir, img));
+}
 
 // A course on disk is read by the person who asked for it. A published one is
 // read by strangers, and it quotes someone else's code — so the source and its
 // licence have to be on the page.
 let page = html;
+for (const swap of imageSwaps) page = page.split(swap.from).join(swap.to);
 if (credit) {
   const at = page.indexOf('</footer>');
   if (at === -1) {
@@ -139,6 +163,7 @@ walk(outDir);
 const fontsRaw = rows.filter((r) => r[0].startsWith('fonts/') && r[0].endsWith('.woff2')).reduce((s, r) => s + r[1], 0);
 console.log(`published ${path.relative(process.cwd(), outDir)}`);
 console.log(`  fonts     ${kept.length} shards, ${kb(before)} → ${kb(fontsRaw)}  (${chars.filter((c) => c.codePointAt(0) > 0x2e80).length} CJK glyphs kept)`);
+for (const swap of imageSwaps) console.log(`  image     ${swap.from} → ${swap.to}, ${kb(swap.before)} → ${kb(swap.after)}`);
 for (const [name, size] of rows.filter((r) => !r[0].includes('/')).sort((a, b) => b[1] - a[1])) {
   console.log(`  ${name.padEnd(12)} ${kb(size)}`);
 }

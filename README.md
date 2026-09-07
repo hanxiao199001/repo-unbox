@@ -8,12 +8,16 @@
 
 ## 先看一眼产物
 
-**[在线示例：SIGNAL LOG 是怎么收信号的](https://hanxiao199001.github.io/repo-unbox/)**
+**[在线示例：SIGNAL LOG 拆开来看](https://hanxiao199001.github.io/repo-unbox/)**
 ——用这个 skill 从 [`sdg5-hub/Signal_LOG`](https://github.com/sdg5-hub/Signal_LOG)（852 行）
-端到端生成的一门课，5 个模块。
+端到端生成的一门课，六个模块，走固定五段结构：
 
-页面 778 KB（传输 594 KB），字体由 `tools/publish-pages.mjs` 子集化到这门课真正用到的
-897 个汉字，渲染与完整字体版逐像素一致。零外部请求。
+```
+00 这是什么项目   01 拆架构   02 发一条信号   03 搜索这片电波   04 举报与台长权限   05 建一个你自己的电台
+```
+
+传输 679 KB（磁盘 893 KB）。字体由 `tools/publish-pages.mjs` 子集化到这门课真正用到的
+947 个汉字，渲染与完整字体版逐像素一致；截图转 WebP，316 KB → 45 KB。零外部请求。
 
 ## 和原版的区别
 

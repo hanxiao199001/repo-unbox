@@ -1,0 +1,142 @@
+<section class="kc-module" id="kc-m2" data-kc-tone="b" data-kc-metaphor="电台舱室分布图">
+  <p class="kc-module__number">01</p>
+  <h2 class="kc-module__title">拆架构</h2>
+  <p class="kc-module__subtitle">先别碰代码。一间电台有好几个舱室，先搞清楚哪个舱室管哪摊事，走进任何一间才不会迷路。</p>
+
+  <section class="kc-screen">
+    <p class="kc-screen__title">这份代码分几块</p>
+    <p>SIGNAL LOG 只有五个真正干活的文件，分布在三个“舱室”里：<span class="kc-term" data-kc-define="浏览器（Browser）指的是你打开网页时用的那个程序，比如 Chrome、Safari。它负责把代码画成你看到的页面，也负责收你敲的字。国内工程师就直接叫浏览器，说前端的时候通常也是指跑在浏览器里的这部分代码。">浏览器</span>里跑的、<span class="kc-term" data-kc-define="服务器（Server）指的是一台一直开着、专门等着接收请求的电脑（或者云上的一台虚拟机）。它不会自己主动做什么，永远是“你发一个请求，它给一个回应”。国内工程师就直接叫服务器，也常说后端。">服务器</span>上跑的、<span class="kc-term" data-kc-define="数据库（Database）指的是专门用来长期存数据的地方，关掉程序、重启电脑，里面的数据都还在，这是它和“内存里存一下”最大的区别。国内工程师就直接叫数据库。">数据库</span>里存的。点开下面每个方块，看它具体负责什么。</p>
+
+    <div class="kc-map">
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">浏览器</p>
+        <button class="kc-map__node" data-kc-about="这是你打开网站第一眼看到的骨架：标题、表单、日志列表的容器都写在这里。它自己不会变化，变化的内容都是 app.js 之后塞进去的。">
+          <span class="kc-map__icon">▤</span><span class="kc-map__name">index.html</span>
+        </button>
+        <button class="kc-map__node" data-kc-about="页面里所有会动的逻辑都在这：收你填的表单、点一下发送请求、把服务器传回来的留言画到页面上。它不存东西，关掉这个标签页，凡是没发送出去的都会消失。">
+          <span class="kc-map__icon">▧</span><span class="kc-map__name">app.js</span>
+        </button>
+      </div>
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">服务器</p>
+        <button class="kc-map__node" data-kc-about="所有请求的第一站：按网址分诊、检查发信频率、验证人机答案、核对管理员令牌。它自己不碰硬盘，真正要存数据时会转手交给 db.js。">
+          <span class="kc-map__icon">▣</span><span class="kc-map__name">server.js</span>
+        </button>
+      </div>
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">数据库</p>
+        <button class="kc-map__node" data-kc-about="全项目唯一碰硬盘的文件。留言写进去、按条件查出来、算信号强度、删除，全部由它经手。数据对不对，出问题先查这里。">
+          <span class="kc-map__icon">▦</span><span class="kc-map__name">db.js</span>
+        </button>
+      </div>
+      <p class="kc-map__about">点任意一个方块，看它负责什么</p>
+    </div>
+
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">关注点分离</p>
+      <p class="kc-note__body">三个舱室各管一段，谁都不越界：app.js 只管画和收，server.js 只管分诊和检查，db.js 独占硬盘读写权。工程上把这个原则叫“关注点分离”——出问题时你只需要问一句“这属于哪一段”，就知道该去哪个文件找，不用把五个文件都翻一遍。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p class="kc-screen__title">五个文件，各管一摊</p>
+    <p>把地图收起来，换一张更直白的清单——这五个文件，就是这个项目的全部家当：</p>
+
+    <div class="kc-rolelist">
+      <div class="kc-rolelist__row" data-kc-accent="1">
+        <span class="kc-rolelist__icon">H</span>
+        <p class="kc-rolelist__name">public/index.html</p>
+        <p class="kc-rolelist__note">页面骨架：表单长什么样、日志区域在哪，都写死在这里。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="2">
+        <span class="kc-rolelist__icon">S</span>
+        <p class="kc-rolelist__name">public/styles.css</p>
+        <p class="kc-rolelist__note">管长相：深空导航、霓虹配色、信号条动画，全在这一份文件里。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="3">
+        <span class="kc-rolelist__icon">A</span>
+        <p class="kc-rolelist__name">public/app.js</p>
+        <p class="kc-rolelist__note">管交互：提交表单、发请求、把结果画出来，全部由它接线。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="4">
+        <span class="kc-rolelist__icon">V</span>
+        <p class="kc-rolelist__name">server.js</p>
+        <p class="kc-rolelist__note">管把关：路由分诊、限流、人机验证、管理员令牌校验都在这。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="5">
+        <span class="kc-rolelist__icon">D</span>
+        <p class="kc-rolelist__name">db.js</p>
+        <p class="kc-rolelist__note">管落地：唯一一个真正往 SQLite 数据库文件里读写的地方。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p class="kc-screen__title">一次请求，怎么在三个舱室之间传</p>
+    <p>不管你在页面上点的是发送、搜索还是删除，走的都是同一条固定路线——浏览器发起，服务器把关，数据库落地，再原路把结果传回来：</p>
+
+    <div class="kc-chain">
+      <div class="kc-chain__step"><span class="kc-chain__num">1</span>你在页面上点一下</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">2</span>app.js 发一次请求</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">3</span>server.js 把关放行</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">4</span>db.js 读或写</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">5</span>结果原路画回页面</div>
+    </div>
+
+    <p>这条路线来回都要走完整——服务器不会自己把新留言“推”到你的页面上，永远是浏览器主动问一遍，问完才知道有什么新东西。这也是为什么点了“发送”之后，app.js 还要再问一次服务器“现在都有哪些留言”，而不是自己把你刚打的字直接画上去。</p>
+
+    <div class="kc-quiz" id="kc-quiz-m2">
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。db.js 是全项目唯一碰硬盘的文件，留言存得对不对、信号强度算得对不对，问题多半出在这。"
+           data-kc-wrong="再想一下——只有一个文件真正往硬盘上写数据，其余文件要么管长相，要么管转发。">
+        <p class="kc-quiz__prompt">如果有人反馈“我提交的留言，信号强度数字看起来不对”，你先打开哪个文件查？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>public/index.html，因为页面是它画的</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>public/styles.css，因为看起来像是显示问题</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>db.js，因为信号强度是它算出来再存进数据库的</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。任何一次请求先到 server.js，它决定放不放行、转给谁，本身不碰硬盘。"
+           data-kc-wrong="回头看那张地图——三个舱室里，专门负责“把关分诊”的是哪一个。">
+        <p class="kc-quiz__prompt">要新增一条“举报理由不能超过 160 字”的检查，这类检查通常写在哪一层？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>public/app.js，浏览器端提前拦一道</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>server.js，服务器端把关，这是最终生效的那一道</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>public/styles.css，用样式限制输入框宽度</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。浏览器不会被服务器“推”消息，它只会在你点刷新、点发送之后，主动重新问一遍全部数据。"
+           data-kc-wrong="再看一眼那条五步链路——最后一步是“结果原路画回页面”，谁在主动发起这次“问”？">
+        <p class="kc-quiz__prompt">你在另一台手机上发了一条留言，为什么电脑这边的页面不会自动跳出来？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>因为浏览器不会被动收到通知，必须自己点刷新重新问一遍</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>因为两台设备用的不是同一个数据库</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>因为 server.js 出了故障</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m2" data-kc-kind="retell" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">用你自己的话说一遍：SIGNAL LOG 这份代码分成几块，各自负责什么，一次点击是怎么在它们之间传的？</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说出了 app.js 只管浏览器里的画面和请求发送，不碰硬盘</li>
+        <li class="kc-output__item">说出了 server.js 是把关的那一层：路由分诊、限流、人机验证都在这</li>
+        <li class="kc-output__item">说清楚了只有 db.js 真正往数据库里读写</li>
+        <li class="kc-output__item">提到了浏览器要“主动重新问一遍”才能看到最新数据，不是被动推送的</li>
+      </ul>
+    </div>
+  </section>
+</section>

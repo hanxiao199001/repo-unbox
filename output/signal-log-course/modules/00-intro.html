@@ -1,0 +1,222 @@
+<section class="kc-module" id="kc-m1" data-kc-tone="a" data-kc-metaphor="电台开机自检">
+  <p class="kc-module__number">00</p>
+  <h2 class="kc-module__title">这是什么项目</h2>
+  <p class="kc-module__subtitle">先别急着看代码。开机之前，你得知道自己打开的是个什么机器。</p>
+
+  <section class="kc-screen">
+    <p class="kc-screen__title">它是什么</p>
+    <p>这是一个叫 <strong>SIGNAL LOG</strong> 的深空主题留言板。访客写一段“传讯”（transmission），填个呼号（callsign）和来源星球，点一下发射，这条留言就出现在一份实时滚动的“日志”里，谁都能看到。</p>
+    <p>剥掉深空这层皮，它其实属于最常见的一类项目——<span class="kc-term" data-kc-define="Create（新建）+ Read（读取）+ Update（更新）+ Delete（删除）的缩写，读作 CRUD。在这里指的是这一类项目共有的四个基本动作：写一条、看一遍、改一条、删一条。国内工程师就直接说‘增删改查’。">增删改查</span>类项目：你写一条、能看见、能改、能删。</p>
+    <p>你一定用过同类的东西：微博评论区，你发一条，底下所有人都能刷到；小区群里接龙报名，一人一行，谁填的一目了然。SIGNAL LOG 就是把这套逻辑，套上了一层“深空电台”的皮肤。</p>
+  </section>
+
+  <section class="kc-screen">
+    <p class="kc-screen__title">先玩一玩</p>
+    <p>这个项目不是一堆静态网页——它背后跑着一个真正的服务器（Express）和一个真正的数据库（SQLite），所以没法直接把它嵌进这门课里点着玩。下面这张图，是它在本机真实跑起来之后截的：</p>
+    <img src="demo-screenshot.png" alt="SIGNAL LOG 主页截图，左侧是发射表单，右侧是三条真实提交的留言日志" style="max-width:100%;border-radius:12px;border:1px solid #00000022;" />
+    <p>想亲手玩，自己在终端里跑起来：先 <code data-kc-lang="en">npm install</code>，把 <code data-kc-lang="en">.env.example</code> 复制成 <code data-kc-lang="en">.env</code> 填上一个 <code data-kc-lang="en">ADMIN_TOKEN</code>，再 <code data-kc-lang="en">npm run dev</code>，浏览器打开 <code data-kc-lang="en">http://localhost:3000</code>。</p>
+    <div class="kc-note" data-kc-tone="info">
+      <span class="kc-note__icon">ℹ</span>
+      <p class="kc-note__title">为什么不能直接嵌进网页</p>
+      <p class="kc-note__body">项目 README 里写得很直白：GitHub Pages 这类只会托管纯网页文件，没法运行 Express 服务器和 SQLite 数据库，所以这类“动态网站”必须找一台真正能跑程序的服务器（比如 Render）才能上线。凡是需要“记住”数据的项目，基本都逃不开这道坎。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p class="kc-screen__title">看代码之前的十个词</p>
+    <p>下面十个英文词，是这份代码里出现最密集、也最容易卡住人的。每个词后面配的两三行代码，都能在真实文件里原样找到——先认脸，后面读代码才不会觉得每一行都是陌生人。</p>
+
+    <p><span class="kc-term" data-kc-define="async 是 asynchronous（异步）的缩写，直译‘不同步’。在这个项目里，它标记一个函数内部可以先‘停一下’等某件事完成，不用从头到尾占着不撒手。国内工程师就叫异步函数，口语里直接说 async 函数。">async</span> 出现在几乎每一个要“等一等”的函数前面，比如提交留言这个动作：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:186-188</p>
+        <pre data-kc-lang="en">async function submitTransmission(event) {
+  event.preventDefault();
+  const form = event.currentTarget;</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">async 写在 function 前面，说明这个函数里允许“等”。</p>
+        <p class="kc-code-pair__line">先把浏览器默认的“表单一提交就刷新页面”拦下来。</p>
+        <p class="kc-code-pair__line">拿到这次触发提交的那个表单元素本身。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="直译就是‘等待’。在这里指的是：遇到一个要花时间的操作（比如向服务器发一次请求），就让这一行先‘停’在这，等结果真的回来了再往下走——但不会卡住整个浏览器，你还能点别的地方。国内工程师就叫等待，口语里直接说 await。">await</span> 总是和 async 一起出现，它标记“这一步要等结果”：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:207-211</p>
+        <pre data-kc-lang="en">  try {
+    await apiFetch('/api/messages', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">try 包住可能失败的操作，失败了不会让整个页面崩掉。</p>
+        <p class="kc-code-pair__line">await 让程序在这里等，直到服务器给出答复才继续往下走。</p>
+        <p class="kc-code-pair__line">告诉服务器这是一次“新建”动作。</p>
+        <p class="kc-code-pair__line">把这条留言打包成 JSON 文本装进请求里。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="直译是‘去把它取来’。在这里指的是浏览器自带的一个函数，专门用来向服务器发请求——你告诉它地址和要求，它负责把结果取回来。国内工程师说‘发请求’或‘调接口’，口语里就直接说 fetch。">fetch</span> 就是那个真正负责“去把结果取回来”的函数：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:123-125</p>
+        <pre data-kc-lang="en">async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    headers: {</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">这个项目把 fetch 包了一层，统一起名叫 apiFetch。</p>
+        <p class="kc-code-pair__line">真正发请求的还是浏览器内置的 fetch，等它的结果存进 res。</p>
+        <p class="kc-code-pair__line">给这次请求配上统一的请求头。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="JSON 是 JavaScript Object Notation 的缩写，直译‘JS 对象表示法’。在这里指的是前端和服务器之间传数据统一用的格式，长得像 { &quot;message&quot;: &quot;你好&quot; }。国内工程师直接读英文缩写，念作‘杰森’。">JSON</span> 是前后端说话时共用的“格式”：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:30-30</p>
+        <pre data-kc-lang="en">app.use(express.json({ limit: '16kb' }));</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">这一行让服务器学会看懂 JSON 格式的请求，并且限制最大 16kb，防止有人塞一个超大包过来。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="直译是‘路线’。在这里指的是服务器收到一个网址加动作（比如访问 /api/messages 这个地址，并且是 GET 类型），要先看清这是哪条路线，再决定该派给谁处理。国内工程师就叫路由。">route（路由）</span> 决定了一个请求该被谁接住：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:148-148</p>
+        <pre data-kc-lang="en">app.get('/api/messages', (req, res) => {</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">这条路由声明：凡是 GET 方式访问 /api/messages 的请求，都归后面这段函数处理。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="middle（中间）+ ware（东西），字面意思是‘夹在中间的那层东西’。在这个项目里，它是请求真正被处理之前，依次要经过的一道道检查关卡，比如先看你发信有没有超频。国内叫中间件，口语里也直接说 middleware。">middleware（中间件）</span> 是请求真正被处理之前先经过的关卡：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:158-159</p>
+        <pre data-kc-lang="en">app.post('/api/messages', enforcePostRateLimit, (req, res) => {
+  const payload = req.body || {};</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">路由和真正处理它的函数之间，插了一个 enforcePostRateLimit——这就是一道中间件，先查发信频率，没超才放行。</p>
+        <p class="kc-code-pair__line">放行之后，才轮到这一句取出这次提交的内容。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="直译是‘代币、凭证’。在这里指的是一串随机字符，用来证明‘我刚才通过了人机验证’或者‘我是管理员’，不用每次都重新证明一遍身份。国内工程师就叫令牌，口语里常常直接说 token。">token（令牌）</span> 是一张“我验证过了”的临时凭证：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:136-138</p>
+        <pre data-kc-lang="en">  const token = req.headers['x-admin-token'];
+  if (!token || token !== ADMIN_TOKEN) {
+    return jsonError(res, 401, 'Unauthorized admin token.');</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">从请求头里取出这次带来的令牌。</p>
+        <p class="kc-code-pair__line">没带、或者和服务器里存的不一致，都算没通过。</p>
+        <p class="kc-code-pair__line">401 表示“你没有权限”，这里明确写清了原因。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="query（查询）+ string（字符串）。在这里指的是网址问号后面那一截，比如 ?limit=50&amp;offset=0，用来告诉服务器‘我要多少条、从第几条开始’。国内工程师就叫查询参数，口语里也直接说 query string。">query string（查询参数）</span> 就是网址问号后面那一串：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:149-150</p>
+        <pre data-kc-lang="en">  const limit = Math.max(1, Math.min(50, Number.parseInt(req.query.limit, 10) || 50));
+  const offset = Math.max(0, Number.parseInt(req.query.offset, 10) || 0);</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">从网址的查询参数里读 limit（这次要几条），没写就用默认值 50，还封了个上限，防止有人一次要一万条。</p>
+        <p class="kc-code-pair__line">同样的方式读 offset（从第几条开始），用来实现“加载更多”。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="text（文本）+ content（内容）。在这里指的是把一段文字原样塞进页面显示，不会把内容里的符号当成网页标签解析——哪怕留言里写了尖括号，也只会被当成普通文字显示出来。国内工程师就直接说 textContent，是防止网页被注入恶意脚本的关键写法之一。">textContent</span> 是这个项目防止留言内容“搞事情”的关键一招：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:100-103</p>
+        <pre data-kc-lang="en">  blocks.forEach((entry, idx) => {
+    const textEl = entry.querySelector('.message-text');
+    textEl.textContent = state.items[idx].message;
+  });</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">拿到页面上每一条留言对应的空白位置。</p>
+        <p class="kc-code-pair__line">找到专门留给正文的那个空标签。</p>
+        <p class="kc-code-pair__line">用 textContent 把留言塞进去，而不是拼 HTML——这样哪怕留言里写了代码，也只会被当成一段普通文字显示，不会被浏览器执行。</p>
+      </div>
+    </div>
+
+    <p><span class="kc-term" data-kc-define="直译是‘交易、事务’。在这里指的是把‘写一条新留言’和‘算出它的信号强度并更新’绑成一个不能拆开的整体动作——要么两步都成功记进数据库，要么两步都不算数，不会出现只做了一半的中间状态。国内工程师就叫事务。">transaction（事务）</span> 保证一次操作不会“做一半就停”：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">db.js:102-105</p>
+        <pre data-kc-lang="en">export function createMessage({ createdAt, callsign, origin, message }) {
+  const tx = db.transaction(() => {
+    const insert = insertMessageStmt.run({
+      created_at: createdAt,</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">这是新建一条留言时，数据库这一层真正被调用的函数。</p>
+        <p class="kc-code-pair__line">db.transaction 把接下来几步包成一个事务——要做就一起做完。</p>
+        <p class="kc-code-pair__line">先把这条留言本身插进 messages 表。</p>
+        <p class="kc-code-pair__line">记下它的创建时间。</p>
+      </div>
+    </div>
+
+    <div class="kc-quiz" id="kc-quiz-m1">
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。这几十行字听起来专业，拆开看其实就是‘写一条、看一遍、改一条、删一条’，留言板、待办清单、记账本都是这一类。"
+           data-kc-wrong="再往上翻一眼——文章里已经直接给出了这类项目共有的四个动作，不用去记生词，对上那四个动作就够了。">
+        <p class="kc-quiz__prompt">SIGNAL LOG 被归为“增删改查”类项目，这四个字具体对应它的哪些动作？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>只有“发一条留言”这一个动作</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>发一条、看列表、改一条（管理员场景）、删一条</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>注册、登录、发帖、点赞</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。README 里写得很明确：GitHub Pages 只能托管静态文件，没法运行 Express 服务器和 SQLite 数据库。"
+           data-kc-wrong="再回去看‘先玩一玩’那一屏的提示框——答案就是它要解释的那件事。">
+        <p class="kc-quiz__prompt">为什么这门课不能直接把 SIGNAL LOG 嵌进一个 iframe 让你玩？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>它需要一个真正能跑程序的服务器和数据库，不是纯静态网页</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>因为它的界面太复杂，iframe 装不下</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>单纯是课程作者偷懒</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。await 必须配合 async 函数使用，它的作用就是‘等这一步的结果回来，再往下走’。"
+           data-kc-wrong="回头看 await 那张代码卡片里的中文注解，里面已经把这个词的作用讲清楚了。">
+        <p class="kc-quiz__prompt">代码里的 await 关键字，最贴切的作用是什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>让整个浏览器暂停，直到网页关闭</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>把一段代码删除</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>让这一行先等一个耗时操作的结果，再继续往下走</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m1" data-kc-kind="explain" data-kc-min="70">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你朋友问你“这个 SIGNAL LOG 到底是个啥网站”，用不超过三句大白话讲给他听——别用“CRUD”“transmission”这些术语。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说清楚了这是一个“留言板”或类似性质的东西，别人写了留言你能看到</li>
+        <li class="kc-output__item">提到了它有个“深空电台”或者“星际通讯”这样的主题外壳</li>
+        <li class="kc-output__item">没有用 CRUD、transmission、endpoint 这类术语，全是你自己的大白话</li>
+        <li class="kc-output__item">让朋友听完能明白它和微博评论区、群接龙这类东西是一回事</li>
+      </ul>
+    </div>
+  </section>
+</section>

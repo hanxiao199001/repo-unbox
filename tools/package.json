@@ -3,5 +3,8 @@
   "private": true,
   "type": "module",
   "description": "Repo maintenance only. Never installed with the skill — scripts/ stays zero-dependency.",
-  "dependencies": { "subset-font": "^2.3.0" }
+  "dependencies": {
+    "sharp": "^0.35.4",
+    "subset-font": "^2.3.0"
+  }
 }
