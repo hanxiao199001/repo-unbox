@@ -39,7 +39,7 @@
 - `references/fonts/` 自托管字体（霞鹜文楷 + JetBrains Mono，OFL 1.1，含授权原文），由 `scripts/fetch-fonts.mjs` 生成
 - `scripts/`   构建、校验、测试（Node，零依赖，跨平台）
 - `examples/`  示例代码库：`todo-api`（Express 待办 API，约 340 行）、`signal-log`（真实仓库）
-- `output/`    生成的课程，只保留 `v1` 和 `real-3-sonnet`
+- `output/`    生成的课程，按代码库命名：`todo-api`、`signal-log`
 
 ## 候选方向（记下来，现在不做）
 - **模块数随仓库规模浮动。** SKILL.md 目前固定 4–6 个模块，导致选型时把一个 109 行的项目
