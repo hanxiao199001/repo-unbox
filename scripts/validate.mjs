@@ -162,16 +162,36 @@ export function validate(courseDir, sourceDir) {
     .replace(/<pre[^>]*>[\s\S]*?<\/pre>/g, '')
     .replace(/<[^>]+>/g, '');
 
+  // 固定五段：0 这是什么项目 / 1 拆架构 / 2..n 主线 / 末 做一个类似的
+  const ARCH = 1;
+  check(`the course has 5-7 modules (${moduleBlocks.length} found)`,
+    moduleBlocks.length >= 5 && moduleBlocks.length <= 7,
+    moduleBlocks.length < 5 ? 'fixed structure needs 模块 0 + 拆架构 + 2-4 条主线 + 做一个类似的' : '中间的主线模块最多 4 个');
+
+  // 模块 0 固定三屏：它是什么 / 先玩一玩 / 看代码之前的十个词
+  const introScreens = (moduleBlocks[0] || '').split('<section class="kc-screen"').length - 1;
+  check(`模块 0「这是什么项目」has exactly 3 screens (${introScreens} found)`, introScreens === 3,
+    introScreens === 3 ? '' : '三屏是固定的：它是什么 / 先玩一玩 / 看代码之前的十个词');
+
+  // 模块 1 一行代码都不许有。学员刚认完十个词，还没有能力读代码 ——
+  // 这一模块给的是地图，不是街道。
+  const archCode = ((moduleBlocks[ARCH] || '').match(/class="kc-code-pair"/g) || []).length;
+  check('模块 1「拆架构」has no code at all', archCode === 0,
+    archCode ? `${archCode} code-pair block(s) — 先给地图，再进街道：这一模块不许出现代码` : '');
+  const archMap = ((moduleBlocks[ARCH] || '').match(/class="kc-map"/g) || []).length;
+  check('模块 1「拆架构」has an architecture map', archMap >= 1,
+    archMap ? '' : 'needs one kc-map — the map is the whole point of this module');
+
   const thinCode = [];
   const thinProse = [];
   moduleBlocks.forEach((block, i) => {
     const id = moduleIds[i] || `module ${i + 1}`;
     const codeBlocks = (block.match(/class="kc-code-pair"/g) || []).length;
-    if (codeBlocks === 0) thinCode.push(id);
+    if (codeBlocks === 0 && i !== ARCH) thinCode.push(id);
     const hanzi = (moduleText(block).match(/[\u4e00-\u9fa5]/g) || []).length;
     if (hanzi < 800) thinProse.push(`${id} (${hanzi})`);
   });
-  check('every module has a code-pair block', thinCode.length === 0, thinCode.join(', '));
+  check('every module except 拆架构 has a code-pair block', thinCode.length === 0, thinCode.join(', '));
 
   // elements/quiz.md: one set per module, 3-5 questions. The +1 is for a
   // scenario-wrapped question, which is a single question by design.
