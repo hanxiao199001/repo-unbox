@@ -2812,6 +2812,19 @@ describe('整页 _base.html + _footer.html', async (tab) => {
     eq(r.hidden.length, 0, '无脚本时这些内容不可见：' + JSON.stringify(r.hidden))
   })
 
+  await it('页脚署名在页面上，且不引入任何链接或请求', async () => {
+    await tab.goto(url)
+    const r = await tab.eval(`var f=document.querySelector('.kc-colophon');
+      if(!f) return {missing:true};
+      return {text:f.textContent.trim(), visible:getComputedStyle(f).display!=='none',
+              links:f.querySelectorAll('a').length,
+              last:document.body.lastElementChild.tagName};`)
+    assert(!r.missing, '页脚署名（.kc-colophon）不见了')
+    assert(r.visible, '页脚署名必须可见')
+    assert(r.text.indexOf('repo-unbox') >= 0, '署名里要有项目名，实际：' + r.text)
+    eq(r.links, 0, '署名里不许放链接：课程是离线分发的，链接点开是死的')
+  })
+
   await it('课程目录是自包含的：只有 index.html、styles.css、main.js 和 fonts/', async () => {
     const files = readdirSync(dir).sort()
     assert(files.includes('index.html') && files.includes('styles.css') && files.includes('main.js') && files.includes('fonts'),

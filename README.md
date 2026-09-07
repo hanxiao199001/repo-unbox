@@ -1,4 +1,4 @@
-# codebase-course-cn
+# repo-unbox（开箱）
 
 把任意代码库变成一门**中文交互式课程**，讲给零编程基础、正在学 vibe coding 的中文学员听。
 
@@ -39,12 +39,12 @@ git clone --depth 1 https://github.com/zarazhangrui/codebase-to-course.git upstr
 ## 安装
 
 ```bash
-git clone <this-repo> codebase-course-cn
-cd codebase-course-cn
+git clone <this-repo> repo-unbox
+cd repo-unbox
 node scripts/install.mjs
 ```
 
-装到 `~/.claude/skills/codebase-course-cn/`，然后**新开一个 Claude Code 会话**就能用。
+装到 `~/.claude/skills/repo-unbox/`，然后**新开一个 Claude Code 会话**就能用。
 只复制 `SKILL.md`、`references/`、`scripts/`；`output/`、`examples/`、`.git` 不会被带过去。
 
 ```bash
@@ -52,7 +52,7 @@ node scripts/install.mjs --dry-run          # 先看会复制什么
 node scripts/install.mjs --target <dir>     # 装到别处
 ```
 
-装完在任意目录说“把这个项目做成课程”，或者直接 `/codebase-course-cn`。
+装完在任意目录说“把这个项目做成课程”，或者直接 `/repo-unbox`。
 
 ## 用哪个模型
 

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
-// Installs this skill into ~/.claude/skills/codebase-course-cn/ so it can be
-// used from any directory, not just this repository.
+// Installs this skill into ~/.claude/skills/repo-unbox/ so it can be used from
+// any directory, not just this repository.
 //
 //   node scripts/install.mjs            install (replaces the previous copy)
 //   node scripts/install.mjs --dry-run  print what would be copied
@@ -16,7 +16,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const SKILL_NAME = 'codebase-course-cn';
+const SKILL_NAME = 'repo-unbox';
+// Renamed from this in v0.2. An install left behind under the old name still
+// registers with Claude Code, so the user would silently get the old skill.
+const FORMER_SKILL_NAME = 'codebase-course-cn';
 
 const args = process.argv.slice(2);
 const dryRun = args.includes('--dry-run');
@@ -78,5 +81,17 @@ if (!dryRun) {
   console.log(`  ${fs.existsSync(path.join(target, 'scripts', 'build.mjs')) ? 'OK' : 'MISSING'}  scripts/build.mjs`);
   console.log(`  ${fs.existsSync(path.join(target, 'references', 'fonts', 'fonts.css')) ? 'OK' : 'MISSING'}  references/fonts/fonts.css`);
   console.log('');
+
+  // A leftover install under the former name still registers and would shadow
+  // this one with an old, incompatible copy. Say so; do not delete it silently.
+  const stale = path.join(path.dirname(target), FORMER_SKILL_NAME);
+  if (stale !== target && fs.existsSync(stale)) {
+    console.log(`  ! 旧版本还装在 ${stale}`);
+    console.log(`    它用的是 ${FORMER_SKILL_NAME} 这个名字，会和这次安装同时被 Claude Code 认出来。`);
+    console.log('    确认新版本能用之后，手动删掉它：');
+    console.log(`      rm -rf ${JSON.stringify(stale)}`);
+    console.log('');
+  }
+
   console.log('  Start a new Claude Code session for it to be picked up.');
 }

@@ -1,4 +1,4 @@
-# codebase-course-cn
+# repo-unbox（开箱）
 
 把任意代码库变成给**中国 web 编程小白**看的中英双语交互式课程。
 基于 zarazhangrui/codebase-to-course 改造（原版在 upstream/，只读，不改）。
