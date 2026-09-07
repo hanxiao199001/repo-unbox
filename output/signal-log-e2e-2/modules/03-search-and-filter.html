@@ -1,0 +1,137 @@
+<section class="kc-module" id="kc-m3" data-kc-tone="a" data-kc-metaphor="图书馆检索台按关键词和分类翻找书目">
+  <div class="kc-module__header">
+    <p class="kc-module__number">03</p>
+    <h2 class="kc-module__title">你在搜索框打了个词，服务器怎么听懂的</h2>
+    <p class="kc-module__subtitle">从地址栏里的一串问号，到数据库里的一句 SQL</p>
+  </div>
+
+  <section class="kc-screen">
+    <p>
+      你在搜索框里打上“orbit”，或者点一下 EARTH 这个筛选按钮，页面上的列表立刻变了——只剩下带这个词、
+      或者来源是 Earth 的留言。这背后到底发生了什么？
+    </p>
+    <p>
+      打开浏览器的开发者工具你会看到，实际发出去的地址变成了
+      <code class="kc-code" data-kc-lang="en">/api/messages?limit=50&amp;offset=0&amp;q=orbit&amp;origin=</code>。
+      这一串问号后面的东西，叫
+      <span class="kc-term" data-kc-define="query string 直译是“查询字符串”。它是网址里问号后面那一段，用“键=值”的方式给服务器传一些额外条件，比如 q=orbit 表示“只要包含 orbit 的”。国内工程师就直接说查询参数或者 query string。">查询参数（query string）</span>。
+      它就像图书馆检索台上填的那张卡片——你写下关键词和分类，剩下的翻找工作交给管理员，你自己不用挤进书库。
+    </p>
+    <p>
+      app.js 里有一个叫 originFilterValue 的小函数，专门把你点的那个筛选按钮翻译成一段查询参数：
+      点 EARTH 就翻译成 earth，点 CUSTOM 就翻译成你自己填的那个词。它自己不去查任何数据，
+      只负责把“你想要什么”说清楚，真正动手去数据库里翻找的，是下一屏要看的这个函数。
+    </p>
+  </section>
+
+  <section class="kc-screen">
+    <p>server.js 把这几个参数原样递给 db.js，真正“翻书”的活儿在这个函数里发生：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">db.js:69-80</p>
+        <pre data-kc-lang="en">const listMessagesStmtFactory = ({ hasQuery, hasOrigin, unknownOriginOnly }) =&gt; {
+  let sql = `
+    SELECT id, created_at, callsign, origin, message, strength
+    FROM messages
+    WHERE 1=1
+  `;
+  if (hasQuery) sql += ` AND message LIKE @q`;
+  if (unknownOriginOnly) {
+    sql += ` AND (origin IS NULL OR TRIM(origin) = '' OR LOWER(origin) LIKE '%unknown%')`;
+  } else if (hasOrigin) {
+    sql += ` AND LOWER(COALESCE(origin, '')) LIKE @origin`;
+  }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">Factory 是“工厂”的意思——这个函数专门生产不同条件下的
+          <span class="kc-term" data-kc-define="SQL 是 Structured Query Language 的缩写，直译是“结构化查询语言”，专门用来向数据库要数据、改数据的一种语言。国内工程师就直接说 SQL。">SQL</span>
+          语句。
+        </p>
+        <p class="kc-code-pair__line">sql 从一句最基础的查询开始：
+          <span class="kc-term" data-kc-define="WHERE 直译是“在哪里”。它是 SQL 里筛选条件的关键字，跟在它后面的条件都成立，这一行才会被选中。国内工程师聊天时也直接说 WHERE 条件。">WHERE</span>
+          1=1——这个条件永远成立，是故意留的占位符，方便后面用 += 一条条往后拼。
+        </p>
+        <p class="kc-code-pair__line">如果填了搜索关键词（hasQuery），就加一句 AND message
+          <span class="kc-term" data-kc-define="LIKE 直译是“像”。它是 SQL 里做模糊匹配的关键字，配合 % 这个通配符使用，比如 %orbit% 表示“前后随便有什么，只要中间带 orbit 就算”。国内工程师就直接说 LIKE 查询。">LIKE</span>
+          @q。
+        </p>
+        <p class="kc-code-pair__line">如果筛选的是 UNKNOWN（unknownOriginOnly），就换一条完全不同的条件：来源是空的，或者本身就带着 unknown 这个词。</p>
+        <p class="kc-code-pair__line">否则，如果填了具体的来源（hasOrigin），就加一句按 origin 模糊匹配的条件——两条件互斥，一次只会生效一种筛选方式。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">拼 SQL 不等于拼字符串</p>
+      <p class="kc-note__body">sql += ... 看着像是在拼字符串，但真正塞进去的值——@q、@origin——是命名参数占位符，不是把用户输入原样焊进 SQL 里。这样即使有人在搜索框里打奇怪的符号，也污染不了查询本身。这个技巧叫参数化查询（parameterized query），是防 SQL 注入的标准做法，你可以直接问 AI：“这段查询是参数化的吗，会不会有 SQL 注入风险？”</p>
+    </div>
+    <p>这个函数改坏了一处，点一下你觉得有问题的那一行：</p>
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这是 listMessages 里拼搜索参数的一段，被人悄悄改坏了。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是把 query 有没有内容存成一个布尔值，跟搜索结果对不对没关系。"><span class="kc-bughunt__lineno">1</span>const hasQuery = Boolean(query);</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行判断的是来源筛选，不是关键词搜索，跟这次的问题不搭边。"><span class="kc-bughunt__lineno">2</span>const hasOrigin = Boolean(origin) &amp;&amp; !unknownOriginOnly;</button>
+        <button class="kc-bughunt__line" data-kc-hint="这里只是开了一个空对象，还没往里塞任何搜索条件。"><span class="kc-bughunt__lineno">3</span>const params = {</button>
+        <button class="kc-bughunt__line" data-kc-hint="limit 只是分页的数量上限，跟搜索关键词能不能匹配上没关系。"><span class="kc-bughunt__lineno">4</span>  limit,</button>
+        <button class="kc-bughunt__line" data-kc-hint="offset 是分页的起始位置，同样跟关键词匹配无关。"><span class="kc-bughunt__lineno">5</span>  offset</button>
+        <button class="kc-bughunt__line" data-kc-hint="对象字面量到这里就写完了，语法没有问题。"><span class="kc-bughunt__lineno">6</span>};</button>
+        <button class="kc-bughunt__line" data-kc-hint="空行，纯粹是为了好看，不影响任何逻辑。"><span class="kc-bughunt__lineno">7</span></button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="params.q 本该是 `%${query}%`，前后两个 % 是 SQL 的通配符，意思是“中间只要出现这几个字符就算”。这里直接把 query 原样赋值，等于告诉数据库“留言必须一字不差地等于 orbit”——除非你打的词跟整条留言长得一模一样，否则搜索框基本上就废了。把 %${query}% 写回去就对了。"><span class="kc-bughunt__lineno">8</span>if (hasQuery) params.q = query;</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <div class="kc-quiz" id="kc-quiz-m3">
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。像 %orbit% 这样的模糊匹配全靠首尾两个 %，少了它们，LIKE 就变成了必须完全相等才算数。"
+           data-kc-wrong="再想想：debounce 只是让搜索请求别发得太勤，不会让结果完全消失；styles.css 根本不参与数据逻辑。">
+        <p class="kc-quiz__prompt">用户在搜索框里打了 “orbit”，却什么结果都没有，即便留言里确实有这个词，你会先怀疑哪里？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>db.js 拼 SQL 时是不是漏掉了 % 通配符</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>styles.css 把搜索结果隐藏起来了</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>app.js 里 debounce 的等待时间设得太短</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。db.js 一看到这个特殊值就会换成完全不同的一条 SQL 条件（origin 为空或包含 unknown），而不是去匹配字面上的 unknown 这个词。"
+           data-kc-wrong="再看一眼 app.js 里的 originFilterValue：点 UNKNOWN 的时候，它传的不是普通字符串，而是一个专门约定好的特殊值。">
+        <p class="kc-quiz__prompt">点击 UNKNOWN 这个筛选按钮，浏览器实际传给服务器的 origin 参数值是什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>"unknown" 这个单词本身</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>特殊值 "__unknown__"，db.js 看到它就换一条完全不同的条件</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>空字符串</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。listMessagesStmtFactory 就是专门负责“根据条件拼出对应 SQL”的地方，新增一种筛选，本质上就是给它多加一个 if 分支。"
+           data-kc-wrong="再想想：entryTemplate 只负责把已经拿到的数据画成卡片，它看不到数据库里还有哪些留言没被筛出来；表单结构改了也查不出新结果。">
+        <p class="kc-quiz__prompt">如果要新增一个“只看带 callsign 的留言”筛选，你会主要改动哪里？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>app.js 的 entryTemplate</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>db.js 的 listMessagesStmtFactory，给它加一条新的 SQL 条件</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>index.html 的表单结构</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <div class="kc-output" id="kc-output-m3" data-kc-kind="explain" data-kc-min="70">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">朋友问你，网址里 origin=Earth 这种东西是什么意思，用不超过三句话讲给他听。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">提到了 query string（查询参数）这个说法，或者直接用了它的英文</li>
+        <li class="kc-output__item">说清楚了这是浏览器告诉服务器“筛选哪些数据”，不是修改数据</li>
+        <li class="kc-output__item">提到了 db.js 会把它拼进 SQL 的 WHERE 条件里</li>
+      </ul>
+    </div>
+  </section>
+</section>

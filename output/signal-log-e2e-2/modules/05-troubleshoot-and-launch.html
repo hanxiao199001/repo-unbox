@@ -1,0 +1,178 @@
+<section class="kc-module" id="kc-m5" data-kc-tone="a" data-kc-metaphor="深空电台的故障排查手册与信号塔升级">
+  <div class="kc-module__header">
+    <p class="kc-module__number">05</p>
+    <h2 class="kc-module__title">报错来了，你该先看哪个文件</h2>
+    <p class="kc-module__subtitle">从一句真实报错，到把电台搬上云端信号塔</p>
+  </div>
+
+  <section class="kc-screen">
+    <p>
+      你把留言填好，点了 Transmit。10 秒都没到，手一抖又点了一次——这一次表单没有清空，
+      反而在按钮附近弹出了一行红字。这是这个项目里真的会抛出来的报错，一字不改：
+    </p>
+    <div class="kc-scenario">
+      <span class="kc-scenario__label">场景</span>
+      <p class="kc-scenario__body">
+        你在留言框里打好字，点了 Transmit，成功了。手一抖，10 秒之内又点了一次。
+        页面没有出现第二条新留言，表单下方的 form-error 那一行显示出：
+        <code class="kc-code" data-kc-lang="en">Rate limit: wait at least 10 seconds between transmissions.</code>
+      </p>
+      <div class="kc-quiz" id="kc-quiz-m5-scenario">
+        <div class="kc-quiz__question" data-kc-answer="b"
+             data-kc-right="对。enforcePostRateLimit 是挂在 POST /api/messages 上的中间件，请求还没进到真正写数据库那一步就被它拦下了，返回的正是这句原文。"
+             data-kc-wrong="再想想：db.js 的 createMessage 根本没有机会被调用到——请求在更早的地方就被拦下了；app.js 只是把这句话显示出来，不是它生成的。">
+          <p class="kc-quiz__prompt">这条报错最先是从哪个文件的哪个函数里抛出来的？</p>
+          <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>db.js 的 createMessage</button>
+          <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>server.js 的 enforcePostRateLimit</button>
+          <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>app.js 的 submitTransmission</button>
+          <div class="kc-quiz__feedback"></div>
+        </div>
+        <div class="kc-quiz__question" data-kc-answer="b"
+             data-kc-right="对。minGapMs 就是控制“两次之间至少要隔多久”的那个变量，rateWindowMs 管的是一小时这个统计窗口，maxPostsPerWindow 管的是一小时最多几条。"
+             data-kc-wrong="再回去看一眼 enforcePostRateLimit：报错文案里写的是“wait at least 10 seconds”，对应的正是控制两次发信间隔的那个变量，不是控制一小时总数的那个。">
+          <p class="kc-quiz__prompt">想把“10 秒一次”这条规则改成“5 秒一次”，该改 server.js 里的哪个变量？</p>
+          <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>rateWindowMs</button>
+          <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>minGapMs</button>
+          <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>maxPostsPerWindow</button>
+          <div class="kc-quiz__feedback"></div>
+        </div>
+        <div class="kc-quiz__question" data-kc-answer="b"
+             data-kc-right="对。报错文字本身是服务器定好的，不该改；真正该改的是前端拿到这句话之后怎么显示——那段逻辑在 submitTransmission 的 catch(err) 里。"
+             data-kc-wrong="再想想：db.js 根本看不到这次请求；server.js 已经把该说的话说清楚了，不用改它。要改的是前端怎么呈现这句话。">
+          <p class="kc-quiz__prompt">如果报错文字本身不用改，只是想让提示更友好一点（比如显示倒计时），该改哪个文件？</p>
+          <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>db.js</button>
+          <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>app.js 里处理 catch(err) 的那一段</button>
+          <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>server.js</button>
+          <div class="kc-quiz__feedback"></div>
+        </div>
+        <div class="kc-quiz__actions">
+          <button class="kc-quiz__check">看看答案</button>
+          <button class="kc-quiz__reset">再来一次</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p>
+      在自己电脑上运行时，端口和管理员密码都是随手写的。真要把电台搬上云端信号塔，这几行就变得很关键：
+    </p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:11-13</p>
+        <pre data-kc-lang="en">const app = express();
+const PORT = Number(process.env.PORT || 3000);
+const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">express() 创建了整个网站的核心对象，后面所有路由都是挂在这个 app 上的。</p>
+        <p class="kc-code-pair__line">PORT 从 process.env.PORT 里读，读不到才退回默认值 3000。process.env 就是
+          <span class="kc-term" data-kc-define="environment（环境）+ variable（变量）。环境变量是启动程序的那台机器提前设置好的一批键值对，代码里用 process.env.XXX 就能读到，不用写死在代码本身里。国内工程师就直接说环境变量或者 env variable。密码、密钥这类敏感信息通常都用这种方式传，不会提交进代码仓库。">环境变量（environment variable）</span>
+          在 Node.js 里的读法。
+        </p>
+        <p class="kc-code-pair__line">ADMIN_TOKEN 同理，读不到就是空字符串——这时候 adminGuard 会直接拒绝所有删除请求，直到你在 .env 或者部署平台上真正设置它。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p>把这几个文件按它们实际跑在哪一层重新摆一遍，点任意一个方块看它负责什么：</p>
+    <div class="kc-map">
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">你的浏览器</p>
+        <button class="kc-map__node" data-kc-about="页面的骨架，加载的第一瞬间就是它，那时候留言列表还是空的。">
+          <span class="kc-map__icon">▤</span><span class="kc-map__name">index.html</span>
+        </button>
+        <button class="kc-map__node" data-kc-about="画界面、收你敲的字、发请求——你在屏幕上看到的一切都是它画出来的，它自己不存任何东西。">
+          <span class="kc-map__icon">◧</span><span class="kc-map__name">app.js</span>
+        </button>
+      </div>
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">部署到 Render 的服务器</p>
+        <button class="kc-map__node" data-kc-about="收请求、做安全检查、按路由把活派下去，它自己不碰硬盘。">
+          <span class="kc-map__icon">▣</span><span class="kc-map__name">server.js</span>
+        </button>
+      </div>
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">服务器自带的磁盘</p>
+        <button class="kc-map__node" data-kc-about="整个项目唯一碰硬盘的文件，所有 SQL 语句都在这里。">
+          <span class="kc-map__icon">▦</span><span class="kc-map__name">db.js</span>
+        </button>
+        <button class="kc-map__node" data-kc-about="真正存留言的数据库文件本身。README 里特别提醒：部署到 Render 时要挂一块持久化磁盘，不然每次重新部署这个文件都会被清空。">
+          <span class="kc-map__icon">▨</span><span class="kc-map__name">signal-log.db</span>
+        </button>
+      </div>
+      <p class="kc-map__about">点任意一个方块，看它负责什么、跑在哪一层</p>
+    </div>
+    <div class="kc-note" data-kc-tone="info">
+      <span class="kc-note__icon">ℹ</span>
+      <p class="kc-note__title">这个项目没有第三方服务</p>
+      <p class="kc-note__body">很多项目要连外部的 AI 接口、地图服务、支付网关——那些会限流、会收费、可能会自己先挂掉。SIGNAL LOG 完全自给自足：除了托管这台机器本身，不依赖任何第三方 API，数据库就是本地磁盘上的一个文件。判断一个项目“重不重”，先数数它连了几个外部服务。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <div class="kc-output" id="kc-output-m5" data-kc-kind="retell" data-kc-min="90">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">用你自己的话说一遍：如果后端报错 Human check expired. Request a new challenge.，你会按什么顺序去查？</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">提到了先在浏览器开发者工具的 Network 面板看是哪个请求返回了这条错误</li>
+        <li class="kc-output__item">点名了 server.js 里 POST /api/messages 这条路由检查 humanChecks 的那一段</li>
+        <li class="kc-output__item">说清楚了这是因为 humanCheckTTL 只有 5 分钟，表单填太久就会过期</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p>课程到这里就结束了。往后你自己改代码时，这几句话可以直接抄给 AI 用：</p>
+    <div class="kc-steps">
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">1</span>
+        <p class="kc-steps__title">把项目跑起来</p>
+        <p class="kc-steps__body">帮我在本地把这个项目跑起来，按 README 的步骤来，记得先配置好 .env 里的 ADMIN_TOKEN。</p>
+        <p data-kc-lang="en">Help me get this project running locally by following the steps in the README, and make sure to set ADMIN_TOKEN in .env first.</p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">2</span>
+        <p class="kc-steps__title">加一个功能</p>
+        <p class="kc-steps__body">给每条留言加一个点赞按钮，点了之后 strength 涨 5 分，存进 db.js 里的 messages 表。</p>
+        <p data-kc-lang="en">Add a like button to each message that raises its strength by 5 when clicked, and persist that in the messages table in db.js.</p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">3</span>
+        <p class="kc-steps__title">修一个报错</p>
+        <p class="kc-steps__body">我在浏览器里点了两次 Transmit，后端返回了 Rate limit: wait at least 10 seconds between transmissions.，这是什么意思？帮我在界面上加个提示，让用户知道要等几秒。</p>
+        <p data-kc-lang="en">I clicked Transmit twice and the backend returned Rate limit: wait at least 10 seconds between transmissions. What does this mean, and can you add a UI message telling the user how long to wait?</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p>这个项目最可能撞上的几条英文报错，一字不改地列在这里：</p>
+    <div class="kc-deflist">
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Rate limit: wait at least 10 seconds between transmissions.</code>
+        <p class="kc-deflist__value">限流：两次发信间隔不到 10 秒。等 10 秒再试，或者对 AI 说：“帮我在提交按钮上加个倒计时，发完之后禁用 10 秒。”</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Rate limit: maximum 10 transmissions per hour.</code>
+        <p class="kc-deflist__value">限流：这个 IP 一小时内已经发满 10 条。等一小时窗口过去，或者对 AI 说：“帮我把这个限额从 10 条改成 20 条。”</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Human check expired. Request a new challenge.</code>
+        <p class="kc-deflist__value">人机验证的 token 已经超过 5 分钟没用，过期了。点一下“New”刷新算术题重新填，或者对 AI 说：“人机验证的有效期能不能延长到 10 分钟？”</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Unauthorized admin token.</code>
+        <p class="kc-deflist__value">你在 /admin 页面填的 token，跟服务器 .env 里的 ADMIN_TOKEN 对不上。去 .env 里确认真实的值，重新填一遍。</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Admin token is not configured on server.</code>
+        <p class="kc-deflist__value">服务器启动时压根没读到 ADMIN_TOKEN 这个环境变量。检查 .env 文件是不是真的存在，或者对 AI 说：“帮我确认一下 ADMIN_TOKEN 有没有被正确加载。”</p>
+      </div>
+    </div>
+  </section>
+</section>

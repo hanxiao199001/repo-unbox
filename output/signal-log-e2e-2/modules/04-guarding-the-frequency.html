@@ -1,0 +1,181 @@
+<section class="kc-module" id="kc-m4" data-kc-tone="b" data-kc-metaphor="无线电频段管理局稽查非法电台和恶意干扰">
+  <div class="kc-module__header">
+    <p class="kc-module__number">04</p>
+    <h2 class="kc-module__title">频段管理局：作者当时在防什么</h2>
+    <p class="kc-module__subtitle">一条留言要闯过五道关卡，才能真正被写进数据库</p>
+  </div>
+
+  <section class="kc-screen">
+    <p>
+      凌晨三点，一个脚本盯上了 SIGNAL LOG：它每秒钟往 /api/messages 灌一遍一模一样的留言，
+      想把 Live Log 刷成自己的广告牌。如果服务器什么都不做，数据库很快就会被灌满垃圾电文。
+    </p>
+    <p>
+      真实情况是，一条留言从进门到真正落进数据库，要闯过五道关卡——顺序就是 server.js 里代码真实的执行顺序：
+    </p>
+    <div class="kc-steps">
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">1</span>
+        <p class="kc-steps__title">发信频率检查（先于一切）</p>
+        <p class="kc-steps__body">enforcePostRateLimit 是一段
+          <span class="kc-term" data-kc-define="middleware 直译是 middle（中间）+ ware（东西），“夹在中间的那层东西”。在这个项目里，它是请求到达真正的路由处理函数之前，先跑一遍的检查函数。国内工程师直接说中间件或者 middleware。">中间件（middleware）</span>，
+          在路由函数本身开始跑之前就先拦一道，超过 10 秒一条或者一小时 10 条，直接拒绝。
+        </p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">2</span>
+        <p class="kc-steps__title">蜜罐字段 website</p>
+        <p class="kc-steps__body">表单里藏着一个人看不见的 website 输入框，正常用户永远不会填它，只有无脑爬取表单字段的机器人才会填进去——填了就当场判定是机器人。</p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">3</span>
+        <p class="kc-steps__title">内容不能是空的或没有意义的符号</p>
+        <p class="kc-steps__body">message 不能为空，还必须至少包含一个字母或数字——纯表情、纯空格都会被挡在外面。</p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">4</span>
+        <p class="kc-steps__title">不能是重复字符刷屏</p>
+        <p class="kc-steps__body">isRepeatedSpam 检查这条留言是不是被某一个字符大量占据，比如两百个感叹号。</p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">5</span>
+        <p class="kc-steps__title">人机验证答案要对得上</p>
+        <p class="kc-steps__body">最后核对一道算术题的答案，确认发信的是人，不是脚本。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p>先看第一道关卡——频率限制——真实的样子：</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:81-92</p>
+        <pre data-kc-lang="en">function enforcePostRateLimit(req, res, next) {
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const entry = postRateByIp.get(ip) || { recent: [], lastPostAt: 0 };
+  entry.recent = entry.recent.filter((ts) =&gt; now - ts &lt;= rateWindowMs);
+
+  if (entry.lastPostAt &amp;&amp; now - entry.lastPostAt &lt; minGapMs) {
+    return jsonError(res, 429, 'Rate limit: wait at least 10 seconds between transmissions.');
+  }
+  if (entry.recent.length &gt;= maxPostsPerWindow) {
+    return jsonError(res, 429, 'Rate limit: maximum 10 transmissions per hour.');
+  }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">getClientIp 取出这次请求是从哪个 IP 发来的，postRateByIp 这张表按 IP 记着“最近发过几次、上次是什么时候”。</p>
+        <p class="kc-code-pair__line">entry.recent.filter 把一小时之前的旧记录清掉，只留下窗口期以内的。</p>
+        <p class="kc-code-pair__line">第一道判断：离上一次发信还没满 10 秒（minGapMs），直接返回
+          <span class="kc-term" data-kc-define="429 是 HTTP 状态码的一种，专门表示“你发得太频繁了”（Too Many Requests）。看到这个数字就知道不是你的请求写错了，而是被限流拦下了。国内工程师就直接说 429。">429</span>
+          这个状态码，配一句能在真实报错里原样看到的文案。</p>
+        <p class="kc-code-pair__line">第二道判断：这一小时内已经发满 10 条（maxPostsPerWindow），同样返回 429，只是文案不一样。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p>
+      前面拦下来的是“发得太快”，接下来这一关拦的是“看着不像人话”。这段函数被悄悄改坏了，点一下你觉得有问题的那一行：
+    </p>
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这是 isRepeatedSpam 判断“是不是被一个字符刷屏”的核心那几行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是新建一张空的计数表，用来数每个字符出现了几次，没什么可挑的。"><span class="kc-bughunt__lineno">1</span>const counts = new Map();</button>
+        <button class="kc-bughunt__line" data-kc-hint="for...of 循环遍历每一个字符，逻辑没问题。"><span class="kc-bughunt__lineno">2</span>for (const ch of chars) {</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行给每个字符的出现次数加一，公式是对的。"><span class="kc-bughunt__lineno">3</span>  counts.set(ch, (counts.get(ch) || 0) + 1);</button>
+        <button class="kc-bughunt__line" data-kc-hint="循环到这里就结束了，花括号闭合，语法没问题。"><span class="kc-bughunt__lineno">4</span>}</button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="most 应该是出现次数最多的那个字符的次数（Math.max），这样才能判断“是不是被同一个字符刷屏了”。这里被悄悄换成了 Math.min，也就是出现次数最少的那个字符——几乎所有正常文本里都有个只出现一次的字符，min 值几乎永远是 1，除以总长度这个比例几乎不可能到 0.7，真正的刷屏消息（比如两百个感叹号）反而检测不出来了。把 Math.min 换回 Math.max 就对了。"><span class="kc-bughunt__lineno">5</span>const most = Math.min(...counts.values());</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是算比例、跟阈值 0.7 比较，公式本身没问题——如果 most 算错了，这里也会跟着算错。"><span class="kc-bughunt__lineno">6</span>return most / chars.length &gt;= 0.7;</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <p>
+      拦住了机器人，还有最后一件事：就算是真人发来的正常留言，也不能被当成代码执行。看看 app.js 是怎么把留言正文画到页面上的：
+    </p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:96-103</p>
+        <pre data-kc-lang="en">function renderItems(adminMode = false) {
+  if (!dom.logFeed) return;
+  dom.logFeed.innerHTML = state.items.map((item) =&gt; entryTemplate(item, adminMode)).join('');
+  const blocks = dom.logFeed.querySelectorAll('.entry');
+  blocks.forEach((entry, idx) =&gt; {
+    const textEl = entry.querySelector('.message-text');
+    textEl.textContent = state.items[idx].message;
+  });</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先用 entryTemplate 拼出整段卡片骨架，塞进 dom.logFeed.
+          <span class="kc-term" data-kc-define="innerHTML 直译是“内部 HTML”。给一个页面元素赋值它，浏览器会把这段字符串当成真正的网页标签去解析、渲染。国内工程师就直接说 innerHTML。">innerHTML</span>
+          ——但这一步骨架里，留言正文那一格还是空的。</p>
+        <p class="kc-code-pair__line">querySelectorAll('.entry') 把刚画出来的每一张卡片都找出来，准备逐个补上正文。</p>
+        <p class="kc-code-pair__line">关键的一行：textEl.
+          <span class="kc-term" data-kc-define="textContent 直译是“文本内容”。给一个页面元素赋值它，浏览器只会把这段字符串当成纯文字显示，不会解析成标签。就算内容是 &lt;script&gt;，也只会被当成几个普通字符印出来。国内工程师就直接说 textContent。">textContent</span>
+          = state.items[idx].message，把留言正文塞进去时用的不是 innerHTML，而是只显示纯文字的 textContent。</p>
+        <p class="kc-code-pair__line">这一步是防
+          <span class="kc-term" data-kc-define="XSS 是 Cross-Site Scripting 的缩写，直译是“跨站脚本”，指攻击者想办法把自己写的代码，让别人的浏览器当成页面的一部分执行——比如冒充成一条正常留言。国内工程师就直接说 XSS 攻击。">XSS</span>
+          攻击的关键一步：如果有人在留言里打一段 &lt;script&gt;，用 textContent 显示出来的只会是一串没用的字符，不会被当成代码执行。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="warning">
+      <span class="kc-note__icon">⚠</span>
+      <p class="kc-note__title">别信任何用户输入</p>
+      <p class="kc-note__body">app.js 里的 validateMessageClient 和 server.js 里的检查内容几乎一模一样——这不是偷懒重复，是因为前端的检查很容易被绕过（比如直接绕过页面，用命令行工具发请求），真正兜底的必须是服务器那一份。这个原则叫纵深防御（defense in depth），前端拦一次是为了体验好，后端拦一次才是真的安全。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <div class="kc-quiz" id="kc-quiz-m4">
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。enforcePostRateLimit 是最早跑的一段中间件，请求根本进不到后面判断内容、判断人机验证那些代码。"
+           data-kc-wrong="再想想：isRepeatedSpam 只负责判断文字内容像不像刷屏，助 helmet 的 CSP 管的是防止跨站脚本这类攻击，都拦不住“发得太快”这件事本身。">
+        <p class="kc-quiz__prompt">一个机器人在 1 秒内提交了 50 次留言，是哪一段代码最先拦住它？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>enforcePostRateLimit 里的 minGapMs 判断</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>isRepeatedSpam</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>helmet 的 CSP 配置</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。这个字段用 CSS 藏了起来，真人用浏览器根本看不见它、也就不会去填；只有照着表单字段名硬填一遍的简单机器人才会填进去。"
+           data-kc-wrong="再想想：这个输入框在页面上是被 CSS 藏起来的，正常人根本看不到它。">
+        <p class="kc-quiz__prompt">蜜罐字段 website 平时应该填什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>用户自己的网址</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>永远留空，填了就当场判定是机器人</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>服务器自己的地址</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。server.js 在人机验证通过之后立刻 humanChecks.delete(humanToken)，同一个 token 再用一次会查不到，直接报错。"
+           data-kc-wrong="再看一眼 POST /api/messages 里验证通过之后紧跟着的那一行——它明确把这个 token 从表里删掉了。">
+        <p class="kc-quiz__prompt">人机验证用的 humanToken，成功提交一次之后会怎样？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>可以反复使用，直到 5 分钟过期</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>立刻从 humanChecks 里删掉，第二次再用会报错</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>没有任何使用次数限制</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <div class="kc-output" id="kc-output-m4" data-kc-kind="instruct" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你想再加一条反作弊规则：同一个 callsign 一天最多只能发 20 条留言。把你会对 AI 说的那句话原样写出来。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">点名了要改 server.js 里的 enforcePostRateLimit，或者照它的样子新加一个检查函数</li>
+        <li class="kc-output__item">提到了限制的对象是 callsign，而不是现在按的 IP 地址</li>
+        <li class="kc-output__item">提到了超过限制时该返回什么状态码，比如 429</li>
+      </ul>
+    </div>
+  </section>
+</section>
