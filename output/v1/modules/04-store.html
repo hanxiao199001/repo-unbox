@@ -1,0 +1,179 @@
+<section class="kc-module" id="kc-m4" data-kc-tone="b" data-kc-metaphor="白板与档案柜">
+  <p class="kc-module__number">04</p>
+  <h2 class="kc-module__title">东西到底存在哪</h2>
+  <p class="kc-module__subtitle">为什么刷新还在，关机重启也还在。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">两个地方，性格完全不同</h3>
+    <p>“数据存在哪”这个问题，在这个项目里有两个答案，而且两个都对。</p>
+    <p>一个是<span class="kc-term" data-kc-define="内存（memory）是电脑临时放东西的地方，读写极快，但断电就没。程序运行时的变量都住在这儿。国内叫内存，英文里也常说 in-memory，意思是“放在内存里的”。">内存</span>，一个是<span class="kc-term" data-kc-define="硬盘（disk）是电脑长期存东西的地方，慢一些，但关机之后还在。文件都住在这儿。国内叫硬盘或磁盘，英文说 disk。">硬盘</span>。它们的关系就像办公室里的白板和档案柜：白板写起来快，一擦就没，停电也没；档案柜慢，但明天来了它还在。</p>
+    <p>这个项目两样都用：白板上放一份随时能看的副本，档案柜里放那份说了算的。</p>
+
+    <div class="kc-cards">
+      <div class="kc-cards__item" data-kc-accent="1">
+        <span class="kc-cards__icon">◧</span>
+        <p class="kc-cards__title">白板</p>
+        <p class="kc-cards__body">程序里那个叫 todos 的数组。查询待办时直接从它读，不碰硬盘，所以快。服务一停，它就没了。</p>
+      </div>
+      <div class="kc-cards__item" data-kc-accent="2">
+        <span class="kc-cards__icon">◨</span>
+        <p class="kc-cards__title">档案柜</p>
+        <p class="kc-cards__body">data/todos.json 这个文件。每次有改动就重写一遍。你关掉终端、重启电脑，它都还在。</p>
+      </div>
+      <div class="kc-cards__item" data-kc-accent="3">
+        <span class="kc-cards__icon">◩</span>
+        <p class="kc-cards__title">谁说了算</p>
+        <p class="kc-cards__body">档案柜。程序启动时先把文件读进白板，之后每次改动再写回去。文件是唯一的真相。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">原作者自己写了答案</h3>
+    <p>这四行里有两行是注释。它们是整个项目里最值钱的两句话——写代码的人在解释他为什么这么设计。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/store.js:9-12</p>
+        <pre data-kc-lang="en">// In-memory cache of every todo. The JSON file on disk is the source of truth,
+// but we only read it once at boot and write it back after each change.
+let todos = [];
+let writeQueue = Promise.resolve();</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">原作者的第一句：这是所有待办的<span class="kc-term" data-kc-define="cache 读作“开许”，字面是“藏起来备用的东西”。在这里指“在内存里留的一份副本”，为的是不用每次都去读硬盘。国内叫缓存，日常口语里也直接说 cache。">缓存</span>，硬盘上那个 JSON 文件才是<span class="kc-term" data-kc-define="source of truth 直译是“真相的来源”，指“出现分歧时以谁为准”。在这个项目里是硬盘上的 todos.json。国内工程师直接说“真相源”，或者干脆说“以谁为准”。">真相源</span>。</p>
+        <p class="kc-code-pair__line">第二句是关键：文件只在启动时读一次，之后每次改动写回去。所以查询快，因为根本不读盘。</p>
+        <p class="kc-code-pair__line">白板本身，一开始是空的。</p>
+        <p class="kc-code-pair__line">一个排队用的东西，下一屏专门讲它为什么必须存在。</p>
+      </div>
+    </div>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/store.js:14-21</p>
+        <pre data-kc-lang="en">async function persist() {
+  // Chain writes so two rapid requests can never interleave and corrupt the file.
+  writeQueue = writeQueue.then(async () =&gt; {
+    await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+    await fs.writeFile(DATA_FILE, JSON.stringify(todos, null, 2), 'utf8');
+  });
+  return writeQueue;
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="persist 字面是“坚持、持续存在”，在编程里指“把数据存成关机也不会丢的形式”。国内叫持久化，写代码时说“持久化到磁盘”。">persist</span> 的意思是“把它留住”，也就是写进硬盘。</p>
+        <p class="kc-code-pair__line">原作者的注释：把写盘排成一队，两个请求挨得再近也不会交叉着写、把文件写坏。</p>
+        <p class="kc-code-pair__line">排队的做法：新的写盘接在上一次的后面，等前一个写完才轮到它。</p>
+        <p class="kc-code-pair__line">先确保放文件的那个文件夹存在，不存在就建出来。</p>
+        <p class="kc-code-pair__line">真正写盘的一行。第三个参数 2 是缩进空格数——所以你打开 todos.json 看到的是排好版的，不是挤成一行。</p>
+        <p class="kc-code-pair__line">这一次的写盘结束。</p>
+        <p class="kc-code-pair__line">把这一队还回去，好让调用者能 await 它。</p>
+        <p class="kc-code-pair__line">函数收尾。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">单一出口（single writer）</p>
+      <p class="kc-note__body">整个项目里，只有 persist 这一个函数会写那个文件。想改存储方式——换成数据库、加个备份——只需要动这一处。碰同一份数据的地方越少，出问题时要查的地方就越少。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">新建一条，代码是这样的</h3>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/store.js:45-55</p>
+        <pre data-kc-lang="en">  async create({ title }) {
+    const todo = {
+      id: randomUUID(),
+      title,
+      done: false,
+      createdAt: new Date().toISOString(),
+    };
+    todos.push(todo);
+    await persist();
+    return todo;
+  },</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">函数名 create 就是“造一个出来”。它只要一个标题。</p>
+        <p class="kc-code-pair__line">开始拼这一条待办长什么样。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="UUID 是 Universally Unique Identifier 的缩写，字面是“全世界都不会重的编号”。randomUUID 就是随机生成一个这样的编号。用它当 id，两条待办永远不会撞号。国内直接念 UUID。">randomUUID()</span> 随机编一个全世界都不会重复的号，当这条待办的身份证。</p>
+        <p class="kc-code-pair__line">标题就是你打的那句话，原样放进来。</p>
+        <p class="kc-code-pair__line">新建的待办一定是没完成的，所以 done 写死为 false。</p>
+        <p class="kc-code-pair__line">记下创建时间。<span class="kc-term" data-kc-define="ISO 8601 是国际通用的时间写法，长得像 2026-09-07T03:12:45.000Z。它的好处是排序就等于按时间排，不同国家读起来也不会歧义。国内工程师说“ISO 时间”或者“ISO 字符串”。">toISOString()</span> 是国际通用写法，排序就等于按时间排。</p>
+        <p class="kc-code-pair__line">这一条拼完了。</p>
+        <p class="kc-code-pair__line">先写到白板上。</p>
+        <p class="kc-code-pair__line">再写进档案柜，并且等它写完。<strong>顺序不能反</strong>：先进数组，再落盘。</p>
+        <p class="kc-code-pair__line">把完整的一条还回去，柜台才能连着 id 一起回给页面。</p>
+        <p class="kc-code-pair__line">这一段结束。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">这段也被改坏了</h3>
+    <p>删除一条待办的代码，同样只动了一处。</p>
+
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这段代码被人悄悄改坏了，点一下你觉得有问题的那一行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="函数名和参数都没问题，remove 就是“移除”，它要一个 id。"><span class="kc-bughunt__lineno">1</span>  async remove(id) {</button>
+        <button class="kc-bughunt__line" data-kc-hint="在数组里找这条待办排第几个。findIndex 找的是位置，不是内容，这一行是对的。"><span class="kc-bughunt__lineno">2</span>    const index = todos.findIndex((todo) =&gt; todo.id === id);</button>
+        <button class="kc-bughunt__line" data-kc-hint="没找到就返回 false，交给柜台去报 404。这一行的判断是对的。"><span class="kc-bughunt__lineno">3</span>    if (index === -1) return false;</button>
+        <button class="kc-bughunt__line" data-kc-hint="从数组里把那一条剪掉。白板这边的操作没问题，问题在下一行。"><span class="kc-bughunt__lineno">4</span>    todos.splice(index, 1);</button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="真实代码是 await persist()，这里少了 await。少了它，程序不等写盘完成就往下走，立刻回复“删掉了”。多数时候你看不出区别，因为写盘很快。但如果这一刻服务被关掉、或者机器断电，那条待办在白板上已经没了、在档案柜里却还在——重启之后它会自己回来。这类 bug 的可怕之处就在于它平时完全正常。把 persist(); 改回 await persist(); 就对了。"><span class="kc-bughunt__lineno">5</span>    persist();</button>
+        <button class="kc-bughunt__line" data-kc-hint="返回 true 表示确实删掉了一条，柜台据此回 204。这一行没问题。"><span class="kc-bughunt__lineno">6</span>    return true;</button>
+        <button class="kc-bughunt__line" data-kc-hint="收尾的括号和逗号，语法没问题——真有语法错，编辑器早标红了。"><span class="kc-bughunt__lineno">7</span>  },</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">检查一下</h3>
+
+    <div class="kc-quiz" id="kc-quiz-m4">
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。查询走的是内存里那份副本，从头到尾没碰硬盘。"
+           data-kc-wrong="回头看原作者那两行注释：文件只在启动时读一次。所以查询的时候，它读的是白板，不是档案柜。">
+        <p class="kc-quiz__prompt">你刷新页面，列表重新显示出来。这一次读的是哪儿？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>硬盘上的 todos.json，每次都重新读一遍</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>浏览器自己存的一份</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>服务器内存里那个 todos 数组</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。只有 persist 会写那个文件，所以换存储方式只需要动这一个函数。"
+           data-kc-wrong="想想“单一出口”那条：整个项目里写文件的地方只有一处。找到那一处，就找到了唯一要改的地方。">
+        <p class="kc-quiz__prompt">你想把存储从 JSON 文件换成数据库。改动主要落在哪儿？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>store.js，尤其是 persist 那一个函数</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>每一条路由都要改，因为它们都在存数据</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>server.js，因为它是入口</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m4" data-kc-kind="retell" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">用你自己的话说一遍：一条待办从“被创建出来”到“关机重启之后还在”，中间经过了哪几步？</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说到了先进内存里的 todos 数组，再由 persist 写进硬盘，顺序没说反</li>
+        <li class="kc-output__item">点名了 data/todos.json 这个文件，而不是笼统地说“存起来了”</li>
+        <li class="kc-output__item">说清楚了写盘是排队进行的，以及排队是为了防止文件被写坏</li>
+        <li class="kc-output__item">说出了下次启动时是先把文件读回内存，而不是每次查询都读盘</li>
+      </ul>
+    </div>
+  </section>
+</section>

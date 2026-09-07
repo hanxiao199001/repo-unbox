@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>待办 API 是怎么跑起来的</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="kc-skip" href="#kc-course">跳到课程正文</a>
+<header class="kc-nav">
+<div class="kc-nav__progress" role="progressbar" aria-label="课程阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="kc-nav__progress-fill"></span></div>
+<div class="kc-nav__row">
+<span class="kc-nav__title">待办 API 是怎么跑起来的</span>
+<div class="kc-nav__dots" role="tablist" aria-label="模块导航"><button class="kc-nav__dot" type="button" data-kc-target="kc-m1" data-kc-label="你点的那一下"></button><button class="kc-nav__dot" type="button" data-kc-target="kc-m2" data-kc-label="谁来接这一单"></button><button class="kc-nav__dot" type="button" data-kc-target="kc-m3" data-kc-label="进站要过几道关"></button><button class="kc-nav__dot" type="button" data-kc-target="kc-m4" data-kc-label="东西到底存在哪"></button><button class="kc-nav__dot" type="button" data-kc-target="kc-m5" data-kc-label="出错的时候看哪儿"></button></div>
+</div>
+</header>
+<main class="kc-course" id="kc-course">
+
+<section class="kc-module" id="kc-m1" data-kc-tone="a" data-kc-metaphor="快递驿站">
+  <p class="kc-module__number">01</p>
+  <h2 class="kc-module__title">你点的那一下</h2>
+  <p class="kc-module__subtitle">从你敲的三个字，一路追到硬盘上的那个文件。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">先做一件你已经做过的事</h3>
+    <p>页面上有一个输入框，你在里面打了“买牛奶”，按了旁边的“Add”。列表里多出来一条。你刷新页面，它还在。</p>
+    <p>这一门课要讲的全部内容，就是这三句话背后发生的事。不是从“什么是<span class="kc-term" data-kc-define="server（服务器）字面就是“提供服务的人”，serve（伺候、上菜）加上 -er（干这事的人）。在这个项目里，它是你电脑上一直开着的那个 node 程序，别人问它要待办，它就把待办找出来给别人。国内工程师就叫服务器，也直接说 server。">服务器</span>”开始讲，是从你的手指开始讲。</p>
+    <p>你已经知道结局了——那条待办确实出现了。悬念不在“会发生什么”，在“凭什么”。</p>
+
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">关注点分离（separation of concerns）</p>
+      <p class="kc-note__body">这个项目把“画页面”“接请求”“存数据”拆给了三个不同的文件。拆开的好处不是好看，是出问题时你知道该先打开哪一个。这是整门课最值钱的一句话，工程界管它叫关注点分离。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">这个项目里有谁</h3>
+    <p>先认四个主要的，各管一摊。名字全是英文，你会反复见到它们，所以现在就认脸。</p>
+
+    <div class="kc-rolelist">
+      <div class="kc-rolelist__row" data-kc-accent="1">
+        <span class="kc-rolelist__icon">P</span>
+        <p class="kc-rolelist__name">public/index.html</p>
+        <p class="kc-rolelist__note">你眼睛看到的那个页面。它收你敲的字，也负责把列表画出来。它不存东西，关掉标签页什么都不剩。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="2">
+        <span class="kc-rolelist__icon">S</span>
+        <p class="kc-rolelist__name">src/server.js</p>
+        <p class="kc-rolelist__note">大门口。所有请求先到它这儿，它决定这一单该交给谁。它自己什么活都不干。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="3">
+        <span class="kc-rolelist__icon">R</span>
+        <p class="kc-rolelist__name">src/routes/todos.js</p>
+        <p class="kc-rolelist__note">专门处理待办这一摊的柜台：新增、查询、修改、删除，四个动作都在这里接单。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="4">
+        <span class="kc-rolelist__icon">T</span>
+        <p class="kc-rolelist__name">src/store.js</p>
+        <p class="kc-rolelist__note">只有它碰硬盘。数据不对、刷新之后没了，第一个来找它。</p>
+      </div>
+    </div>
+
+    <div class="kc-tree">
+      <div class="kc-tree__dir">
+        <code class="kc-tree__name" data-kc-lang="en">src/</code>
+        <span class="kc-tree__note">服务器端的代码全在这儿，外面那些是配置和说明。</span>
+      </div>
+      <div class="kc-tree__children">
+        <div class="kc-tree__file">
+          <code class="kc-tree__name" data-kc-lang="en">server.js</code>
+          <span class="kc-tree__note">大门口——启动程序，决定每种请求交给谁。</span>
+        </div>
+        <div class="kc-tree__file">
+          <code class="kc-tree__name" data-kc-lang="en">store.js</code>
+          <span class="kc-tree__note">只有它碰硬盘。</span>
+        </div>
+      </div>
+      <div class="kc-tree__dir">
+        <code class="kc-tree__name" data-kc-lang="en">public/</code>
+        <span class="kc-tree__note">浏览器直接下载的东西都在这儿，不经过任何加工。</span>
+      </div>
+      <div class="kc-tree__children">
+        <div class="kc-tree__file">
+          <code class="kc-tree__name" data-kc-lang="en">index.html</code>
+          <span class="kc-tree__note">页面本身，连样式和脚本都写在里面，一个文件就是整个前端。</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">点下去之后，这句话走了哪条路</h3>
+    <p>点“下一步”，跟着“买牛奶”走一遍。这条路你后面四个模块都会反复走，先有个整体印象。</p>
+
+    <div class="kc-flow" data-kc-steps='[
+      {"actor":"kc-flow-m1-you","text":"你在输入框里打了“买牛奶”，按了 Add。这一步还完全在你自己的电脑里。"},
+      {"actor":"kc-flow-m1-page","text":"页面拦住了浏览器默认的刷新行为，把你打的字取出来，包成一个 JSON 再发出去。","from":"kc-flow-m1-you","to":"kc-flow-m1-page"},
+      {"actor":"kc-flow-m1-server","text":"请求到了大门口。它看到路径是 /api/todos、动作是 POST，就知道该把这一单交给待办柜台。","from":"kc-flow-m1-page","to":"kc-flow-m1-server"},
+      {"actor":"kc-flow-m1-route","text":"柜台先让门卫检查标题合不合格，合格才往下走。","from":"kc-flow-m1-server","to":"kc-flow-m1-route"},
+      {"actor":"kc-flow-m1-store","text":"管硬盘的那个给它编了一个 id，写进 todos.json，然后把完整的一条还回来。","from":"kc-flow-m1-route","to":"kc-flow-m1-store"},
+      {"actor":"kc-flow-m1-page","text":"页面拿到回复之后不自己画，它重新问了一遍全部待办，画出来的才是真的。","from":"kc-flow-m1-store","to":"kc-flow-m1-page"}
+    ]'>
+      <div class="kc-flow__actors">
+        <div class="kc-flow__actor" id="kc-flow-m1-you"><span class="kc-flow__icon">🧑</span><span class="kc-flow__name">你</span></div>
+        <div class="kc-flow__actor" id="kc-flow-m1-page"><span class="kc-flow__icon">▤</span><span class="kc-flow__name">index.html</span></div>
+        <div class="kc-flow__actor" id="kc-flow-m1-server"><span class="kc-flow__icon">▣</span><span class="kc-flow__name">server.js</span></div>
+        <div class="kc-flow__actor" id="kc-flow-m1-route"><span class="kc-flow__icon">◫</span><span class="kc-flow__name">todos.js</span></div>
+        <div class="kc-flow__actor" id="kc-flow-m1-store"><span class="kc-flow__icon">▦</span><span class="kc-flow__name">store.js</span></div>
+      </div>
+      <span class="kc-flow__packet"></span>
+      <p class="kc-flow__caption">点“下一步”，跟着“买牛奶”这三个字走一遍。</p>
+      <div class="kc-flow__actions">
+        <button class="kc-flow__next">下一步</button>
+        <button class="kc-flow__reset">重来</button>
+      </div>
+      <p class="kc-flow__progress"></p>
+    </div>
+
+    <p>这就像小区门口的<span class="kc-term" data-kc-define="快递驿站是这个模块的比喻：你不进仓库，你在窗口报单号，里面的人帮你取。你和真正存东西的地方之间，永远隔着一个接待的人。">快递驿站</span>：你不进仓库，你在窗口说要什么，里面的人帮你去取。页面就是那个窗口，它自己一件货都没有。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">页面这一头，代码长什么样</h3>
+    <p>下面这段是你按下 Add 时真正跑起来的代码。左边是原文，右边一行一行讲。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/index.html:83-93</p>
+        <pre data-kc-lang="en">    form.addEventListener('submit', async (event) =&gt; {
+      event.preventDefault();
+      const title = new FormData(form).get('title');
+      try {
+        await api('/api/todos', { method: 'POST', body: JSON.stringify({ title }) });
+        form.reset();
+        refresh();
+      } catch (err) {
+        errorBox.textContent = err.message;
+      }
+    });</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">给表单挂一个“有人提交了”的监听。<span class="kc-term" data-kc-define="submit（提交）就是“交上去”的意思。在这里指你按下 Add 或者在输入框里敲回车这个动作。国内就叫提交。">submit</span> 就是你按 Add 的那一下。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="preventDefault 拆开是 prevent（阻止）+ default（默认的）。浏览器对表单的默认反应是整页刷新，这一行把默认反应挡掉，页面才不会白一下。国内口语就说“阻止默认行为”。">preventDefault</span> 挡掉浏览器的默认反应。不写这一行，整个页面会刷新一次。</p>
+        <p class="kc-code-pair__line">把输入框里的字取出来，存进 title 这个变量。title 就是“标题”。</p>
+        <p class="kc-code-pair__line">下面这段用 try 包起来，意思是“下面可能会出事，出事了别把整个页面搞崩”。</p>
+        <p class="kc-code-pair__line">这一行才是真的往外发。<span class="kc-term" data-kc-define="POST 是 HTTP 的一个动作词，字面是“投递”。它表示“我要新建一个东西”，和只是“看看”的 GET 相对。国内工程师直接念 POST，不翻译。">POST</span> 表示“我要新建一个”，<span class="kc-term" data-kc-define="JSON 是 JavaScript Object Notation 的缩写，一种用大括号和引号写数据的格式。stringify 是 string（字符串）加 -ify（把它变成……），意思是“把这个对象变成一串字”，因为网线上只能传字。国内就念 JSON，读作“杰森”。">JSON.stringify</span> 把对象变成一串能在网线上传的字。</p>
+        <p class="kc-code-pair__line">发完就把输入框清空。</p>
+        <p class="kc-code-pair__line"><strong>这一行是本模块最重要的一行。</strong>页面没有自己把新待办画上去，它调用 refresh，重新问了服务器一遍。</p>
+        <p class="kc-code-pair__line">万一上面哪一步出事了，掉到这里来。</p>
+        <p class="kc-code-pair__line">把错误的文字显示在页面上那行红字里。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="info">
+      <span class="kc-note__icon">ℹ</span>
+      <p class="kc-note__title">为什么不自己画</p>
+      <p class="kc-note__body">自己画一条，页面上的列表就可能和服务器上的真实数据对不上。重新问一遍虽然多花一次往返，但屏幕上显示的永远是真的。这个取舍叫“以服务器为准”。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">检查一下</h3>
+
+    <div class="kc-quiz" id="kc-quiz-m1">
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。页面调的是 refresh，重新问了一遍全部待办，所以屏幕上的和服务器上的永远一致。"
+           data-kc-wrong="再看一眼那段代码的倒数第五行——发完请求之后它调了 refresh，而不是往列表里塞一条。这是这个项目故意选的做法。">
+        <p class="kc-quiz__prompt">你点了 Add 之后，页面上那条新待办是怎么出现的？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>页面自己把你打的字画了上去</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>服务器主动推给页面的</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>页面又重新问了一遍全部待办，然后整个列表重画</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。只有 store.js 碰硬盘，刷新之后还在说明它写成功了。"
+           data-kc-wrong="想一想“关掉浏览器再打开还在”这件事。浏览器里的东西关掉就没了，能留下来的一定是被写到了别的地方。">
+        <p class="kc-quiz__prompt">同事说“我加的待办刷新一下就没了”，你第一个打开哪个文件？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>public/index.html，因为列表是它画的</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>src/store.js，因为只有它往硬盘上写</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>src/server.js，因为请求是它收的</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m1" data-kc-kind="retell" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">用你自己的话说一遍：你打了“买牛奶”并按下 Add 之后，这三个字依次经过了哪些文件？最后停在哪儿？</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说出了 index.html 先把字收起来，并且提到它挡掉了整页刷新</li>
+        <li class="kc-output__item">提到请求走的是 POST /api/todos 这条路</li>
+        <li class="kc-output__item">说清楚了只有 store.js 会往硬盘上写，写的是 todos.json</li>
+        <li class="kc-output__item">说到了页面最后是重新问了一遍，而不是自己把那一条画上去</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="kc-module" id="kc-m2" data-kc-tone="b" data-kc-metaphor="医院挂号分诊台">
+  <p class="kc-module__number">02</p>
+  <h2 class="kc-module__title">谁来接这一单</h2>
+  <p class="kc-module__subtitle">大门口不干活，它只负责把你指到对的柜台。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">大门口只做一件事</h3>
+    <p>上一模块里，请求飞到了 server.js。你可能以为它就是那个“干活的”。其实正相反——它一件活都不干。</p>
+    <p>它像医院的挂号分诊台：你说哪儿不舒服，它给你指一个诊室。它不给你看病，它只负责别把你指错地方。</p>
+    <p>这个动作在工程界有个词，叫<span class="kc-term" data-kc-define="route（路由）字面是“路线”，动词是“把……送上某条路”。在这个项目里，它指“把某个网址交给某段代码去处理”这件事。国内工程师叫路由，写代码时说“加一条路由”。">路由</span>。一条路由就是一句约定：“凡是走这个地址、用这个动作来的，都交给某某处理。”</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/server.js:26-34</p>
+        <pre data-kc-lang="en">// Serve the browser client from public/
+app.use(express.static(path.join(__dirname, '..', 'public')));
+
+// Mount the todo routes under /api/todos
+app.use('/api/todos', todosRouter);
+
+app.get('/api/health', (req, res) =&gt; {
+  res.json({ status: 'ok', count: store.all().length, uptime: process.uptime() });
+});</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">原作者的注释：把 public 文件夹里的东西直接端出去。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="static（静态的）指“不用现做，直接给”。图片、样式、页面这类文件写好就摆在那儿，谁要就给谁一份，不需要服务器临时算什么。国内叫静态文件、静态资源。">static</span> 的意思是“现成的，拿了就走”。你打开网页时下载的 index.html 就是从这一行出去的。</p>
+        <p class="kc-code-pair__line">原作者的注释：把待办相关的那一堆路由挂在 /api/todos 底下。</p>
+        <p class="kc-code-pair__line">这一行是本模块的核心。<span class="kc-term" data-kc-define="mount（挂载）字面是“把东西装到某个位置上”。在这里指“凡是以 /api/todos 开头的地址，统统交给 todosRouter 这个柜台”。国内也说挂载，或者直接说“挂在这个路径下”。">挂</span>的意思是：凡是地址以 /api/todos 开头的，全部转给 todosRouter，大门口自己不看内容。</p>
+        <p class="kc-code-pair__line">这里是唯一一条大门口自己接的路——一个健康检查。</p>
+        <p class="kc-code-pair__line">它回一个小对象，告诉你服务活着、现在有几条待办、已经跑了多久。你把 /api/health 输进浏览器就能看到。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">顺序即规则</p>
+      <p class="kc-note__body">这几行是从上往下依次生效的。谁写在前面谁先有机会接住请求，一旦被接住，后面的就轮不到了。很多“为什么我的接口没反应”，答案就是它被写在了另一条更宽的规则后面。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">柜台里发生了什么</h3>
+    <p>被指到待办柜台之后，真正处理“新建一条”的是下面这九行。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/routes/todos.js:22-30</p>
+        <pre data-kc-lang="en">// POST /api/todos
+router.post('/', validateCreate, async (req, res, next) =&gt; {
+  try {
+    const todo = await store.create({ title: req.body.title });
+    res.status(201).json(todo);
+  } catch (err) {
+    next(err);
+  }
+});</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">原作者的注释，写清楚这一段管的是哪个地址、哪个动作。</p>
+        <p class="kc-code-pair__line">注意这一行有两个东西排在一起：先是 validateCreate，然后才是真正干活的那个函数。前者是门卫，下一个模块专门讲它。</p>
+        <p class="kc-code-pair__line">try 的意思是“下面可能出事”。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="await 字面就是“等待”。写在一句话前面，意思是“这一步要花时间，等它办完再往下走”。在这里等的是往硬盘上写文件。国内叫异步等待，口语里直接说 await。">await</span> 是“等一下”。写硬盘要花时间，这一行会等它写完再往下走。<span class="kc-term" data-kc-define="req 是 request（请求）的缩写，指“别人发过来的那一单”。req.body 就是那一单里带的内容，也就是你打的那句话。国内工程师念作“瑞快斯特”或者直接说“请求体”。">req.body</span> 就是你发来的那个 JSON。</p>
+        <p class="kc-code-pair__line">写成功了就回一个 <span class="kc-term" data-kc-define="201 是一个 HTTP 状态码，字面含义是 Created（已创建）。它比笼统的 200（成功）更准确：不只是“办好了”，而是“新东西已经建出来了”。国内直接念 201。">201</span>。201 不是随便挑的数字，它专门表示“新东西已经建出来了”。</p>
+        <p class="kc-code-pair__line">出事了掉到这里。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="next（下一个）在这里的意思是“我不管了，交给下一个”。next(err) 特指“出错了，交给专门处理错误的那一位”。国内工程师直接说 next，或者说“往下传”。">next(err)</span> 的意思是“我处理不了，往下传”。传到哪儿，第五个模块揭晓。</p>
+        <p class="kc-code-pair__line">这一段到此结束。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">让它们自己说</h3>
+    <p>同样一件事，换成这几个文件在群里对话，是这样的。点“下一条”一条条看。</p>
+
+    <div class="kc-chat" id="kc-chat-m2">
+      <div class="kc-chat__stream">
+        <div class="kc-chat__message" data-kc-speaker="index.html">
+          <span class="kc-chat__avatar">P</span>
+          <div class="kc-chat__bubble"><p class="kc-chat__speaker">index.html</p>有人打了“买牛奶”，按了 Add。我包成 JSON 发过去了，走 POST /api/todos。</div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="server.js">
+          <span class="kc-chat__avatar">S</span>
+          <div class="kc-chat__bubble"><p class="kc-chat__speaker">server.js</p>收到。地址以 /api/todos 开头，不归我管，转给待办柜台。我从来不看内容。</div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="validate.js">
+          <span class="kc-chat__avatar">V</span>
+          <div class="kc-chat__bubble"><p class="kc-chat__speaker">validate.js</p>等一下，我先看看标题。不是空的，也没超过 200 个字符，放行。</div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="todos.js">
+          <span class="kc-chat__avatar">R</span>
+          <div class="kc-chat__bubble"><p class="kc-chat__speaker">todos.js</p>好，我来接单。存东西不是我的活，我喊管硬盘的。</div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="store.js">
+          <span class="kc-chat__avatar">T</span>
+          <div class="kc-chat__bubble"><p class="kc-chat__speaker">store.js</p>我给它编了个 id，写进 todos.json 了。完整的一条还给你。</div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="todos.js">
+          <span class="kc-chat__avatar">R</span>
+          <div class="kc-chat__bubble"><p class="kc-chat__speaker">todos.js</p>那我回 201，表示新东西建出来了。</div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="index.html">
+          <span class="kc-chat__avatar">P</span>
+          <div class="kc-chat__bubble"><p class="kc-chat__speaker">index.html</p>收到 201。但我不照着它画，我再问你要一遍全部的，画出来的才算数。</div>
+        </div>
+      </div>
+      <div class="kc-chat__typing"></div>
+      <div class="kc-chat__actions">
+        <button class="kc-chat__next">下一条</button>
+        <button class="kc-chat__all">全部播放</button>
+        <button class="kc-chat__replay">重放</button>
+      </div>
+      <p class="kc-chat__progress"></p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">这段被人改坏了</h3>
+    <p>下面是“查一条待办”的代码，被人悄悄动了一处。点一下你觉得有问题的那一行。点错没有惩罚，可以一直点到找到为止。</p>
+
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这段代码被人悄悄改坏了，点一下你觉得有问题的那一行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="这只是一行注释，写给人看的，程序根本不执行它。"><span class="kc-bughunt__lineno">1</span>// GET /api/todos/:id</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行声明“凡是走 /某个 id 这种地址的查询，交给我”。地址写法本身没问题。"><span class="kc-bughunt__lineno">2</span>router.get('/:id', (req, res, next) =&gt; {</button>
+        <button class="kc-bughunt__line" data-kc-hint="从地址里把 id 取出来，拿去找。这一行是对的，问题在它的下一行怎么用这个结果。"><span class="kc-bughunt__lineno">3</span>  const todo = store.find(req.params.id);</button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="真实代码是 if (!todo)，意思是“没找到”。这里少了那个感叹号，意思反了过来：找到了才报 404，没找到反而往下走。结果是每一条真实存在的待办都查不出来，而查一个不存在的 id 反倒会把 undefined 当成结果发回去。这类错最难发现，因为程序不会崩，它只是安静地把事情做反了。改回 if (!todo) 就对了。"><span class="kc-bughunt__lineno">4</span>  if (todo) return next(new HttpError(404, 'todo not found'));</button>
+        <button class="kc-bughunt__line" data-kc-hint="把查到的东西发回去，这一行没什么可挑的。"><span class="kc-bughunt__lineno">5</span>  res.json(todo);</button>
+        <button class="kc-bughunt__line" data-kc-hint="收尾的括号，语法上没问题——真有语法错，编辑器早就标红了。"><span class="kc-bughunt__lineno">6</span>});</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">检查一下</h3>
+
+    <div class="kc-quiz" id="kc-quiz-m2">
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。大门口只负责按地址前缀分派，具体怎么处理是柜台的事。"
+           data-kc-wrong="回头看 server.js 那一段：它一共只有一行是自己接的（健康检查），其余都是转手。分诊台不看病。">
+        <p class="kc-quiz__prompt">server.js 在这个项目里干的是什么活？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>它负责把待办存进硬盘</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>它按地址把请求分给不同的柜台，自己基本不干活</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>它负责把页面画出来</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。要新加一种待办相关的操作，改的是待办柜台那个文件，大门口不用动。"
+           data-kc-wrong="想想“挂载”这个动作：大门口已经说了“凡是 /api/todos 开头的都归你”。所以新增一个 /api/todos 下的动作，大门口根本不需要知道。">
+        <p class="kc-quiz__prompt">你想加一个“把所有已完成的待办一次性清空”的功能，你会对 AI 说：请改哪个文件？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>src/server.js，因为所有请求都先到它那儿</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>public/index.html，因为按钮在页面上</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>src/routes/todos.js 加一条新路由，src/store.js 加对应的操作</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m2" data-kc-kind="explain" data-kc-min="70">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你朋友问你“路由到底是个啥”。用不超过三句话讲给他听，不许用“映射”“分发”这类词。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说出了这个概念的英文原词 route，并且知道它字面是“路线”</li>
+        <li class="kc-output__item">讲清楚了它是“把某个地址交给某段代码去处理”这件事，而不是背了一句定义</li>
+        <li class="kc-output__item">用了一个你自己的比喻，没有直接搬“分诊台”</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="kc-module" id="kc-m3" data-kc-tone="a" data-kc-metaphor="地铁进站安检">
+  <p class="kc-module__number">03</p>
+  <h2 class="kc-module__title">进站要过几道关</h2>
+  <p class="kc-module__subtitle">请求到达柜台之前，先被几个人依次摸了一遍。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">中间那一层</h3>
+    <p>上一模块留了一个尾巴：那一行里，validateCreate 排在真正干活的函数前面。它是什么？</p>
+    <p>它是<span class="kc-term" data-kc-define="middleware 拆开是 middle（中间）+ ware（东西），字面就是“夹在中间的那层东西”。在这个项目里，它是请求到达柜台之前依次经过的一串检查函数：解析 JSON、记日志、校验标题。国内叫中间件，口语里也直接说 middleware。">中间件</span>。</p>
+    <p>这就像坐地铁进站：安检机 → 闸机 → 站台。每一关都能把你拦下来，也都能放你过去。放过去了，你就到下一关；被拦下来，你根本走不到站台。</p>
+    <p>请求也是一样。它到达待办柜台之前，已经被好几个人依次摸过一遍了。</p>
+
+    <div class="kc-chain">
+      <div class="kc-chain__step"><span class="kc-chain__num">1</span>把 JSON 拆成对象</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">2</span>记一行日志</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">3</span>查标题合不合格</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">4</span>柜台真正干活</div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第二关：每一次请求都被记了一笔</h3>
+    <p>这段是项目自己写的一个中间件。它谁也不拦，只是把每次请求记下来。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/server.js:16-24</p>
+        <pre data-kc-lang="en">// Log every request: method, path, and how long it took
+app.use((req, res, next) =&gt; {
+  const startedAt = Date.now();
+  res.on('finish', () =&gt; {
+    const ms = Date.now() - startedAt;
+    console.log(`${req.method} ${req.originalUrl} -&gt; ${res.statusCode} (${ms}ms)`);
+  });
+  next();
+});</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">原作者的注释：记下每个请求的动作、路径和耗时。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="app.use 里的 use（使用）在这里的意思是“每一个请求都要经过这个”。凡是用 app.use 挂上去的，就是一道所有人都得过的关。国内说“注册一个中间件”。">app.use</span> 就是“往关卡链上加一道”。这道关对所有请求生效。</p>
+        <p class="kc-code-pair__line">先记一下现在几点。</p>
+        <p class="kc-code-pair__line">给“回复发完了”这件事挂一个监听。<span class="kc-term" data-kc-define="finish（完成）在这里是一个事件的名字，指“这次回复已经完整发出去了”。挂在它上面的代码会等到那一刻才跑。国内就说“finish 事件”。">finish</span> 那一刻才知道这次总共花了多久。</p>
+        <p class="kc-code-pair__line">用结束时间减开始时间，得到毫秒数。</p>
+        <p class="kc-code-pair__line">打印一行。你在终端里看到的 <code class="kc-code" data-kc-lang="en">POST /api/todos -&gt; 201 (3ms)</code> 就是这一行印的。</p>
+        <p class="kc-code-pair__line">监听挂完了。</p>
+        <p class="kc-code-pair__line"><strong>这一行不能少。</strong>next() 就是“放行，交给下一关”。忘了写，请求会一直卡在这里，页面转圈转到超时。</p>
+        <p class="kc-code-pair__line">这道关到此结束。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="warning">
+      <span class="kc-note__icon">⚠</span>
+      <p class="kc-note__title">最常见的一个坑</p>
+      <p class="kc-note__body">中间件里忘了调 next()，请求既不报错也不返回，页面就一直转圈。这类问题不会打印任何东西，因为程序并没有“出错”，它只是在等一个永远不来的信号。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第三关：真正会拦人的那一道</h3>
+    <p>上一道关谁都放行。这一道不一样——标题不合格，它直接把你挡在门外。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/middleware/validate.js:12-23</p>
+        <pre data-kc-lang="en">// Guards POST /api/todos — a new todo must have a usable title.
+export function validateCreate(req, res, next) {
+  const title = cleanTitle(req.body?.title);
+  if (title === null) {
+    return next(new HttpError(400, 'title is required', {
+      field: 'title',
+      rule: `non-empty string, at most ${MAX_TITLE_LENGTH} characters`,
+    }));
+  }
+  req.body.title = title;
+  next();
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">原作者的注释：守住新建这条路，新待办必须有一个能用的标题。</p>
+        <p class="kc-code-pair__line">函数名 validate 是“校验”，Create 是“新建”，合起来就是“新建时的校验”。</p>
+        <p class="kc-code-pair__line">把标题拿去洗一遍：去掉首尾空格，太长或者洗完是空的就返回 null。</p>
+        <p class="kc-code-pair__line">洗出来是 null，说明这个标题不能用。</p>
+        <p class="kc-code-pair__line">拦下来，报 <span class="kc-term" data-kc-define="400 是一个 HTTP 状态码，含义是 Bad Request（请求有毛病）。注意它说的是“你发来的东西不对”，不是“服务器坏了”。服务器自己坏了是 500。国内直接念 400。">400</span>。400 的意思是“你发来的东西不对”，不是“服务器坏了”。</p>
+        <p class="kc-code-pair__line">顺便告诉对方是哪个字段出的问题。</p>
+        <p class="kc-code-pair__line">以及这个字段的规矩是什么。这两行让报错变得可以照着改，而不只是“不行”。</p>
+        <p class="kc-code-pair__line">拦截结束，注意开头那个 return——没有它，代码会继续往下跑。</p>
+        <p class="kc-code-pair__line">这一段的括号收尾。</p>
+        <p class="kc-code-pair__line"><strong>这一行容易被忽略：</strong>把洗干净的标题写回请求里。后面的柜台拿到的就是去过空格的版本。</p>
+        <p class="kc-code-pair__line">放行，交给下一关。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">输入校验要放在后端（input validation）</p>
+      <p class="kc-note__body">页面上那个输入框也写了 required，但那只是提醒，任何人打开开发者工具就能绕过去。真正拦得住的检查必须在服务器这一侧。这条原理跳出这个项目也成立。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">各在哪一层</h3>
+    <p>点一个方块，看它负责什么。</p>
+
+    <div class="kc-map">
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">浏览器</p>
+        <button class="kc-map__node" data-kc-about="它画页面，也收你敲的字。这里的检查只是提醒，任何人打开开发者工具都能绕过去，所以它挡不住有心的人。">
+          <span class="kc-map__icon">▤</span><span class="kc-map__name">index.html</span>
+        </button>
+      </div>
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">服务器·关卡链</p>
+        <button class="kc-map__node" data-kc-about="第一道关。它把网线上传来的那串字变回对象，之后的代码才能写 req.body.title。不装它，req.body 是空的。">
+          <span class="kc-map__icon">◱</span><span class="kc-map__name">express.json()</span>
+        </button>
+        <button class="kc-map__node" data-kc-about="第二道关。谁都不拦，只是记一行日志。你在终端里看到的每一行请求记录都是它印的。">
+          <span class="kc-map__icon">◲</span><span class="kc-map__name">日志中间件</span>
+        </button>
+        <button class="kc-map__node" data-kc-about="第三道关，也是唯一真的会拦人的一道。标题是空的、全是空格的、超过 200 个字符的，都被它挡在门外，直接回 400。">
+          <span class="kc-map__icon">◳</span><span class="kc-map__name">validate.js</span>
+        </button>
+      </div>
+      <div class="kc-map__zone">
+        <p class="kc-map__zone-name">服务器·柜台</p>
+        <button class="kc-map__node" data-kc-about="过了三道关才轮到它。它能拿到的标题一定是洗干净的，所以它自己完全不用再检查一遍。">
+          <span class="kc-map__icon">◫</span><span class="kc-map__name">todos.js</span>
+        </button>
+      </div>
+      <p class="kc-map__about">点任意一个方块，看它负责什么</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">检查一下</h3>
+
+    <div class="kc-quiz" id="kc-quiz-m3">
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。少了 next()，请求既不报错也不返回，页面只会一直转圈。"
+           data-kc-wrong="想一想安检机：它既没放你过去，也没把你请出去，你就一直站在那儿。程序不会认为这是“错误”，所以什么都不会打印。">
+        <p class="kc-quiz__prompt">有人在日志中间件里把最后那行 next() 删掉了。会发生什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>页面一直转圈，终端里既不报错也没有异常</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>服务器立刻崩溃，终端打印一大段红字</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>请求照常完成，只是日志少了一行</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。前端的检查只是提醒，绕过去太容易了，真正拦得住的必须在服务器这一侧。"
+           data-kc-wrong="页面上那个 required 属性，任何人打开浏览器的开发者工具删掉它就没了。挡得住手滑，挡不住有心的人。">
+        <p class="kc-quiz__prompt">你要给待办加一个“最长 50 个字”的限制，这个检查放在哪儿？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>只放在页面上就够了，用户看得见提示</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>服务器一定要有；页面上可以再加一层，只是为了体验好</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>放在 store.js 里，写盘之前再查</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m3" data-kc-kind="instruct" data-kc-min="70">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你要让待办支持“紧急”标记。把你会对 AI 说的那句话原样写出来——要具体到文件和关卡。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">点名了 validate.js，要求在那里校验新字段，而不是只说“加个字段”</li>
+        <li class="kc-output__item">提到了 store.js 里创建待办的那个地方也要跟着改</li>
+        <li class="kc-output__item">说清楚了不合格时应该回 400，而不是让它悄悄通过</li>
+        <li class="kc-output__item">整句话具体到一个人照着就能改，没有“优化一下”这种空话</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="kc-module" id="kc-m4" data-kc-tone="b" data-kc-metaphor="白板与档案柜">
+  <p class="kc-module__number">04</p>
+  <h2 class="kc-module__title">东西到底存在哪</h2>
+  <p class="kc-module__subtitle">为什么刷新还在，关机重启也还在。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">两个地方，性格完全不同</h3>
+    <p>“数据存在哪”这个问题，在这个项目里有两个答案，而且两个都对。</p>
+    <p>一个是<span class="kc-term" data-kc-define="内存（memory）是电脑临时放东西的地方，读写极快，但断电就没。程序运行时的变量都住在这儿。国内叫内存，英文里也常说 in-memory，意思是“放在内存里的”。">内存</span>，一个是<span class="kc-term" data-kc-define="硬盘（disk）是电脑长期存东西的地方，慢一些，但关机之后还在。文件都住在这儿。国内叫硬盘或磁盘，英文说 disk。">硬盘</span>。它们的关系就像办公室里的白板和档案柜：白板写起来快，一擦就没，停电也没；档案柜慢，但明天来了它还在。</p>
+    <p>这个项目两样都用：白板上放一份随时能看的副本，档案柜里放那份说了算的。</p>
+
+    <div class="kc-cards">
+      <div class="kc-cards__item" data-kc-accent="1">
+        <span class="kc-cards__icon">◧</span>
+        <p class="kc-cards__title">白板</p>
+        <p class="kc-cards__body">程序里那个叫 todos 的数组。查询待办时直接从它读，不碰硬盘，所以快。服务一停，它就没了。</p>
+      </div>
+      <div class="kc-cards__item" data-kc-accent="2">
+        <span class="kc-cards__icon">◨</span>
+        <p class="kc-cards__title">档案柜</p>
+        <p class="kc-cards__body">data/todos.json 这个文件。每次有改动就重写一遍。你关掉终端、重启电脑，它都还在。</p>
+      </div>
+      <div class="kc-cards__item" data-kc-accent="3">
+        <span class="kc-cards__icon">◩</span>
+        <p class="kc-cards__title">谁说了算</p>
+        <p class="kc-cards__body">档案柜。程序启动时先把文件读进白板，之后每次改动再写回去。文件是唯一的真相。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">原作者自己写了答案</h3>
+    <p>这四行里有两行是注释。它们是整个项目里最值钱的两句话——写代码的人在解释他为什么这么设计。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/store.js:9-12</p>
+        <pre data-kc-lang="en">// In-memory cache of every todo. The JSON file on disk is the source of truth,
+// but we only read it once at boot and write it back after each change.
+let todos = [];
+let writeQueue = Promise.resolve();</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">原作者的第一句：这是所有待办的<span class="kc-term" data-kc-define="cache 读作“开许”，字面是“藏起来备用的东西”。在这里指“在内存里留的一份副本”，为的是不用每次都去读硬盘。国内叫缓存，日常口语里也直接说 cache。">缓存</span>，硬盘上那个 JSON 文件才是<span class="kc-term" data-kc-define="source of truth 直译是“真相的来源”，指“出现分歧时以谁为准”。在这个项目里是硬盘上的 todos.json。国内工程师直接说“真相源”，或者干脆说“以谁为准”。">真相源</span>。</p>
+        <p class="kc-code-pair__line">第二句是关键：文件只在启动时读一次，之后每次改动写回去。所以查询快，因为根本不读盘。</p>
+        <p class="kc-code-pair__line">白板本身，一开始是空的。</p>
+        <p class="kc-code-pair__line">一个排队用的东西，下一屏专门讲它为什么必须存在。</p>
+      </div>
+    </div>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/store.js:14-21</p>
+        <pre data-kc-lang="en">async function persist() {
+  // Chain writes so two rapid requests can never interleave and corrupt the file.
+  writeQueue = writeQueue.then(async () =&gt; {
+    await fs.mkdir(path.dirname(DATA_FILE), { recursive: true });
+    await fs.writeFile(DATA_FILE, JSON.stringify(todos, null, 2), 'utf8');
+  });
+  return writeQueue;
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="persist 字面是“坚持、持续存在”，在编程里指“把数据存成关机也不会丢的形式”。国内叫持久化，写代码时说“持久化到磁盘”。">persist</span> 的意思是“把它留住”，也就是写进硬盘。</p>
+        <p class="kc-code-pair__line">原作者的注释：把写盘排成一队，两个请求挨得再近也不会交叉着写、把文件写坏。</p>
+        <p class="kc-code-pair__line">排队的做法：新的写盘接在上一次的后面，等前一个写完才轮到它。</p>
+        <p class="kc-code-pair__line">先确保放文件的那个文件夹存在，不存在就建出来。</p>
+        <p class="kc-code-pair__line">真正写盘的一行。第三个参数 2 是缩进空格数——所以你打开 todos.json 看到的是排好版的，不是挤成一行。</p>
+        <p class="kc-code-pair__line">这一次的写盘结束。</p>
+        <p class="kc-code-pair__line">把这一队还回去，好让调用者能 await 它。</p>
+        <p class="kc-code-pair__line">函数收尾。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">单一出口（single writer）</p>
+      <p class="kc-note__body">整个项目里，只有 persist 这一个函数会写那个文件。想改存储方式——换成数据库、加个备份——只需要动这一处。碰同一份数据的地方越少，出问题时要查的地方就越少。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">新建一条，代码是这样的</h3>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/store.js:45-55</p>
+        <pre data-kc-lang="en">  async create({ title }) {
+    const todo = {
+      id: randomUUID(),
+      title,
+      done: false,
+      createdAt: new Date().toISOString(),
+    };
+    todos.push(todo);
+    await persist();
+    return todo;
+  },</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">函数名 create 就是“造一个出来”。它只要一个标题。</p>
+        <p class="kc-code-pair__line">开始拼这一条待办长什么样。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="UUID 是 Universally Unique Identifier 的缩写，字面是“全世界都不会重的编号”。randomUUID 就是随机生成一个这样的编号。用它当 id，两条待办永远不会撞号。国内直接念 UUID。">randomUUID()</span> 随机编一个全世界都不会重复的号，当这条待办的身份证。</p>
+        <p class="kc-code-pair__line">标题就是你打的那句话，原样放进来。</p>
+        <p class="kc-code-pair__line">新建的待办一定是没完成的，所以 done 写死为 false。</p>
+        <p class="kc-code-pair__line">记下创建时间。<span class="kc-term" data-kc-define="ISO 8601 是国际通用的时间写法，长得像 2026-09-07T03:12:45.000Z。它的好处是排序就等于按时间排，不同国家读起来也不会歧义。国内工程师说“ISO 时间”或者“ISO 字符串”。">toISOString()</span> 是国际通用写法，排序就等于按时间排。</p>
+        <p class="kc-code-pair__line">这一条拼完了。</p>
+        <p class="kc-code-pair__line">先写到白板上。</p>
+        <p class="kc-code-pair__line">再写进档案柜，并且等它写完。<strong>顺序不能反</strong>：先进数组，再落盘。</p>
+        <p class="kc-code-pair__line">把完整的一条还回去，柜台才能连着 id 一起回给页面。</p>
+        <p class="kc-code-pair__line">这一段结束。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">这段也被改坏了</h3>
+    <p>删除一条待办的代码，同样只动了一处。</p>
+
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这段代码被人悄悄改坏了，点一下你觉得有问题的那一行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="函数名和参数都没问题，remove 就是“移除”，它要一个 id。"><span class="kc-bughunt__lineno">1</span>  async remove(id) {</button>
+        <button class="kc-bughunt__line" data-kc-hint="在数组里找这条待办排第几个。findIndex 找的是位置，不是内容，这一行是对的。"><span class="kc-bughunt__lineno">2</span>    const index = todos.findIndex((todo) =&gt; todo.id === id);</button>
+        <button class="kc-bughunt__line" data-kc-hint="没找到就返回 false，交给柜台去报 404。这一行的判断是对的。"><span class="kc-bughunt__lineno">3</span>    if (index === -1) return false;</button>
+        <button class="kc-bughunt__line" data-kc-hint="从数组里把那一条剪掉。白板这边的操作没问题，问题在下一行。"><span class="kc-bughunt__lineno">4</span>    todos.splice(index, 1);</button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="真实代码是 await persist()，这里少了 await。少了它，程序不等写盘完成就往下走，立刻回复“删掉了”。多数时候你看不出区别，因为写盘很快。但如果这一刻服务被关掉、或者机器断电，那条待办在白板上已经没了、在档案柜里却还在——重启之后它会自己回来。这类 bug 的可怕之处就在于它平时完全正常。把 persist(); 改回 await persist(); 就对了。"><span class="kc-bughunt__lineno">5</span>    persist();</button>
+        <button class="kc-bughunt__line" data-kc-hint="返回 true 表示确实删掉了一条，柜台据此回 204。这一行没问题。"><span class="kc-bughunt__lineno">6</span>    return true;</button>
+        <button class="kc-bughunt__line" data-kc-hint="收尾的括号和逗号，语法没问题——真有语法错，编辑器早标红了。"><span class="kc-bughunt__lineno">7</span>  },</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">检查一下</h3>
+
+    <div class="kc-quiz" id="kc-quiz-m4">
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。查询走的是内存里那份副本，从头到尾没碰硬盘。"
+           data-kc-wrong="回头看原作者那两行注释：文件只在启动时读一次。所以查询的时候，它读的是白板，不是档案柜。">
+        <p class="kc-quiz__prompt">你刷新页面，列表重新显示出来。这一次读的是哪儿？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>硬盘上的 todos.json，每次都重新读一遍</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>浏览器自己存的一份</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>服务器内存里那个 todos 数组</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。只有 persist 会写那个文件，所以换存储方式只需要动这一个函数。"
+           data-kc-wrong="想想“单一出口”那条：整个项目里写文件的地方只有一处。找到那一处，就找到了唯一要改的地方。">
+        <p class="kc-quiz__prompt">你想把存储从 JSON 文件换成数据库。改动主要落在哪儿？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>store.js，尤其是 persist 那一个函数</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>每一条路由都要改，因为它们都在存数据</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>server.js，因为它是入口</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m4" data-kc-kind="retell" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">用你自己的话说一遍：一条待办从“被创建出来”到“关机重启之后还在”，中间经过了哪几步？</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说到了先进内存里的 todos 数组，再由 persist 写进硬盘，顺序没说反</li>
+        <li class="kc-output__item">点名了 data/todos.json 这个文件，而不是笼统地说“存起来了”</li>
+        <li class="kc-output__item">说清楚了写盘是排队进行的，以及排队是为了防止文件被写坏</li>
+        <li class="kc-output__item">说出了下次启动时是先把文件读回内存，而不是每次查询都读盘</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="kc-module" id="kc-m5" data-kc-tone="a" data-kc-metaphor="自助取件柜的提示">
+  <p class="kc-module__number">05</p>
+  <h2 class="kc-module__title">出错的时候看哪儿</h2>
+  <p class="kc-module__subtitle">看懂那行英文，比会写代码更早派上用场。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">所有的错都走同一个出口</h3>
+    <p>前面几个模块里，你见过好几次 <code class="kc-code" data-kc-lang="en">next(err)</code>。它们最后都去了同一个地方。</p>
+    <p>这就像小区里的自助取件柜：取件码错了、格子是空的、机器本身坏了——三件完全不同的事，但柜子上只有一块屏幕在提示你。区别在于它显示哪一句。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">src/middleware/errorHandler.js:15-24</p>
+        <pre data-kc-lang="en">// Express recognises this as the error handler because it takes FOUR arguments.
+// Every next(err) anywhere in the app ends up here.
+export function errorHandler(err, req, res, next) {
+  const status = err.status || 500;
+  if (status &gt;= 500) console.error(err);
+  res.status(status).json({
+    error: err.message || 'Internal Server Error',
+    details: err.details,
+  });
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">原作者的第一句注释，也是这段最反直觉的一点：框架靠<strong>参数个数</strong>认出它是错误处理器。四个参数，不是三个。</p>
+        <p class="kc-code-pair__line">第二句：项目里任何地方的 next(err)，最后都到这儿。</p>
+        <p class="kc-code-pair__line">函数名 <span class="kc-term" data-kc-define="handler 是 handle（处理、经手）加 -er（干这事的人），字面就是“处理的人”。errorHandler 就是“专门处理错误的那一位”。国内叫处理器、处理函数，口语里也直接说 handler。">errorHandler</span>，四个参数第一个就是错误本身。</p>
+        <p class="kc-code-pair__line">错误自己带了状态码就用它，没带就当作 <span class="kc-term" data-kc-define="500 是 HTTP 状态码，含义是 Internal Server Error（服务器内部错误）。它的意思是“服务器自己出问题了”，和 400（你发来的东西不对）是完全不同的两件事。国内直接念 500。">500</span>。这个 <code class="kc-code" data-kc-lang="en">||</code> 读作“或者”，前面没有就用后面的。</p>
+        <p class="kc-code-pair__line">只有 500 这类“我们自己的锅”才往终端打完整堆栈。用户输错了不值得刷屏。</p>
+        <p class="kc-code-pair__line">按这个状态码回复。</p>
+        <p class="kc-code-pair__line">把人能读的那句话放进 error 字段。页面上那行红字就是它。</p>
+        <p class="kc-code-pair__line">附带更细的信息，比如是哪个字段不合格。第三模块的 400 就带了这个。</p>
+        <p class="kc-code-pair__line">回复内容结束。</p>
+        <p class="kc-code-pair__line">函数结束。整个项目所有的错误，出口只有这一个。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="warning">
+      <span class="kc-note__icon">⚠</span>
+      <p class="kc-note__title">四个参数不是随便写的</p>
+      <p class="kc-note__body">把最后那个 next 删掉，函数只剩三个参数，框架就会把它当成普通中间件，所有错误再也进不来。页面会一直转圈，终端里什么都不打印。这是这个项目最难查的一处坑。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">页面那一头怎么接住</h3>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/index.html:29-39</p>
+        <pre data-kc-lang="en">    async function api(url, options = {}) {
+      const res = await fetch(url, {
+        headers: { 'Content-Type': 'application/json' },
+        ...options,
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() =&gt; ({}));
+        throw new Error(body.error || `Request failed with ${res.status}`);
+      }
+      return res.status === 204 ? null : res.json();
+    }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">页面上<strong>每一次</strong>找服务器都走这一个函数，所以错误处理只写一遍就够了。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="fetch 字面是“去取回来”。在浏览器里它是发网络请求的标准做法，你写一个网址，它去把结果取回来。国内工程师直接说 fetch，或者说“发个请求”。">fetch</span> 是浏览器自带的“去取回来”。</p>
+        <p class="kc-code-pair__line">告诉服务器：我发的是 JSON。不写这一行，第三模块那道解析关就认不出来。</p>
+        <p class="kc-code-pair__line">调用方额外给的设置盖在上面，比如 method 和 body。</p>
+        <p class="kc-code-pair__line">请求发完了。</p>
+        <p class="kc-code-pair__line">res.ok 只有状态码在 200 到 299 之间才是真。不是就说明出事了。</p>
+        <p class="kc-code-pair__line">试着把服务器回的 JSON 读出来；读不出来就当成空对象，别在这儿再炸一次。</p>
+        <p class="kc-code-pair__line">抛出错误，优先用服务器那句人话；实在没有，才用状态码凑一句。</p>
+        <p class="kc-code-pair__line">出错的分支到此结束。</p>
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="204 是 HTTP 状态码，含义是 No Content（没有内容）。它表示“事情办成了，但我没有东西要还给你”，删除操作通常回它。国内直接念 204。">204</span> 表示“办好了，但没东西给你”，删除走的就是它，所以这里要单独判一下。</p>
+        <p class="kc-code-pair__line">函数结束。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">先判断，再动手</h3>
+
+    <div class="kc-scenario">
+      <span class="kc-scenario__label">场景</span>
+      <p class="kc-scenario__body">同学照着 README 跑起来项目，浏览器里页面是白的。他切回终端，最后一行写着 <code class="kc-code" data-kc-lang="en">Error: listen EADDRINUSE: address already in use :::3000</code>。他想起来自己上午开过一个终端，一直没关。</p>
+
+      <div class="kc-quiz" id="kc-quiz-m5-scenario">
+        <div class="kc-quiz__question" data-kc-answer="b"
+             data-kc-right="对。EADDRINUSE 里的 in use 就是“已被占用”，占它的正是他上午那个还没关的服务。"
+             data-kc-wrong="把那行报错拆开读：address already in use，地址已经在用了。它说的不是代码写错了，是这个端口已经有人占着。">
+          <p class="kc-quiz__prompt">他应该先做哪件事？</p>
+          <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>删掉 node_modules 重新装一遍</button>
+          <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>把上午那个终端里的服务关掉，或者换一个端口启动</button>
+          <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>去 store.js 里看数据是不是坏了</button>
+          <div class="kc-quiz__feedback"></div>
+        </div>
+        <div class="kc-quiz__actions">
+          <button class="kc-quiz__check">看看答案</button>
+          <button class="kc-quiz__reset">再来一次</button>
+        </div>
+      </div>
+    </div>
+
+    <p>把状态码和“该去哪儿找”对上，比背定义有用得多。把左边的卡片拖到右边的描述上试试。</p>
+
+    <div class="kc-match" id="kc-match-m5">
+      <div class="kc-match__cards">
+        <button class="kc-match__card" data-kc-key="400">400</button>
+        <button class="kc-match__card" data-kc-key="404">404</button>
+        <button class="kc-match__card" data-kc-key="500">500</button>
+        <button class="kc-match__card" data-kc-key="201">201</button>
+      </div>
+      <div class="kc-match__slots">
+        <div class="kc-match__slot" data-kc-expect="400">
+          <p class="kc-match__label">你发过去的东西不合格，比如标题是空的。先去改你自己发的内容。</p>
+          <div class="kc-match__drop">拖到这里</div>
+        </div>
+        <div class="kc-match__slot" data-kc-expect="404">
+          <p class="kc-match__label">这个地址上没有你要的东西。先看路径拼对没有，再看那条数据是不是真的存在。</p>
+          <div class="kc-match__drop">拖到这里</div>
+        </div>
+        <div class="kc-match__slot" data-kc-expect="500">
+          <p class="kc-match__label">服务器自己出事了，不是你的锅。去终端看那一大段红字，最上面一行才是原因。</p>
+          <div class="kc-match__drop">拖到这里</div>
+        </div>
+        <div class="kc-match__slot" data-kc-expect="201">
+          <p class="kc-match__label">新东西建出来了。这是好消息，不是错误。</p>
+          <div class="kc-match__drop">拖到这里</div>
+        </div>
+      </div>
+      <div class="kc-match__actions">
+        <button class="kc-match__check">对一下</button>
+        <button class="kc-match__reset">重来</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">让 AI 帮你跑起来时，你可以这样说</h3>
+    <p>下面三句可以直接复制。中文在上，英文在下——英文那句是你将来在英文界面里要用的原话。</p>
+
+    <div class="kc-steps">
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">1</span>
+        <p class="kc-steps__title">把项目跑起来</p>
+        <p class="kc-steps__body">“帮我把这个 Express 项目在本地跑起来，告诉我要装什么、用什么命令启动、启动之后打开哪个地址。”<br><code class="kc-code" data-kc-lang="en">Get this Express project running locally. Tell me what to install, the command to start it, and which URL to open.</code></p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">2</span>
+        <p class="kc-steps__title">加一个功能</p>
+        <p class="kc-steps__body">“给待办加一个截止日期字段。在 validate.js 里校验它，在 store.js 的 create 里保存它，不合格时返回 400。”<br><code class="kc-code" data-kc-lang="en">Add a due date field to todos. Validate it in validate.js, save it in store.js create, and return 400 when it is invalid.</code></p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">3</span>
+        <p class="kc-steps__title">修一个报错</p>
+        <p class="kc-steps__body">“我跑起来时终端报 EADDRINUSE，端口 3000 被占了。告诉我怎么找到占用它的进程，以及怎么改成从环境变量读端口。”<br><code class="kc-code" data-kc-lang="en">I get EADDRINUSE on port 3000. Show me how to find the process using it, and how to read the port from an environment variable instead.</code></p>
+      </div>
+    </div>
+
+    <h3 class="kc-screen__title">你最可能撞上的报错</h3>
+    <p>下面四条都是这个项目真的会抛出来的原文。左边一字不改，右边是中文意思和该怎么办。</p>
+
+    <div class="kc-deflist">
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Error: listen EADDRINUSE: address already in use :::3000</code>
+        <p class="kc-deflist__value">3000 这个端口已经被占了，通常是你上一个终端还开着。关掉它，或者启动时写 <code class="kc-code" data-kc-lang="en">PORT=3001 npm start</code>。对 AI 可以说：“把端口改成从 PORT 环境变量读。”</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">{"error":"title is required","details":{"field":"title","rule":"non-empty string, at most 200 characters"}}</code>
+        <p class="kc-deflist__value">这是第三模块那道校验关回的 400。它已经把哪个字段、什么规矩都告诉你了。这是一个“好报错”的样子：照着它就能改。</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">{"error":"todo not found"}</code>
+        <p class="kc-deflist__value">配合 404 出现。要么 id 拼错了，要么这条待办已经被删掉了。先在 data/todos.json 里搜一下这个 id 还在不在。</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">SyntaxError: Unexpected token } in JSON at position 42</code>
+        <p class="kc-deflist__value">读 data/todos.json 时发现文件内容不是合法 JSON，通常是手动改坏了。position 42 是出问题的字符位置。对 AI 说：“帮我把 data/todos.json 的格式修好。”</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">最后检查一下</h3>
+
+    <div class="kc-quiz" id="kc-quiz-m5">
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。500 是“服务器自己的锅”，这时候要看的是终端，不是浏览器。"
+           data-kc-wrong="看一眼错误处理那段：只有状态码大于等于 500 时才会 console.error 完整堆栈。那段堆栈只印在终端里，浏览器是看不到的。">
+        <p class="kc-quiz__prompt">页面上出现一行红字写着 Internal Server Error，你下一步去哪儿看？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>浏览器的开发者工具，那里有完整原因</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>data/todos.json，数据肯定坏了</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>跑着服务的那个终端窗口，完整堆栈只打在那里</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。四个参数是框架认出错误处理器的唯一依据，删一个它就变成了普通中间件。"
+           data-kc-wrong="回头看那两行注释。原作者特意用大写写了 FOUR，就是因为这一点太容易被当成没用的参数删掉。">
+        <p class="kc-quiz__prompt">有人觉得 errorHandler 最后那个 next 从来没用过，把它删了。结果是什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>它不再被当成错误处理器，所有错误都进不来，页面一直转圈</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>没有任何影响，本来就没用到</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>服务器启动时就会报语法错误</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m5" data-kc-kind="explain" data-kc-min="70">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你朋友看到页面上一行红字就慌了。用不超过三句话告诉他：怎么先分清这是谁的问题。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说出了 status code 这个英文原词，或者至少说出了“状态码”并举了一个具体数字</li>
+        <li class="kc-output__item">讲清楚了 400 和 500 的区别是“你发的东西不对”和“服务器自己出事了”</li>
+        <li class="kc-output__item">说到了 500 要去终端看，而不是在浏览器里干瞪眼</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+</main>
+<footer class="kc-colophon">本课程由 开箱（repo-unbox）从代码库生成 · 完全离线，不联网</footer>
+<script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,267 @@
+<section class="kc-module" id="kc-m5" data-kc-tone="a" data-kc-metaphor="值班室的那把钥匙">
+  <p class="kc-module__number">05</p>
+  <h2 class="kc-module__title">值班室和出错的时候</h2>
+  <p class="kc-module__subtitle">谁能删留言，以及看懂那行英文报错。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">一把钥匙，一道门</h3>
+    <p>这个项目里，谁都能发留言、谁都能举报，但只有一件事需要身份：删除。</p>
+    <p>它没有账号密码，只有一把钥匙——一个写在服务器环境变量里的字符串。你把这把钥匙放进请求头里，门才开。这就像值班室的门：不问你是谁，只问你有没有钥匙。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:132-141</p>
+        <pre data-kc-lang="en">function adminGuard(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return jsonError(res, 500, 'Admin token is not configured on server.');
+  }
+  const token = req.headers['x-admin-token'];
+  if (!token || token !== ADMIN_TOKEN) {
+    return jsonError(res, 401, 'Unauthorized admin token.');
+  }
+  return next();
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">函数名 <span class="kc-term" data-kc-define="guard 字面是“守卫”。在代码里，guard 函数指“先挡一道，不合格就直接返回，合格才放行”的那种函数。国内也叫守卫，或者说“拦截器”。">guard</span> 就是“守门的”。它是一个中间件，排在真正干活的代码前面。</p>
+        <p class="kc-code-pair__line">先看服务器自己有没有配这把钥匙。</p>
+        <p class="kc-code-pair__line">没配就回 500。<strong>注意这里是 500 不是 401</strong>：这不是你没带钥匙，是这扇门根本没装锁，属于服务器自己的配置问题。</p>
+        <p class="kc-code-pair__line">这一段结束。</p>
+        <p class="kc-code-pair__line">从<span class="kc-term" data-kc-define="header（请求头）是每一单请求上贴的“信封信息”：内容是什么格式、我带了什么凭证。它和 body（正文）分开传。x-admin-token 是这个项目自己定的一个头，x- 开头是自定义头的老习惯。国内叫请求头。">请求头</span>里把钥匙取出来。它叫 x-admin-token。</p>
+        <p class="kc-code-pair__line">没带钥匙，或者钥匙不对。</p>
+        <p class="kc-code-pair__line">回 <span class="kc-term" data-kc-define="401 是 HTTP 状态码，含义是 Unauthorized（未通过身份验证）。它说的是“我不知道你是谁”，和 403（我知道你是谁，但不许你干这事）不一样。国内直接念 401。">401</span>。401 的意思是“我不认识你”。</p>
+        <p class="kc-code-pair__line">这一段结束。</p>
+        <p class="kc-code-pair__line">两关都过了才放行，交给真正删除的那段代码。</p>
+        <p class="kc-code-pair__line">函数结束。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="warning">
+      <span class="kc-note__icon">⚠</span>
+      <p class="kc-note__title">这把钥匙不能写进代码里</p>
+      <p class="kc-note__body">它来自环境变量 ADMIN_TOKEN。写进代码就等于随着仓库一起公开了，任何人 clone 一份就能删你的留言。凡是密钥、密码、令牌，一律走环境变量。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">所有的错都走同一个出口</h3>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:285-289</p>
+        <pre data-kc-lang="en">app.use('/api', (_req, res) =&gt; jsonError(res, 404, 'API route not found.'));
+app.use((err, _req, res, _next) =&gt; {
+  console.error(err);
+  return jsonError(res, 500, 'Internal server error.');
+});</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">前面所有 /api 开头的路都没接住，就到这一行：回 404，而且是 JSON 格式的 404。<strong>这一点很重要</strong>——页面那边只会解析 JSON，回一段 HTML 它就懵了。</p>
+        <p class="kc-code-pair__line">这一行是错误处理器。它靠<strong>参数个数</strong>被认出来：四个参数，不是三个。删掉最后那个看似没用的 _next，它就变回普通中间件，所有错误再也进不来。</p>
+        <p class="kc-code-pair__line">把完整错误打进终端。这一行只印在终端，浏览器是看不到的。</p>
+        <p class="kc-code-pair__line">对外只说一句 Internal server error。<span class="kc-term" data-kc-define="这条做法叫“不要泄露内部细节”：对内记全，对外只说一句笼统的话。把数据库路径、堆栈这类信息直接发给用户，等于把攻击的线索也一起送出去了。">对内记全、对外说少</span>，是安全上的常规做法。</p>
+        <p class="kc-code-pair__line">错误处理结束。整个项目所有没被接住的错误，出口只有这一个。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">留言里写 HTML 会怎样</h3>
+    <p>这是留言板绕不开的一个问题：有人在留言里写一段脚本，别人打开页面就中招了。这个项目的处理方式在这八行里。</p>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:96-103</p>
+        <pre data-kc-lang="en">function renderItems(adminMode = false) {
+  if (!dom.logFeed) return;
+  dom.logFeed.innerHTML = state.items.map((item) =&gt; entryTemplate(item, adminMode)).join('');
+  const blocks = dom.logFeed.querySelectorAll('.entry');
+  blocks.forEach((entry, idx) =&gt; {
+    const textEl = entry.querySelector('.message-text');
+    textEl.textContent = state.items[idx].message;
+  });</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">把信号流重画一遍。</p>
+        <p class="kc-code-pair__line">容器都不在就直接算了——管理页和主页共用这份代码，有些元素只有一边有。</p>
+        <p class="kc-code-pair__line">先用 <span class="kc-term" data-kc-define="innerHTML 直译是“里面的 HTML”。给它赋值等于把一段文字当作网页结构解析执行，所以放进去的内容如果来自用户，就可能夹带脚本。国内直接念 innerHTML。">innerHTML</span> 把外壳画出来：署名、时间、信号格子、按钮。这些内容都经过了转义。</p>
+        <p class="kc-code-pair__line">把刚画出来的每一条捞出来。</p>
+        <p class="kc-code-pair__line">逐条处理。</p>
+        <p class="kc-code-pair__line">找到放留言正文的那个位置。</p>
+        <p class="kc-code-pair__line"><strong>这一行是整段的关键。</strong>正文用 <span class="kc-term" data-kc-define="textContent 直译是“文本内容”。和 innerHTML 不同，赋给它的东西一律当纯文字看待，尖括号也只是两个字符，不会被当成标签执行。防 XSS 最省事的一招就是用它。国内直接念 textContent。">textContent</span> 填，不用 innerHTML。用它填进去的尖括号只是两个字符，不会变成标签。</p>
+        <p class="kc-code-pair__line">这一段结束。所以有人留言写 <code class="kc-code" data-kc-lang="en">&lt;script&gt;</code>，别人看到的就是这几个字符本身。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">跨站脚本（XSS）</p>
+      <p class="kc-note__body">把用户写的内容当成网页结构执行，就是 XSS。防它的第一原则是：用户内容只当文字，不当结构。记住 textContent 和 innerHTML 的区别，你就躲过了这一类里最常见的那种。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">先判断，再动手</h3>
+
+    <div class="kc-scenario">
+      <span class="kc-scenario__label">场景</span>
+      <p class="kc-scenario__body">同学在管理页填了钥匙，点删除，页面右下角弹出一句 <code class="kc-code" data-kc-lang="en">Unauthorized admin token.</code>。他确认自己粘贴的钥匙和 .env 文件里的一模一样，但他是几天前启动的服务，中间改过 .env。</p>
+
+      <div class="kc-quiz" id="kc-quiz-m5-scenario">
+        <div class="kc-quiz__question" data-kc-answer="c"
+             data-kc-right="对。环境变量是启动时读进内存的，改了 .env 不重启，服务手里还是老钥匙。"
+             data-kc-wrong="注意那句“他是几天前启动的服务，中间改过 .env”。ADMIN_TOKEN 在 server.js 第 13 行就被读进变量了，之后再改文件，跑着的进程不会知道。">
+          <p class="kc-quiz__prompt">最可能的原因是什么？</p>
+          <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>钥匙里有特殊字符，被浏览器截断了</button>
+          <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>数据库里那条留言已经被别人删了</button>
+          <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>服务还在用启动时读到的老钥匙，改完 .env 没重启</button>
+          <div class="kc-quiz__feedback"></div>
+        </div>
+        <div class="kc-quiz__actions">
+          <button class="kc-quiz__check">看看答案</button>
+          <button class="kc-quiz__reset">再来一次</button>
+        </div>
+      </div>
+    </div>
+
+    <p>把状态码和“该去哪儿找”对上。把左边的卡片拖到右边的描述上试试。</p>
+
+    <div class="kc-match" id="kc-match-m5">
+      <div class="kc-match__cards">
+        <button class="kc-match__card" data-kc-key="400">400</button>
+        <button class="kc-match__card" data-kc-key="401">401</button>
+        <button class="kc-match__card" data-kc-key="429">429</button>
+        <button class="kc-match__card" data-kc-key="500">500</button>
+      </div>
+      <div class="kc-match__slots">
+        <div class="kc-match__slot" data-kc-expect="400">
+          <p class="kc-match__label">你发的内容不合格：留言是空的、算术题答错了、或者踩了蜜罐。改你自己发的东西。</p>
+          <div class="kc-match__drop">拖到这里</div>
+        </div>
+        <div class="kc-match__slot" data-kc-expect="401">
+          <p class="kc-match__label">我不认识你。钥匙没带或者不对，先去检查 x-admin-token。</p>
+          <div class="kc-match__drop">拖到这里</div>
+        </div>
+        <div class="kc-match__slot" data-kc-expect="429">
+          <p class="kc-match__label">你没做错什么，就是太频繁了。等 10 秒，或者等这一小时过去。</p>
+          <div class="kc-match__drop">拖到这里</div>
+        </div>
+        <div class="kc-match__slot" data-kc-expect="500">
+          <p class="kc-match__label">服务器自己出事了。浏览器上只有一句笼统的话，真正的原因在终端里。</p>
+          <div class="kc-match__drop">拖到这里</div>
+        </div>
+      </div>
+      <div class="kc-match__actions">
+        <button class="kc-match__check">对一下</button>
+        <button class="kc-match__reset">重来</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">这段也被改坏了</h3>
+
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这是删除留言那条路的代码，被人悄悄改坏了一处。点一下你觉得有问题的那一行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="真实代码是 app.delete('/api/messages/:id', adminGuard, (req, res) =&gt; {。这里把守门的 adminGuard 拿掉了。结果是任何人不带任何钥匙，直接发一个 DELETE 请求就能删掉别人的留言，而且页面上一点异常都看不出来——管理页照常要你填钥匙，只是那把钥匙已经不起作用了。把 adminGuard 加回参数里就对了。"><span class="kc-bughunt__lineno">1</span>app.delete('/api/messages/:id', (req, res) =&gt; {</button>
+        <button class="kc-bughunt__line" data-kc-hint="把地址里的 id 转成整数。parseInt 的第二个参数 10 表示按十进制解析，这是好习惯。"><span class="kc-bughunt__lineno">2</span>  const id = Number.parseInt(req.params.id, 10);</button>
+        <button class="kc-bughunt__line" data-kc-hint="不是正整数就回 400。这个判断本身很扎实，连小数和负数都挡住了。"><span class="kc-bughunt__lineno">3</span>  if (!Number.isInteger(id) || id &lt;= 0) {</button>
+        <button class="kc-bughunt__line" data-kc-hint="回 400 并说明 id 不合法。提示写得很清楚。"><span class="kc-bughunt__lineno">4</span>    return jsonError(res, 400, 'Invalid message id.');</button>
+        <button class="kc-bughunt__line" data-kc-hint="真正执行删除，返回有没有删掉。这一行是对的。"><span class="kc-bughunt__lineno">5</span>  const removed = deleteMessage(id);</button>
+        <button class="kc-bughunt__line" data-kc-hint="没删掉说明那条本来就不在，回 404。这个处理是对的。"><span class="kc-bughunt__lineno">6</span>  if (!removed) {</button>
+        <button class="kc-bughunt__line" data-kc-hint="删成功了回一个 ok。这一行没什么可挑的。"><span class="kc-bughunt__lineno">7</span>  return res.json({ ok: true });</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">让 AI 帮你跑起来时，你可以这样说</h3>
+    <p>下面三句可以直接复制。中文在上，英文在下——英文那句是你将来在英文界面里要用的原话。</p>
+
+    <div class="kc-steps">
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">1</span>
+        <p class="kc-steps__title">把项目跑起来</p>
+        <p class="kc-steps__body">“帮我在本地跑起这个 Express + SQLite 项目。告诉我要装什么、.env 里要配哪些变量、用什么命令启动、启动后打开哪个地址。”<br><code class="kc-code" data-kc-lang="en">Get this Express + SQLite project running locally. Tell me what to install, which variables go in .env, the start command, and which URL to open.</code></p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">2</span>
+        <p class="kc-steps__title">加一个功能</p>
+        <p class="kc-steps__body">“给留言加一个最长 300 字的服务端截断提示：超长时返回 400 并说明上限，改 server.js 里 POST /api/messages 那一段。”<br><code class="kc-code" data-kc-lang="en">When a message is longer than 300 characters, return 400 with the limit spelled out. Change the POST /api/messages handler in server.js.</code></p>
+      </div>
+      <div class="kc-steps__item">
+        <span class="kc-steps__num">3</span>
+        <p class="kc-steps__title">修一个报错</p>
+        <p class="kc-steps__body">“我改完 .env 里的 ADMIN_TOKEN 之后删除还是报 401。告诉我为什么，以及怎么让它不用重启也能生效。”<br><code class="kc-code" data-kc-lang="en">I changed ADMIN_TOKEN in .env but delete still returns 401. Explain why, and how to make it take effect without a restart.</code></p>
+      </div>
+    </div>
+
+    <h3 class="kc-screen__title">你最可能撞上的报错</h3>
+    <p>下面四条都是这个项目真的会给出来的原文。左边一字不改，右边是中文意思和该怎么办。</p>
+
+    <div class="kc-deflist">
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">{"error":"Rate limit: wait at least 10 seconds between transmissions."}</code>
+        <p class="kc-deflist__value">配合 429 出现。你两条留言之间隔得太近了，等 10 秒再发。这不是你写错了，纯粹是频率问题。</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">{"error":"Human check expired. Request a new challenge."}</code>
+        <p class="kc-deflist__value">配合 400 出现。那道算术题超过五分钟没提交，票据作废了。刷新页面重新拿一道题就行。</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">{"error":"Admin token is not configured on server."}</code>
+        <p class="kc-deflist__value">配合 500 出现。服务器启动时 ADMIN_TOKEN 是空的。在 .env 里配上再重启——注意这是服务器的配置问题，不是你钥匙填错了。</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Error: Could not find any Python installation to use</code>
+        <p class="kc-deflist__value">装依赖时可能撞上，因为 better-sqlite3 里有一部分需要现场编译。多数机器上装不到这一步，因为它会先下载编译好的版本；只有在没有 Python 的环境里才会出现。对 AI 说：“帮我装上 better-sqlite3 需要的编译工具链。”</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">最后检查一下</h3>
+
+    <div class="kc-quiz" id="kc-quiz-m5">
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。textContent 把内容一律当文字，尖括号只是两个字符，不会变成标签。"
+           data-kc-wrong="回头看 renderItems 那一行：正文是用 textContent 填的，不是 innerHTML。这两个的区别正是这一整段代码存在的理由。">
+        <p class="kc-quiz__prompt">有人在留言里写了一段 <code class="kc-code" data-kc-lang="en">&lt;script&gt;</code>，别人打开页面会怎样？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>那段脚本会在每个访客的浏览器里执行</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>就显示成这几个字符本身，什么也不会执行</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>服务器会拒收，返回 400</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。500 是“服务器自己的锅”，完整原因只打在终端里，浏览器上只有一句笼统的话。"
+           data-kc-wrong="再看一眼错误处理那两行：console.error 印在终端，发给浏览器的永远只是 Internal server error 这一句。这是故意的，为的是不把内部细节泄露出去。">
+        <p class="kc-quiz__prompt">页面弹出 Internal server error，你下一步去哪儿看？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>浏览器开发者工具，那里有完整原因</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>signal-log.db，数据肯定坏了</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>跑着服务的那个终端窗口</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m5" data-kc-kind="explain" data-kc-min="70">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你朋友要做一个留言板，问你“别人在留言里写代码怎么办”。用不超过三句话讲给他听。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说出了这个问题的英文原词 XSS，或者它的全称 cross-site scripting</li>
+        <li class="kc-output__item">讲清楚了核心原则是“用户内容只当文字，不当网页结构”</li>
+        <li class="kc-output__item">提到了 textContent 和 innerHTML 的区别，而不是笼统地说“要过滤一下”</li>
+      </ul>
+    </div>
+  </section>
+</section>

@@ -1,0 +1,182 @@
+<section class="kc-module" id="kc-m3" data-kc-tone="a" data-kc-metaphor="接收站的三道滤波器">
+  <p class="kc-module__number">03</p>
+  <h2 class="kc-module__title">怎么把机器人挡在外面</h2>
+  <p class="kc-module__subtitle">三道完全不同的防线，各挡一种人。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">为什么留言板一定会被刷</h3>
+    <p>任何人不用登录就能发的地方，一定会被自动脚本盯上。这个项目布了三道防线，而且三道挡的是完全不同的三种情况。</p>
+    <p>就像接收站上串起来的三个滤波器：一个滤掉发得太频繁的，一个滤掉根本不是人的，一个滤掉内容本身是垃圾的。</p>
+
+    <div class="kc-cards">
+      <div class="kc-cards__item" data-kc-accent="1">
+        <span class="kc-cards__icon">◔</span>
+        <p class="kc-cards__title">限流</p>
+        <p class="kc-cards__body">按 IP 数次数：两条之间至少隔 10 秒，一小时最多 10 条。挡的是“发得太快的人”。</p>
+      </div>
+      <div class="kc-cards__item" data-kc-accent="2">
+        <span class="kc-cards__icon">◕</span>
+        <p class="kc-cards__title">蜜罐</p>
+        <p class="kc-cards__body">一个人类看不见的输入框。填了就直接判垃圾。挡的是“照着表单硬填的脚本”。</p>
+      </div>
+      <div class="kc-cards__item" data-kc-accent="3">
+        <span class="kc-cards__icon">◑</span>
+        <p class="kc-cards__title">算术题</p>
+        <p class="kc-cards__body">服务器出一道加法，配一张五分钟过期的票据。挡的是“没有真正打开过页面的请求”。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第一道：数次数</h3>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:87-92</p>
+        <pre data-kc-lang="en">  if (entry.lastPostAt &amp;&amp; now - entry.lastPostAt &lt; minGapMs) {
+    return jsonError(res, 429, 'Rate limit: wait at least 10 seconds between transmissions.');
+  }
+  if (entry.recent.length &gt;= maxPostsPerWindow) {
+    return jsonError(res, 429, 'Rate limit: maximum 10 transmissions per hour.');
+  }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">如果这个 IP 上一次发言的时间还在，而且离现在不到 10 秒——</p>
+        <p class="kc-code-pair__line">直接回 <span class="kc-term" data-kc-define="429 是 HTTP 状态码，含义是 Too Many Requests（请求太多了）。它和 400（你发的东西不对）、403（不许你干这事）都不一样，它说的是“你没错，只是太频繁了，等会儿再来”。国内直接念 429。">429</span>。注意它给的是人话：“两次之间至少等 10 秒”，而不是干巴巴一句“被拒绝”。</p>
+        <p class="kc-code-pair__line">第一道判断结束。</p>
+        <p class="kc-code-pair__line">如果这一小时之内已经发过 10 条——</p>
+        <p class="kc-code-pair__line">同样回 429，但换一句更准确的话。<strong>两种情况用同一个状态码，却给不同的解释</strong>，用户才知道该等 10 秒还是该等一小时。</p>
+        <p class="kc-code-pair__line">第二道判断结束。</p>
+      </div>
+    </div>
+
+    <div class="kc-note" data-kc-tone="warning">
+      <span class="kc-note__icon">⚠</span>
+      <p class="kc-note__title">这份计数只在内存里</p>
+      <p class="kc-note__body">限流记录存在一个 Map 里，服务一重启就全没了。好处是不用存任何人的 IP，坏处是重启一次所有人的额度都清零。项目自己在 README 里写明了这个取舍。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第二、三道：内容和身份</h3>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:168-179</p>
+        <pre data-kc-lang="en">  if (website) {
+    return jsonError(res, 400, 'Spam detected.');
+  }
+  if (!message) {
+    return jsonError(res, 400, 'Message is required.');
+  }
+  if (!hasMeaningfulContent(message)) {
+    return jsonError(res, 400, 'Message must include at least one letter or number.');
+  }
+  if (isRepeatedSpam(message)) {
+    return jsonError(res, 400, 'Message looks like repeated-character spam.');
+  }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line"><span class="kc-term" data-kc-define="honeypot 直译是“蜜罐”，字面就是引苍蝇的那罐蜜。在防垃圾里，它指一个专门放出去引诱机器人上钩的假字段：人看不见，机器人会填，一填就露馅。国内也叫蜜罐。">蜜罐</span>字段有内容，直接判定为垃圾。人看不见那个框，填了的一定不是人。</p>
+        <p class="kc-code-pair__line">回 400 并说明原因。</p>
+        <p class="kc-code-pair__line">第一道判断结束。</p>
+        <p class="kc-code-pair__line">留言是空的。</p>
+        <p class="kc-code-pair__line">回 400，告诉他留言是必填的。</p>
+        <p class="kc-code-pair__line">第二道结束。</p>
+        <p class="kc-code-pair__line">留言里连一个字母或数字都没有——比如整条只有标点和空格。</p>
+        <p class="kc-code-pair__line">回 400。这一条挡的是“看起来不空、其实什么都没说”的内容。</p>
+        <p class="kc-code-pair__line">第三道结束。</p>
+        <p class="kc-code-pair__line">留言是一长串重复字符，比如八个以上一样的字挨在一起。</p>
+        <p class="kc-code-pair__line">回 400。四道判断从上往下依次执行，任何一道命中就直接返回，后面的根本不跑。</p>
+        <p class="kc-code-pair__line">最后一道结束。</p>
+      </div>
+    </div>
+
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:53-60</p>
+        <pre data-kc-lang="en">function makeHumanCheck() {
+  const a = randomInt(2, 12);
+  const b = randomInt(1, 12);
+  const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  const answer = String(a + b);
+  humanChecks.set(token, { answer, expiresAt: Date.now() + humanCheckTTL });
+  return { token, question: `${a} + ${b} = ?` };
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">出一道人机验证题。</p>
+        <p class="kc-code-pair__line">随机取一个 2 到 12 的数。</p>
+        <p class="kc-code-pair__line">再取一个 1 到 12 的数。</p>
+        <p class="kc-code-pair__line">编一张<span class="kc-term" data-kc-define="token 字面是“凭证、代币”，就像游乐场的塑料币。在这里它是一张一次性票据：服务器把答案记在自己这边，只把票据号给你，你交回票据它才知道对应哪道题。国内直接说 token，念作“透肯”。">票据</span>：当前时间加一段随机字符。</p>
+        <p class="kc-code-pair__line"><strong>答案留在服务器这边</strong>，不发给浏览器。这一点是关键——发出去就等于把答案告诉了机器人。</p>
+        <p class="kc-code-pair__line">把票据和答案记下来，同时记一个五分钟后的过期时间。</p>
+        <p class="kc-code-pair__line">只把票据和题面发出去。</p>
+        <p class="kc-code-pair__line">函数结束。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">这段被人改坏了</h3>
+
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这是校验算术题答案的那几行，被人悄悄改坏了一处。点一下你觉得有问题的那一行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="按票据把当初记下的那道题取出来，这一步是对的。"><span class="kc-bughunt__lineno">1</span>  const challenge = humanChecks.get(humanToken);</button>
+        <button class="kc-bughunt__line" data-kc-hint="票据不存在或者已经过期，两种情况都该拒绝。这个判断没问题。"><span class="kc-bughunt__lineno">2</span>  if (!challenge || challenge.expiresAt &lt; Date.now()) {</button>
+        <button class="kc-bughunt__line" data-kc-hint="过期的票据顺手清掉，免得内存里越攒越多。这一行是好习惯。"><span class="kc-bughunt__lineno">3</span>    humanChecks.delete(humanToken);</button>
+        <button class="kc-bughunt__line" data-kc-hint="回 400 并让他重新要一道题，提示写得很清楚。"><span class="kc-bughunt__lineno">4</span>    return jsonError(res, 400, 'Human check expired. Request a new challenge.');</button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="真实代码是 if (challenge.answer !== humanAnswer)，意思是“答错了就拒绝”。这里把不等号改成了等号，意思正好反过来：答对的被拒绝，答错的反而放行。这类错最难发现，因为程序不会崩，页面也照常响应——它只是安静地把事情做反了。改回 !== 就对了。"><span class="kc-bughunt__lineno">5</span>  if (challenge.answer === humanAnswer) {</button>
+        <button class="kc-bughunt__line" data-kc-hint="回 400 说答案不对。这句提示本身没毛病，问题在它上面那行什么时候会执行到。"><span class="kc-bughunt__lineno">6</span>    return jsonError(res, 400, 'Human check answer is incorrect.');</button>
+        <button class="kc-bughunt__line" data-kc-hint="票据用一次就作废，防止同一张票反复用。这一行是对的。"><span class="kc-bughunt__lineno">7</span>  humanChecks.delete(humanToken);</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">检查一下</h3>
+
+    <div class="kc-quiz" id="kc-quiz-m3">
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。答案只留在服务器的 Map 里，浏览器手上只有一张票据号。"
+           data-kc-wrong="想一想：如果答案跟着题目一起发到浏览器，写脚本的人打开开发者工具就能看见它，这道题就白出了。">
+        <p class="kc-quiz__prompt">那道算术题的答案存在哪儿？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>跟着题目一起发给浏览器，提交时带回来对一下</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>存在数据库的 messages 表里</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>只留在服务器内存里，浏览器只拿到一张票据</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。限流记录只在内存里，重启就清空，这是项目自己写明的取舍。"
+           data-kc-wrong="回头看那条提示：这份计数存在一个 Map 里，不落盘。所以服务一重启，谁发过几条就都不记得了。">
+        <p class="kc-quiz__prompt">服务器重启了一次，某个刚发满 10 条的人会怎样？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>还是被挡着，因为记录写进了数据库</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>额度清零，他又能发 10 条了</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>他的 IP 被永久拉黑</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m3" data-kc-kind="instruct" data-kc-min="70">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你要把“一小时 10 条”改成“一小时 30 条”，同时保留 10 秒的间隔。把你会对 AI 说的那句话原样写出来。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">点名了 server.js，以及 maxPostsPerWindow 这个变量，而不是只说“改一下限制”</li>
+        <li class="kc-output__item">说清楚了 minGapMs 那 10 秒不要动</li>
+        <li class="kc-output__item">提到了 429 那句提示文字也得跟着改，否则提示会和实际规则对不上</li>
+        <li class="kc-output__item">整句话具体到一个人照着就能改，没有“优化一下”这种空话</li>
+      </ul>
+    </div>
+  </section>
+</section>

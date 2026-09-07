@@ -115,15 +115,16 @@ SKILL.md              给模型的主指令（中文，≤500 行）
 references/           内容原则、交互元素规范、翻车清单、页面层实现、字体
 scripts/              构建与校验（Node，零依赖，跨平台）
 examples/todo-api/    贯穿全程的示例代码库（Express 待办 API，约 340 行）
-output/               生成的课程，按时间顺序：
-  baseline/           原版 skill 未经修改的英文产物（冻结的对照基线）
-  baseline-v2/        同样内容，跑在新构建链上（自托管字体 + Node 构建）
-  v1/                 第一门中文课（examples/todo-api）
-  real-1/             第一次真实仓库（Signal_LOG，Opus，整份加载 references）
-  real-2-opus/        Signal_LOG，Opus，references 按需加载
-  real-2-sonnet/      Signal_LOG，Sonnet，同上——暴露了三处校验缺口
-  real-3-sonnet/      Signal_LOG，Sonnet，校验收紧之后
+output/               生成的课程，只保留这两门：
+  v1/                 待办 API（examples/todo-api），5 个模块
+  real-3-sonnet/      SIGNAL LOG（一个真实仓库），5 个模块
 ```
+
+**关于 output/ 的两点说明。** 一，v0.2 重写页面层之后，早先那些产物（`baseline`、
+`baseline-v2`、`real-1`、`real-2-opus`、`real-2-sonnet`）都是旧实现渲染的，
+class 名、DOM 结构、构建链全部对不上，留着只会误导，已经删除。
+二，`real-3-sonnet` 这个名字记的是它最初由 Sonnet 生成；v0.2 的这一版是
+**用新契约重写的，不是 Sonnet 写的**，名字只是没改，免得打断已有的引用。
 
 ## 授权
 
