@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>拆开 SIGNAL LOG：一个深空留言板是怎么运转的</title>
+<link rel="stylesheet" href="fonts/fonts.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<a class="kc-skip" href="#kc-course">跳到课程正文</a>
+<header class="kc-nav">
+<div class="kc-nav__progress" role="progressbar" aria-label="课程阅读进度" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span class="kc-nav__progress-fill"></span></div>
+<div class="kc-nav__row">
+<span class="kc-nav__title">拆开 SIGNAL LOG：一个深空留言板是怎么运转的</span>
+<div class="kc-nav__dots" role="tablist" aria-label="模块导航">
+<button class="kc-nav__dot" type="button" data-kc-target="kc-m1" data-kc-label="按下 Transmit 之后"></button>
+<button class="kc-nav__dot" type="button" data-kc-target="kc-m2" data-kc-label="这个项目里都有谁"></button>
+<button class="kc-nav__dot" type="button" data-kc-target="kc-m3" data-kc-label="搜索框怎么问到数据库"></button>
+<button class="kc-nav__dot" type="button" data-kc-target="kc-m4" data-kc-label="写代码的人在防着谁"></button>
+<button class="kc-nav__dot" type="button" data-kc-target="kc-m5" data-kc-label="报错时先看哪"></button>
+</div>
+</div>
+</header>
+<main class="kc-course" id="kc-course">
+
+<section class="kc-module" id="kc-m1" data-kc-tone="a" data-kc-metaphor="电台发射与接收">
+  <p class="kc-module__number">01</p>
+  <h2 class="kc-module__title">按下 Transmit 之后</h2>
+  <p class="kc-module__subtitle">你在左边的表单里打了一句话，点了那个写着 Transmit 的按钮。这一模块要做的，就是把这几乎看不见的一瞬间拉长、拆开，看看这句话到底走了哪几步，才变成右边那条带着信号强度的新记录。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">这东西到底是什么</h3>
+    <p>SIGNAL LOG 是一个带着深空电台外壳的留言板。首页左边是一张写着<span class="kc-term" data-kc-define="callsign 直译是‘呼号’，业余无线电爱好者用来自报身份的代号，比如 Nomad-7。在这个项目里它就是一个可选的昵称输入框，国内工程师聊起来就直接说 callsign 或者‘呼号字段’。">Transmit</span>的表单，右边是一条不断滚动的日志。你在 Message 里打一句话、点一下 Transmit，几乎同一瞬间，右边"Live Log"那栏就会多出一条新记录，旁边还带着一个类似"Signal 87%"的百分比。</p>
+    <p>这条留言最终会落进一个叫 <code class="kc-code" data-kc-lang="en">signal-log.db</code> 的文件里——那才是真正意义上的"发出去"：刷新页面、关掉浏览器，它都还在那儿。这一路走过的几个文件，就是接下来五个模块要一个个拆开看的东西。</p>
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">从结局往回看</p>
+      <p class="kc-note__body">你已经知道结局了——那条留言确实出现在了列表里。这一模块不是要告诉你"会发生什么"，而是告诉你"凭什么会发生"。悬念在后面，不在前面。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第一站：浏览器先把你打的字捆成一个包裹</h3>
+    <p>点击 Transmit 按钮触发的第一件事，发生在 <code class="kc-code" data-kc-lang="en">public/app.js</code> 里。这个文件负责把表单里的几个输入框读出来，捆成一个统一的<span class="kc-term" data-kc-define="payload 直译是‘负载、装载的东西’，字面意思是‘真正要运的那批货’。在这个项目里，它指的是即将发给服务器的那一整包数据：呼号、来源、留言正文、人类验证的答案。国内工程师聊起来就直接说 payload。">payload</span>，然后再送出去。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:192-199</p>
+        <pre data-kc-lang="en">  const payload = {
+    callsign: form.callsign.value,
+    origin: form.origin.value,
+    message: form.message.value,
+    humanAnswer: form.humanAnswer.value,
+    humanToken: state.humanToken,
+    website: form.website.value
+  };</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先造一个叫 payload 的包裹，接下来几行都是往里面装东西。</p>
+        <p class="kc-code-pair__line">callsign 和 origin 直接从表单输入框里读，用户没填就是空字符串，谁都不强求。</p>
+        <p class="kc-code-pair__line">message 是这条留言真正的内容，同样直接读输入框的值，一个字都还没被改过。</p>
+        <p class="kc-code-pair__line">humanAnswer 是用户在人类验证那道加法题里填的答案。</p>
+        <p class="kc-code-pair__line">humanToken 却不是从输入框来的——它是页面早先问服务器要来的一次性凭证，存在一个叫 state 的对象里。</p>
+        <p class="kc-code-pair__line">website 是一个用户看不见的陷阱字段，专门留给自动灌水的机器人，人手动填表单永远碰不到它。</p>
+      </div>
+    </div>
+    <p>捆好包裹之后，app.js 会调用一个叫<span class="kc-term" data-kc-define="fetch 直译是‘取’。这里指浏览器自带的一个函数，专门用来向服务器发一次网络请求、再把结果取回来。国内工程师就直接说 fetch，很少翻译。">fetch</span>的浏览器内置函数，带着这份 payload，往服务器发一次<span class="kc-term" data-kc-define="POST 直译是‘投递、张贴’。这里指一种请求方式，专门用来‘往服务器提交新数据’，跟专门用来‘要数据’的 GET 相对。国内工程师聊起来就说‘发一个 POST 请求’。">POST</span>请求。而在这一步真正把请求送出去之前，代码里还有<span class="kc-term" data-kc-define="await 直译是‘等待’。这里指‘先别往下走，等这一步的结果真的回来了再继续’，因为网络请求不是瞬间完成的。国内工程师叫异步等待，聊天时也直接说 await 一下。">await</span>，意思是页面会老老实实等服务器给个答复，不会自己先往下走。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第二站：包裹要过网线，走的是哪条路</h3>
+    <p>点着走一遍这个包裹的完整旅程——从你打字，到它真正落进数据库，再到你在屏幕上看见结果。</p>
+    <div class="kc-flow" data-kc-steps='[
+      {"actor":"kc-flow-m1-you","text":"你在 Message 里打了一句话，点了 Transmit。"},
+      {"actor":"kc-flow-m1-app","text":"app.js 把这句话连同呼号、来源，一起捆成一个 payload。","from":"kc-flow-m1-you","to":"kc-flow-m1-app"},
+      {"actor":"kc-flow-m1-server","text":"包裹顺着网线飞到了服务器，走的是 POST /api/messages 这条路。","from":"kc-flow-m1-app","to":"kc-flow-m1-server"},
+      {"actor":"kc-flow-m1-server","text":"server.js 先挨个检查：有没有夹带陷阱字段、留言是不是空的、人类验证答得对不对。"},
+      {"actor":"kc-flow-m1-db","text":"检查全部通过，server.js 把这条留言交给 db.js，由它写进那个数据库文件。","from":"kc-flow-m1-server","to":"kc-flow-m1-db"},
+      {"actor":"kc-flow-m1-app","text":"服务器把新写好的记录连同信号强度一起送回来，app.js 重新画一遍左边的列表，你才看见它出现。","from":"kc-flow-m1-db","to":"kc-flow-m1-app"}
+    ]'>
+      <div class="kc-flow__actors">
+        <div class="kc-flow__actor" id="kc-flow-m1-you"><span class="kc-flow__icon">🧑</span><span class="kc-flow__name">你</span></div>
+        <div class="kc-flow__actor" id="kc-flow-m1-app"><span class="kc-flow__icon">▤</span><span class="kc-flow__name">app.js</span></div>
+        <div class="kc-flow__actor" id="kc-flow-m1-server"><span class="kc-flow__icon">▣</span><span class="kc-flow__name">server.js</span></div>
+        <div class="kc-flow__actor" id="kc-flow-m1-db"><span class="kc-flow__icon">▦</span><span class="kc-flow__name">db.js</span></div>
+      </div>
+      <span class="kc-flow__packet"></span>
+      <p class="kc-flow__caption">点"下一步"，跟着这句话走一遍完整的旅程。</p>
+      <div class="kc-flow__actions">
+        <button class="kc-flow__next">下一步</button>
+        <button class="kc-flow__reset">重来</button>
+      </div>
+      <p class="kc-flow__progress"></p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第三站：server.js 里都过了哪些关卡</h3>
+    <p>包裹到达服务器之后，并不会被直接相信。<span class="kc-term" data-kc-define="接口在这里是 API 的另一种说法，API 直译是 Application Programming Interface，‘应用程序编程接口’。它指服务器专门开放出来、给别的程序调用的一个个网址，比如 slash api slash messages。国内工程师简称接口或者 API。">接口</span> <code class="kc-code" data-kc-lang="en">/api/messages</code> 背后的函数，会重新<span class="kc-term" data-kc-define="validate 直译是‘验证’。这里指服务器收到数据之后，不管浏览器有没有查过，自己再挨个检查一遍是不是符合要求，比如 message 不能是空的。国内工程师叫校验或者验证。">校验</span>一遍每一样东西——它从来不假设浏览器那边已经查过了。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:158-169</p>
+        <pre data-kc-lang="en">app.post('/api/messages', enforcePostRateLimit, (req, res) => {
+  const payload = req.body || {};
+
+  const callsign = normalizeText(payload.callsign, 24);
+  const origin = normalizeText(payload.origin, 32);
+  const message = normalizeText(payload.message, 300);
+  const humanAnswer = normalizeText(payload.humanAnswer, 16);
+  const humanToken = normalizeText(payload.humanToken, 64);
+  const website = normalizeText(payload.website, 128);
+
+  if (website) {
+    return jsonError(res, 400, 'Spam detected.');</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">这是这条路的入口：只要有人往 /api/messages 发 POST 请求，都会先经过 enforcePostRateLimit 这一道频率检查，通过了才轮到这个函数。</p>
+        <p class="kc-code-pair__line">req.body 是请求里带来的那个包裹，万一什么都没带，就退而求其次用一个空对象顶上，不至于直接报错。</p>
+        <p class="kc-code-pair__line">接下来六行，把包裹里的每一样东西都过一遍 normalizeText——去掉多余空格、掐掉超出长度限制的部分。</p>
+        <p class="kc-code-pair__line">website 这一栏，人是看不见的，只有自动灌水的脚本才会傻乎乎地把它填上。</p>
+        <p class="kc-code-pair__line">只要 website 有内容，就直接判定是垃圾信息，请求到此为止，根本不会碰到数据库。</p>
+      </div>
+    </div>
+    <p>这里的 <code class="kc-code" data-kc-lang="en">400</code> 是一种<span class="kc-term" data-kc-define="状态码是服务器在回应里附带的一个数字，用来说明这次请求处理得怎么样。400 表示‘你发来的请求本身有问题’，跟服务器自己出没出错没关系。国内工程师会直接说‘400 了’或者‘参数错误’。">状态码</span>，意思是"你发来的东西本身有问题，我懒得往下处理了"，跟服务器自己出没出错完全是两码事——这个区分在模块五还会再展开。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">小结</h3>
+    <p>一句话捋一遍：app.js 把表单捆成 payload 发出去，server.js 重新校验一遍，通过了才会交给 db.js 落盘，最后 app.js 再把最新的列表画出来。三个文件，各管一段，谁都不完全信任谁。</p>
+
+    <div class="kc-quiz" id="kc-quiz-m1">
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。app.js 里的检查只是为了让用户少等一次网络请求，真正把关的是 server.js 里那一句 if (!message) 开头的判断——跳过浏览器、直接绕过网页发请求的人，一样会被这一句挡住。"
+           data-kc-wrong="再往上翻一屏，看一眼 server.js 里 app.post('/api/messages', ...) 那一段——前端的检查从来不是唯一一道关卡，服务器自己也会重新查一遍，不会因为‘浏览器应该查过了’就偷懒。">
+        <p class="kc-quiz__prompt">如果有人绕开网页表单，直接用工具往 /api/messages 发一个 message 是空字符串的请求，会发生什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>服务器毫无防备，这条空留言会被真的写进数据库</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>服务器会用 400 拒绝，因为 server.js 里也有一次独立的检查，不只信任浏览器</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>服务器会直接崩溃，因为它假设浏览器已经挡住了空留言</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m1" data-kc-kind="retell" data-kc-min="90">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">用你自己的话说一遍：你在 Message 里打字、点下 Transmit 之后，这句话依次经过了哪些文件，才变成右边 Live Log 里的一条新记录？</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">提到了 app.js 先把 callsign、origin、message 捆成一个 payload</li>
+        <li class="kc-output__item">说出了请求走的是 POST /api/messages 这条路</li>
+        <li class="kc-output__item">提到 server.js 会重新校验一遍，不是只信任浏览器</li>
+        <li class="kc-output__item">说清楚只有 db.js 真正碰那个数据库文件</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="kc-module" id="kc-m2" data-kc-tone="b" data-kc-metaphor="快递驿站">
+  <p class="kc-module__number">02</p>
+  <h2 class="kc-module__title">这个项目里都有谁</h2>
+  <p class="kc-module__subtitle">上一模块跟着一条留言走了一遍全程，路过了好几个文件名。这一模块停下来，把这几个文件当成几个角色，一个个认清楚：谁负责收发、谁只管硬盘、谁只管好看。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">五个文件，五个分工</h3>
+    <p>SIGNAL LOG 一共只有五个自己写的文件，就像一个开在网上的快递驿站：有人在窗口收件，有人在后头的仓库码货，还有人负责把门面装修得像回事。分工非常干净——每个文件只管一件事。</p>
+    <div class="kc-rolelist">
+      <div class="kc-rolelist__row" data-kc-accent="1">
+        <span class="kc-rolelist__icon">A</span>
+        <p class="kc-rolelist__name">public/app.js</p>
+        <p class="kc-rolelist__note">前台窗口。收你打的字，画你看到的页面，自己不留东西——关掉标签页，它记的一切都没了。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="2">
+        <span class="kc-rolelist__icon">S</span>
+        <p class="kc-rolelist__name">server.js</p>
+        <p class="kc-rolelist__note">驿站的分拣员。谁发来的东西，先查一遍、分好类，再决定往哪儿送，自己从不留货。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="3">
+        <span class="kc-rolelist__icon">D</span>
+        <p class="kc-rolelist__name">db.js</p>
+        <p class="kc-rolelist__note">后头的仓库。整个项目里只有它真正碰硬盘，货物进出都要经过它的账本。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="4">
+        <span class="kc-rolelist__icon">H</span>
+        <p class="kc-rolelist__name">public/index.html</p>
+        <p class="kc-rolelist__note">门面的骨架。表单有几个输入框、按钮摆在哪，都是它说了算，但它不管好不好看。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="5">
+        <span class="kc-rolelist__icon">C</span>
+        <p class="kc-rolelist__name">public/styles.css</p>
+        <p class="kc-rolelist__note">门面的装修。深蓝底色、荧光青边框，这一整套深空电台的味道全是它调出来的。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">server.js：只负责派活，不留一件东西</h3>
+    <p>server.js 用的是一个叫<span class="kc-term" data-kc-define="Express 是一款软件的名字，直译‘快车、快递’。它是这个项目用来搭建服务器的一套工具库，专门负责‘收到一个网址请求，该交给哪段代码处理’。国内工程师就直接说 Express，不翻译。">Express</span>的框架。它的核心工作就是给每一条<span class="kc-term" data-kc-define="路由 route 直译是‘路线’。这里指‘某个固定网址 + 某种请求方式’对应的一段处理代码，比如 GET slash api slash human-check 就是一条路由。国内工程师聊起来直接说路由或者 route。">路由</span>安排好该由哪段代码来接。下面这一段就是全项目里最短的一条路由——专门用来发一道人类验证题。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:143-146</p>
+        <pre data-kc-lang="en">app.get('/api/human-check', (_req, res) => {
+  const challenge = makeHumanCheck();
+  return res.json(challenge);
+});</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">这一行声明：只要有人拿 GET 方式访问 /api/human-check，就交给这个函数处理。</p>
+        <p class="kc-code-pair__line">调用 makeHumanCheck，生成一道新的加法题和一次性凭证，自己不参与出题逻辑。</p>
+        <p class="kc-code-pair__line">把结果转成一份大家能读的回复直接送出去——server.js 全程没有把这道题存进硬盘，转手就交出去了。</p>
+      </div>
+    </div>
+    <p>你会发现 server.js 里几乎每一条路由都是这个套路：接一下、查一下、转手交给别人，自己从不留东西。这也是为什么调试的时候，"数据丢了"这种问题从来不该先怪它。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">db.js：不只是存东西，还会算账</h3>
+    <p>整个项目只有 db.js 会碰那个叫 signal-log.db 的文件，用的是一个叫<span class="kc-term" data-kc-define="SQLite 是一款软件的名字。它是一种轻量级的数据库，不需要单独装一个数据库服务器，整个数据库就是一个文件。国内工程师就直接说 SQLite。">SQLite</span>的轻量数据库。但它不只是"存进去、读出来"这么简单——每条新留言送到它手上时，它还会顺手给这条留言算一个信号强度。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">db.js:95-100</p>
+        <pre data-kc-lang="en">function computeStrength(message, id) {
+  const len = message.length;
+  const base = Math.min(85, 20 + Math.floor((len / 300) * 65));
+  const noise = hashInt(id) % 16;
+  return Math.max(0, Math.min(100, base + noise));
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先量出这条留言有多少个字符，字越多，等一下算出来的基础分越高。</p>
+        <p class="kc-code-pair__line">base 是基础信号强度，最高封顶在 85，留言越长越接近这个上限。</p>
+        <p class="kc-code-pair__line">noise 是拿这条记录的 id 算出来的一个 0 到 15 之间的余数，给每条留言添一点看起来随机的浮动。</p>
+        <p class="kc-code-pair__line">最后把 base 和 noise 加起来，夹在 0 到 100 之间，这就是你在页面上看到的那个百分比。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="info">
+      <span class="kc-note__icon">ℹ</span>
+      <p class="kc-note__title">这个数字不是真的信号</p>
+      <p class="kc-note__body">signal-log.db 里存的这个 strength，本质上只是根据留言长度和 id 算出来的一个装饰性数字，跟真实的电台信号毫无关系——它的作用是让这个虚构的深空电台看起来更像那么回事。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">前端三件套：骨架、装修、行为，一层层叠上去</h3>
+    <p>public 目录下的三个文件，正好对应网页的三层：<code class="kc-code" data-kc-lang="en">index.html</code> 是<span class="kc-term" data-kc-define="DOM 直译是 Document Object Model，‘文档对象模型’。它是浏览器把一份 HTML 读进内存之后，搭出来的一棵可以被代码操作的结构树。国内工程师聊起来就直接说 DOM。">DOM</span>结构，<code class="kc-code" data-kc-lang="en">styles.css</code> 管外观，<code class="kc-code" data-kc-lang="en">app.js</code> 管交互。切一下下面这几个标签，看看同一个表单在不同阶段长什么样。</p>
+    <div class="kc-layers">
+      <div class="kc-layers__tabs">
+        <button class="kc-layers__tab" data-kc-layer="kc-layer-m2-a" data-kc-note="这一层只有骨架：Transmit 按钮和输入框都在，能点、能打字，但灰扑扑的，没有深空电台该有的样子。">只有 index.html</button>
+        <button class="kc-layers__tab" data-kc-layer="kc-layer-m2-b" data-kc-note="加上 styles.css 之后，深蓝底色、荧光青边框、卡片式布局全都出来了，但按钮点了没反应，输入框也不会提示字数。">加上 styles.css</button>
+        <button class="kc-layers__tab" data-kc-layer="kc-layer-m2-c" data-kc-note="再加上 app.js，点 Transmit 才会真的发请求，字数提示、过滤器、加载更多才会动起来——这一层才是‘活的’。">再加上 app.js</button>
+      </div>
+      <div class="kc-layers__panel" id="kc-layer-m2-a">只有骨架：能看到表单和按钮，样式全无，点了也没有任何反应。</div>
+      <div class="kc-layers__panel" id="kc-layer-m2-b">骨架加上装修：深空视觉出来了，但按钮和输入框仍然是摆设。</div>
+      <div class="kc-layers__panel" id="kc-layer-m2-c">骨架、装修、行为三层叠满：点击 Transmit 真的会发出请求，页面才算完整地"活"了起来。</div>
+      <p class="kc-layers__note"></p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">三个角色，怎么互相打招呼</h3>
+    <p>把模块一走过的那趟旅程，换成一段对话看一遍——同样的流程，换个角度，你会发现每句话都对应着你已经见过的那几行代码。</p>
+    <div class="kc-chat" id="kc-chat-m2">
+      <div class="kc-chat__stream">
+        <div class="kc-chat__message" data-kc-speaker="app.js">
+          <span class="kc-chat__avatar">A</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">app.js</p>
+            有人在 Message 里打了字，点了 Transmit。我先把呼号、来源、留言捆成一个包裹，发给你，server.js。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="server.js">
+          <span class="kc-chat__avatar">S</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">server.js</p>
+            收到 POST /api/messages。我不碰硬盘，我先挨个检查一遍，通过了才会往下派。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="server.js">
+          <span class="kc-chat__avatar">S</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">server.js</p>
+            检查全过了，交给你了，db.js。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="db.js">
+          <span class="kc-chat__avatar">D</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">db.js</p>
+            写进 messages 表了。我还顺手算了个信号强度，这条是 72。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="server.js">
+          <span class="kc-chat__avatar">S</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">server.js</p>
+            收到，我把这条新记录连同 72 一起还给 app.js。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="app.js">
+          <span class="kc-chat__avatar">A</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">app.js</p>
+            拿到了，我重新画一遍 Live Log，现在你能在页面上看到它了。
+          </div>
+        </div>
+      </div>
+      <div class="kc-chat__typing"></div>
+      <div class="kc-chat__actions">
+        <button class="kc-chat__next">下一条</button>
+        <button class="kc-chat__all">全部播放</button>
+        <button class="kc-chat__replay">重放</button>
+      </div>
+      <p class="kc-chat__progress"></p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">小结</h3>
+    <p>五个文件、五种分工：app.js 收发，server.js 分拣，db.js 存货又算账，index.html 搭骨架，styles.css 管装修。记住这张分工表，往后不管是找 bug 还是加功能，第一件事都是先问一句"这该归谁管"。</p>
+
+    <div class="kc-quiz" id="kc-quiz-m2">
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。origin 过滤、message 长度限制这些跟‘业务规则’有关的判断，理论上该由 server.js 或 db.js 决定，因为浏览器发的请求随时可能绕过 app.js。给出的两个选项都只提到了前端，而真正的答案是：无论前端怎么改，后端都要重新判一遍。"
+           data-kc-wrong="再想一下 db.js 只碰硬盘、app.js 只管前台这两条分工——‘要不要接受这条留言’这种业务判断，不该单独交给只管画面的那一层。">
+        <p class="kc-quiz__prompt">现在要新增一条规则：留言里不能包含某个屏蔽词。这个判断最应该放在哪个文件里？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>只放在 index.html 里，用一个提示语提醒用户</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>只放在 public/styles.css 里，把包含屏蔽词的留言标红</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>放在 server.js 里，跟 hasMeaningfulContent 那类检查放在一起</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m2" data-kc-kind="instruct" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你想给每条留言加一个"点赞数"，点一下加一。把你会对 AI 说的那句指令原样写出来，想清楚它需要动哪几个文件。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">提到了 db.js 需要新增一个字段来存点赞数</li>
+        <li class="kc-output__item">提到了 server.js 需要新增一条路由来接收点赞请求</li>
+        <li class="kc-output__item">提到了 public/app.js 需要加一个按钮的点击处理</li>
+        <li class="kc-output__item">没有要求把这个逻辑塞进 public/styles.css</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="kc-module" id="kc-m3" data-kc-tone="a" data-kc-metaphor="食堂打饭窗口">
+  <p class="kc-module__number">03</p>
+  <h2 class="kc-module__title">搜索框怎么问到数据库</h2>
+  <p class="kc-module__subtitle">你在搜索框里打了"orbit"两个字，什么都没点，列表却自己刷新了。这一模块跟着这几个字，看它怎么变成一句网址、又怎么变成一条能在数据库里查东西的语句。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">你打字，它不用你点确认</h3>
+    <p>Live Log 上方有一个搜索框，左边还有四个筛选按钮：ALL、EARTH、UNKNOWN、CUSTOM。你在搜索框里打字，停顿了大约三分之一秒之后，列表会自己刷新——这个"停顿一下才出手"的动作叫<span class="kc-term" data-kc-define="debounce 直译是‘去抖动’，工程上借用了这个词表示‘等你别再改主意了，我再动手’。这里指用户在搜索框里停止打字大约 300 毫秒之后，才真正去问服务器要数据，避免每敲一个字就发一次请求。国内工程师就直接说 debounce 或者防抖。">debounce（防抖）</span>。</p>
+    <p>这就好比食堂的打饭窗口：你不用先递交一份正式申请，说一句"我要这个"，师傅就动手了。搜索框背后的<span class="kc-term" data-kc-define="接口 API 直译 Application Programming Interface，‘应用程序编程接口’。这里指服务器开放出来、专门接收某一类请求的网址，比如 GET slash api slash messages。国内工程师简称接口或者 API。">接口</span> <code class="kc-code" data-kc-lang="en">GET /api/messages</code>，就是那个打饭窗口——你说清楚要什么，师傅按你说的给，具体怎么从后厨的一大锅菜里舀出来，你不需要知道。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第一站：你打的字变成一段网址</h3>
+    <p>app.js 里有个专门负责去要数据的函数，它先把你现在的搜索词、筛选条件，统统塞进一个叫<span class="kc-term" data-kc-define="URLSearchParams 是浏览器内置的一个工具，专门用来把一堆‘键和值’拼成网址后面那一长串参数，比如 limit=50&offset=0。国内工程师聊起来就直接说 URLSearchParams。">URLSearchParams</span>的工具里。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:138-148</p>
+        <pre data-kc-lang="en">async function loadMessages({ reset = false } = {}) {
+  if (state.loading) return;
+  state.loading = true;
+  if (reset) state.offset = 0;
+
+  const qs = new URLSearchParams({
+    limit: String(state.limit),
+    offset: String(state.offset),
+    q: state.query,
+    origin: originFilterValue()
+  });</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">如果上一次请求还没回来，直接放弃这一次，免得同时飞出去两份一样的请求。</p>
+        <p class="kc-code-pair__line">reset 为真，说明这是一次全新查询（比如换了筛选条件），要把翻页的位置清零。</p>
+        <p class="kc-code-pair__line">limit 和 offset 决定这次要第几页、每页拿多少条，都转成字符串塞进去。</p>
+        <p class="kc-code-pair__line">q 就是搜索框里那几个字，origin 是当前选中的筛选条件算出来的值。</p>
+      </div>
+    </div>
+    <p>这几行执行完，qs 变量就是一段现成的网址参数，形如 <code class="kc-code" data-kc-lang="en">limit=50&offset=0&q=orbit&origin=</code>，紧接着就会被拼在 <code class="kc-code" data-kc-lang="en">/api/messages?</code> 后面发出去。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第二站：服务器把网址参数拆开来读</h3>
+    <p>这段参数飞到服务器之后，server.js 要把它从一串文字，重新拆成几个能用的变量。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:148-156</p>
+        <pre data-kc-lang="en">app.get('/api/messages', (req, res) => {
+  const limit = Math.max(1, Math.min(50, Number.parseInt(req.query.limit, 10) || 50));
+  const offset = Math.max(0, Number.parseInt(req.query.offset, 10) || 0);
+  const query = normalizeText(req.query.q, 100);
+  const origin = normalizeText(req.query.origin, 64);
+
+  const result = listMessages({ limit, offset, query, origin });
+  return res.json(result);
+});</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">req.query 就是刚才那段网址参数被 Express 自动解析出来的对象，字段名跟前面 qs 里的一一对应。</p>
+        <p class="kc-code-pair__line">limit 被夹在 1 到 50 之间——就算有人手动把网址改成 limit=99999，服务器也不会照单全收。</p>
+        <p class="kc-code-pair__line">query 和 origin 依旧要走一遍 normalizeText，跟模块一里校验留言用的是同一个函数。</p>
+        <p class="kc-code-pair__line">整理干净之后，转手交给 db.js 里的 listMessages，自己不碰任何跟 SQL 有关的东西。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第三站：这些条件拼成一句能查数据库的话</h3>
+    <p>真正会写<span class="kc-term" data-kc-define="SQL 直译 Structured Query Language，‘结构化查询语言’。它是专门用来对数据库说‘我要查什么、按什么条件’的一种语言。国内工程师就直接说 SQL，读作‘S-Q-L’或者‘sequel’。">SQL</span>语句的，只有 db.js。它会根据你有没有搜索词、有没有选筛选条件，一段一段地往一句大的查询语句上拼接。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">db.js:69-80</p>
+        <pre data-kc-lang="en">const listMessagesStmtFactory = ({ hasQuery, hasOrigin, unknownOriginOnly }) => {
+  let sql = `
+    SELECT id, created_at, callsign, origin, message, strength
+    FROM messages
+    WHERE 1=1
+  `;
+  if (hasQuery) sql += ` AND message LIKE @q`;
+  if (unknownOriginOnly) {
+    sql += ` AND (origin IS NULL OR TRIM(origin) = '' OR LOWER(origin) LIKE '%unknown%')`;
+  } else if (hasOrigin) {
+    sql += ` AND LOWER(COALESCE(origin, '')) LIKE @origin`;
+  }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先写一句永远成立的 WHERE 1=1，后面不管加多少条件，都只需要用 AND 往上接，不用纠结第一条要不要写 WHERE。</p>
+        <p class="kc-code-pair__line">有搜索词的话，加上一句用 LIKE 做模糊匹配的条件，@q 是一个占位符，真正的值稍后才会填进去。</p>
+        <p class="kc-code-pair__line">选了 UNKNOWN 筛选，就专门找 origin 是空的、或者字面上带着 unknown 的那些记录。</p>
+        <p class="kc-code-pair__line">选了别的具体来源，就用 LIKE 做一次大小写不敏感的模糊匹配。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="warning">
+      <span class="kc-note__icon">⚠</span>
+      <p class="kc-note__title">占位符不是可有可无的讲究</p>
+      <p class="kc-note__body">代码里的 @q、@origin 叫参数占位符，真正的值是后面单独传进去的，而不是直接拼进 SQL 字符串里。如果换成直接拼接用户输入的文字，别人就可能在搜索框里打出一段能篡改整句查询的文字——这种攻击手法就是常说的 SQL 注入，占位符正是用来挡住它的。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">串起来看一眼</h3>
+    <div class="kc-chain">
+      <div class="kc-chain__step"><span class="kc-chain__num">1</span>你打字</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">2</span>URLSearchParams</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">3</span>req.query</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">4</span>拼 SQL</div>
+      <span class="kc-chain__arrow">→</span>
+      <div class="kc-chain__step"><span class="kc-chain__num">5</span>画回列表</div>
+    </div>
+    <p>五步看着简单，但每一步都换了一次"语言"：先是你脑子里的关键词，变成网址参数，再变成服务器手里的几个变量，最后变成数据库能听懂的 SQL，查完再一路翻译回来，变成你眼前的一条条记录。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">小结</h3>
+    <div class="kc-quiz" id="kc-quiz-m3">
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。数据来没来对，中间环节太多，最快的办法是从最靠近数据库、最权威的那一层开始确认：先看 db.js 里拼出来的 SQL 到底对不对，再顺着往上查 server.js 有没有传错参数，最后才轮到搜索框本身。"
+           data-kc-wrong="再想一下：如果先从 app.js 的搜索框查起，你能确认的只是‘请求发没发出去’，并不能确认数据库里到底存不存在这条记录——顺序反了会让你在错的地方兜圈子。">
+        <p class="kc-quiz__prompt">你确定数据库里有一条包含"orbit"的留言，但搜索框搜"orbit"什么都搜不到。你会先打开哪个文件确认？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>public/index.html，检查搜索框的 HTML 结构有没有写错</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>db.js，确认拼出来的那句 SQL 里 LIKE 条件对不对</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>public/styles.css，检查搜索框是不是被样式挡住了</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m3" data-kc-kind="explain" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你朋友问你"这个网站的搜索到底是怎么工作的"，用不超过三句话讲给他听，不许用"接口""数据库"这类术语。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">说清楚了打字之后不是立刻查，而是停顿一下才查（对应 debounce 这个词）</li>
+        <li class="kc-output__item">说明了搜索词最终是走网址传过去的，而不是凭空猜出来的</li>
+        <li class="kc-output__item">提到了真正去大量数据里挑记录的那一步，不是浏览器自己做的</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="kc-module" id="kc-m4" data-kc-tone="b" data-kc-metaphor="地铁进站安检链条">
+  <p class="kc-module__number">04</p>
+  <h2 class="kc-module__title">写代码的人在防着谁</h2>
+  <p class="kc-module__subtitle">这个网站是公开在互联网上的，任何人都能往 /api/messages 发请求，不只是坐在浏览器前的你。这一模块看看原作者留了哪几道关卡，专门挡那些不怀好意的请求。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">如果没人守门，会发生什么</h3>
+    <p>一个对外开放的留言板，天生要面对三类麻烦：自动脚本一秒刷几百条灌水消息、有人在留言里塞一段能在别人浏览器里执行的代码、还有人干脆想篡改数据库删掉别人的话。这些请求排着队想挤进 <code class="kc-code" data-kc-lang="en">/api/messages</code>，就像地铁早高峰的进站口，得一道一道关卡过滤，才能保证站台上是安全的。</p>
+    <p>server.js 里请求先要经过的第一关，是一个叫<span class="kc-term" data-kc-define="Helmet 是一款软件的名字，直译‘头盔’。它是给 Express 服务器加一整套安全相关的响应头（header）的工具，帮你挡掉一批常见的网页攻击手法。国内工程师就直接说 Helmet。">Helmet</span>的<span class="kc-term" data-kc-define="middleware 直译 middle（中间）加 ware（东西），字面是‘夹在中间的那层东西’。这里指请求真正到达某条路由之前，会依次经过的一串检查函数，每一个都能选择放行或者直接拦下来。国内工程师叫中间件，口语里也直接说 middleware。">中间件</span>。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:15-26</p>
+        <pre data-kc-lang="en">app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">app.use 表示"每一个请求都要先过这一关"，不管它最终要去哪条路由。</p>
+        <p class="kc-code-pair__line">这一整段是<span class="kc-term" data-kc-define="CSP 直译 Content Security Policy，‘内容安全策略’。它是浏览器能听懂的一份规则清单，告诉浏览器‘这个页面只准从哪里加载脚本、样式、图片’，不在清单里的一律拒绝执行。国内工程师聊起来就直接说 CSP。">CSP</span>的配置，等于告诉浏览器"这个页面的脚本、样式、图片只准从自己这个网站加载"。</p>
+        <p class="kc-code-pair__line">scriptSrc 只写了 'self'，意味着任何想从别的网站偷偷插进来执行的脚本，浏览器直接就不会跑它。</p>
+        <p class="kc-code-pair__line">connectSrc 同理只准连自己——就算页面被塞进了坏代码，它也没法偷偷把你的数据发到别的服务器。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第二关：一小时最多发十条</h3>
+    <p>过了 Helmet 这一关，POST 请求还要过一道专门为 <code class="kc-code" data-kc-lang="en">/api/messages</code> 设的中间件，防的是同一个人（更准确地说，同一个 IP）在短时间里疯狂刷屏。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:81-92</p>
+        <pre data-kc-lang="en">function enforcePostRateLimit(req, res, next) {
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const entry = postRateByIp.get(ip) || { recent: [], lastPostAt: 0 };
+  entry.recent = entry.recent.filter((ts) => now - ts &lt;= rateWindowMs);
+
+  if (entry.lastPostAt && now - entry.lastPostAt &lt; minGapMs) {
+    return jsonError(res, 429, 'Rate limit: wait at least 10 seconds between transmissions.');
+  }
+  if (entry.recent.length >= maxPostsPerWindow) {
+    return jsonError(res, 429, 'Rate limit: maximum 10 transmissions per hour.');
+  }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先按 IP 地址找出这个人最近的发送记录，一个内存里的 Map 结构，谁都没有单独的账号。</p>
+        <p class="kc-code-pair__line">把一小时之外的旧记录过滤掉，只留下窗口期内还算数的那些。</p>
+        <p class="kc-code-pair__line">距离上一次发送不满 10 秒，直接用 429 拒绝——这个状态码的意思就是"你发得太快了"。</p>
+        <p class="kc-code-pair__line">一小时内已经发过 10 条，同样用 429 拒绝，逻辑上跟前一条是两道独立的关卡。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="warning">
+      <span class="kc-note__icon">⚠</span>
+      <p class="kc-note__title">这道关卡关服务器重启就没了</p>
+      <p class="kc-note__body">postRateByIp 只是一个存在内存里的普通对象，不是数据库表。服务器一重启，所有人的发送记录全部清零——这也是 README 里强调"不把 IP 存进 SQLite"的原因：这份记录本来就只是临时挡一挡，不是要长期追踪谁。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第三关：证明你是人，不是脚本</h3>
+    <p>光靠限流还不够——一个脚本完全可以每 11 秒发一条，慢慢刷屏。所以真正发消息之前，页面会先问服务器要一道随机的加法题。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:53-60</p>
+        <pre data-kc-lang="en">function makeHumanCheck() {
+  const a = randomInt(2, 12);
+  const b = randomInt(1, 12);
+  const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  const answer = String(a + b);
+  humanChecks.set(token, { answer, expiresAt: Date.now() + humanCheckTTL });
+  return { token, question: `${a} + ${b} = ?` };
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">随机出两个数字，凑成一道加法题，对一个真人来说毫不费力，对没有专门适配的脚本却是道坎。</p>
+        <p class="kc-code-pair__line">token 是这道题专属的一次性凭证，混进了当前时间和一段随机字符，几乎不会跟别的题撞上。</p>
+        <p class="kc-code-pair__line">正确答案连同这道题的<span class="kc-term" data-kc-define="TTL 直译 Time To Live，‘存活时间’。这里指这道验证题从生成到过期一共能撑多久，过了这个时间再拿旧的 token 来对答案，服务器一律不认。国内工程师就直接说 TTL。">TTL（有效期）</span>一起，存进服务器内存里的 humanChecks，等着后面用 humanToken 来对答案。</p>
+        <p class="kc-code-pair__line">只把题目和 token 送回前端，正确答案永远不会出现在发给浏览器的数据里。</p>
+      </div>
+    </div>
+    <p>还记得模块一里 server.js:158-169 那段代码吗？那里的 <code class="kc-code" data-kc-lang="en">website</code> 字段就是另一道关卡——<span class="kc-term" data-kc-define="honeypot 直译‘蜜罐’。这里指一个人眼看不见、只有自动脚本才会傻乎乎填上的输入框。人类用户根本不知道它的存在，一旦它被填了内容，就能几乎肯定这是个机器人。国内工程师就直接说 honeypot。">honeypot（蜜罐）</span>字段，人根本看不到它，只有不看页面样式、直接把每个输入框都填一遍的脚本才会中招。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第四关：前端画页面的时候也要挡一次</h3>
+    <p>就算前面几关都被绕过、一条带着恶意代码的留言真的存进了数据库，app.js 在把它画到页面上时，还留了最后一道防线。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:96-103</p>
+        <pre data-kc-lang="en">function renderItems(adminMode = false) {
+  if (!dom.logFeed) return;
+  dom.logFeed.innerHTML = state.items.map((item) => entryTemplate(item, adminMode)).join('');
+  const blocks = dom.logFeed.querySelectorAll('.entry');
+  blocks.forEach((entry, idx) => {
+    const textEl = entry.querySelector('.message-text');
+    textEl.textContent = state.items[idx].message;
+  });</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先用 innerHTML 一次性把外层卡片、按钮这些"骨架"画出来——这部分内容都是代码里写死的，不是用户能改的。</p>
+        <p class="kc-code-pair__line">但留言正文没有跟着骨架一起用 innerHTML 塞进去，而是单独挑出来，逐条重新赋值。</p>
+        <p class="kc-code-pair__line">关键就在这句 <span class="kc-term" data-kc-define="textContent 是浏览器给每个页面元素提供的一个属性，赋值给它的文字会被当成纯文本显示，就算里面写了尖括号也不会被当成标签执行。跟它相对的是 innerHTML，那个会把文字当成真正的网页结构去解析。国内工程师聊起来就直接说 textContent。">textContent</span>：留言里就算写了一段像代码的文字，也只会被当成一串普普通通的字显示出来，不会被浏览器当真去执行。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">这道防线有个通用的名字</p>
+      <p class="kc-note__body">如果用户能提交的文字，被原样当成网页代码执行，攻击者就能在别人的浏览器里跑任意脚本——这类攻击统称<span class="kc-term" data-kc-define="XSS 直译 Cross-Site Scripting，‘跨站脚本攻击’。指攻击者把一段脚本藏进看起来无害的文字里，让它在别的用户浏览器里被当成真代码执行。国内工程师聊起来就直接说 XSS。">XSS</span>。这个项目挡它的办法很朴素：凡是用户自己写的内容，一律用 textContent 显示，绝不让浏览器把它当成标签解析。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">找 bug：这段代码被人悄悄改坏了</h3>
+    <p>下面这段 validateMessageClient 是 app.js 里客户端那道校验，跟服务器端的检查是两道独立的关卡。它现在被人改坏了一处，点一下你觉得有问题的那一行。</p>
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这段代码被人悄悄改坏了，点一下你觉得有问题的那一行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是给函数起名字和参数，本身没有毛病。"><span class="kc-bughunt__lineno">1</span>function validateMessageClient(message) {</button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="这里应该调用 message.trim() 去掉首尾空格，再存进 trimmed，现在却直接把原始值赋给了它。用户只打几个空格提交，trimmed 也不会是空字符串，下一行的‘必填’检查就形同虚设，一条全是空格的留言会被当成合法留言发出去。把这一行改回 const trimmed = message.trim(); 就对了。"><span class="kc-bughunt__lineno">2</span>  const trimmed = message;</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行判断的是 trimmed 是不是空的，逻辑本身没问题，问题出在上一行传给它的值。"><span class="kc-bughunt__lineno">3</span>  if (!trimmed) return 'Message is required.';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行检查有没有字母或数字，写法本身没有问题。"><span class="kc-bughunt__lineno">4</span>  if (!/[\p{L}\p{N}]/u.test(trimmed)) return 'Message must include at least one letter or number.';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行专门抓连续重复同一个字符八次以上的灌水留言，跟这次的问题无关。"><span class="kc-bughunt__lineno">5</span>  if (/(.)\1{7,}/u.test(trimmed)) return 'Message looks like repeated-character spam.';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行表示‘没问题，可以放行’，本身没有毛病。"><span class="kc-bughunt__lineno">6</span>  return '';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是收尾的花括号。"><span class="kc-bughunt__lineno">7</span>}</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">小结</h3>
+    <p>四道关卡从外到里排好队：Helmet 挡跨站脚本和乱七八糟的资源加载，限流挡疯狂刷屏，人类验证加蜜罐挡自动脚本，最后 textContent 在画面上再兜底一次。哪怕前面全部失守，最后一道也不会让恶意代码真的跑起来。</p>
+
+    <div class="kc-quiz" id="kc-quiz-m4">
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。限流是按 IP 记发送时间和次数，跟内容是什么完全无关，就算你发的是一句完全正常的话，只要频率超了，一样会被 429 拦下来。"
+           data-kc-wrong="再看一眼 enforcePostRateLimit 这个函数——它检查的是 entry.recent 和 entry.lastPostAt，也就是‘发了几次、多久之前发的’，从头到尾没有读过 message 里到底写了什么。">
+        <p class="kc-quiz__prompt">你写了一句完全正常、没有任何屏蔽词的留言，但连续点了 11 次 Transmit，第 11 次会发生什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>被 429 拒绝，因为限流只看发送频率，不看留言内容</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>正常发出去，因为限流只针对带屏蔽词的内容</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>触发人类验证重新出题，但留言仍然会被存进数据库</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m4" data-kc-kind="retell" data-kc-min="90">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">用你自己的话说一遍：一条留言从发出到显示在页面上，一共要过哪几道防护关卡，每一道分别挡的是什么？</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">提到了 Helmet 挡的是脚本和资源来源，而不是发送频率</li>
+        <li class="kc-output__item">提到了 enforcePostRateLimit 按 IP 限制发送次数</li>
+        <li class="kc-output__item">提到了人类验证和 honeypot 是两种挡自动脚本的不同办法</li>
+        <li class="kc-output__item">提到了 textContent 是画面上最后一道防线</li>
+      </ul>
+    </div>
+  </section>
+</section>
+
+<section class="kc-module" id="kc-m5" data-kc-tone="a" data-kc-metaphor="自助取件柜的提示">
+  <p class="kc-module__number">05</p>
+  <h2 class="kc-module__title">报错时先看哪</h2>
+  <p class="kc-module__subtitle">你在 /admin 页面填错了管理员令牌，点了 Delete，屏幕右下角弹出一行红字："Unauthorized admin token."。这一模块拆开这行字背后的机制，教你看到报错之后，第一反应该往哪个文件里翻。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">同一句"出错了"，其实分好几种</h3>
+    <p>自助取件柜上贴的提示语通常分好几种：取件码打错了、格子本来就是空的、机器本身坏了——三件完全不同的事，处理方式也完全不一样。SIGNAL LOG 的报错也是这个道理，全部用一个统一的<span class="kc-term" data-kc-define="状态码是服务器在每次回应里附带的一个数字，用来说明这次请求到底处理得怎么样。数字的头一位大致分类：2 开头是成功，4 开头是‘你发来的请求本身有问题’，5 开头是‘服务器自己出了故障’。国内工程师聊起来直接说‘状态码’或者读数字，比如‘404 了’。">状态码</span>加一句文字来表达，但意思天差地别。</p>
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">先分清是谁的错</p>
+      <p class="kc-note__body">4 开头的状态码基本都是"你这边的问题"——密码错了、留言太长了、格式不对；5 开头才是"服务器这边真的出故障了"。分清这一点，你才知道该改自己的输入，还是该去查后端代码。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">同一个把关函数，两种完全不同的报错</h3>
+    <p>DELETE 一条留言之前，请求要先过 adminGuard 这道关卡。它短短几行，却给出了两种意思完全不同的拒绝。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:132-141</p>
+        <pre data-kc-lang="en">function adminGuard(req, res, next) {
+  if (!ADMIN_TOKEN) {
+    return jsonError(res, 500, 'Admin token is not configured on server.');
+  }
+  const token = req.headers['x-admin-token'];
+  if (!token || token !== ADMIN_TOKEN) {
+    return jsonError(res, 401, 'Unauthorized admin token.');
+  }
+  return next();
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">如果服务器启动时压根没设置 ADMIN_TOKEN 这个环境变量，直接用 500 报错——这是服务器自己没配置好，跟你填没填令牌毫无关系。</p>
+        <p class="kc-code-pair__line">从请求头里读出你在 /admin 页面填的令牌。</p>
+        <p class="kc-code-pair__line">令牌是空的，或者跟服务器上配置的对不上，用 401 拒绝——这次是"你"的问题，令牌不对。</p>
+        <p class="kc-code-pair__line">前面两关都过了，next() 表示放行，交给真正删除数据的那段代码。</p>
+      </div>
+    </div>
+    <p>同样都是"不让你删"，500 和 401 指向完全不同的排查方向：看到 500，该去检查 <code class="kc-code" data-kc-lang="en">.env</code> 文件里有没有 <code class="kc-code" data-kc-lang="en">ADMIN_TOKEN</code>；看到 401，该回头检查自己填的令牌对不对。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">路走错了，或者哪儿都没接住</h3>
+    <p>如果请求压根不属于任何一条已知路由呢？比如你手滑把网址打成了 <code class="kc-code" data-kc-lang="en">/api/message</code>，少了一个 s。server.js 末尾留了两道兜底。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:285-289</p>
+        <pre data-kc-lang="en">app.use('/api', (_req, res) => jsonError(res, 404, 'API route not found.'));
+app.use((err, _req, res, _next) => {
+  console.error(err);
+  return jsonError(res, 500, 'Internal server error.');
+});</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">凡是以 /api 开头、但前面所有路由都没接住的请求，最后都会落到这一句，统一回一个 404——意思是"这条路根本不存在"。</p>
+        <p class="kc-code-pair__line">下面这个函数专门接"代码运行到一半自己炸了"的情况，先把真正的错误打印到服务器自己的日志里，方便开发者事后查。</p>
+        <p class="kc-code-pair__line">但绝不会把内部的错误细节原样发给用户，回的永远是一句笼统的 Internal server error——这是为了不把服务器内部的实现细节暴露给外面。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">前端怎么把这句报错捞出来，显示给你看</h3>
+    <p>服务器回的那句 <code class="kc-code" data-kc-lang="en">{ "error": "..." }</code>，最终要变成你在页面上看见的那个红色提示，中间要经过 app.js 里一个统一的请求函数。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:123-134</p>
+        <pre data-kc-lang="en">async function apiFetch(url, options = {}) {
+  const res = await fetch(url, {
+    headers: {
+      'Content-Type': 'application/json',
+      ...(options.headers || {})
+    },
+    ...options
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    throw new Error(data.error || 'Request failed');
+  }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">全项目所有跟服务器的通信都走这一个函数，好处是错误处理的逻辑只需要写这一份。</p>
+        <p class="kc-code-pair__line">先把服务器回的内容尝试解析成一个对象，就算解析失败也不让整个页面崩掉，退而求其次给个空对象。</p>
+        <p class="kc-code-pair__line">res.ok 是 fetch 自带的一个判断：状态码在 200 到 299 之间才算真正成功。</p>
+        <p class="kc-code-pair__line">不成功就主动抛出一个错误，内容优先用服务器给的那句 error 文字——这就是为什么你在页面上看到的提示，跟服务器代码里写的那句英文一字不差。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">找 bug：这个清理函数被人悄悄改坏了</h3>
+    <p>normalizeText 是全项目用得最频繁的一个小函数，留言、呼号、来源、搜索词全靠它清理。它现在被改坏了一处，点一下你觉得有问题的那一行。</p>
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这段代码被人悄悄改坏了，点一下你觉得有问题的那一行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是给函数起名字和参数，不会是问题所在。"><span class="kc-bughunt__lineno">1</span>function normalizeText(value, max) {</button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="这一行的判断被反过来了。原本应该是‘不是字符串就直接返回空字符串’，写成 !== 才对；现在写成了 ===，变成‘是字符串才返回空字符串’。结果是所有正常的文字输入全部被清空成空字符串，而真正传进奇怪类型的值（比如 undefined）反而会往下走，跑到第 3 行调用 value.replace 时直接报错，因为 undefined 没有 replace 这个方法。把 === 改回 !== 就对了。"><span class="kc-bughunt__lineno">2</span>  if (typeof value === 'string') return '';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行调用 replace 和 trim 清理多余空格，写法本身没问题，前提是 value 真的是字符串。"><span class="kc-bughunt__lineno">3</span>  const normalized = value.replace(/\s+/g, ' ').trim();</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行按 max 截断长度，逻辑没有问题。"><span class="kc-bughunt__lineno">4</span>  return normalized.slice(0, max);</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是收尾的花括号。"><span class="kc-bughunt__lineno">5</span>}</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">小结</h3>
+    <p>看到报错先做三件事：看状态码是 4 开头还是 5 开头，判断该改自己还是该查后端；看报错文字，它十有八九能在 server.js 里用文字原样搜到，直接定位到是哪一句 jsonError；最后看浏览器控制台，确认前端有没有把这句话正确地捞出来显示。</p>
+
+    <div class="kc-quiz" id="kc-quiz-m5">
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。500 加‘Admin token is not configured on server.’对应的正是 adminGuard 里 ADMIN_TOKEN 为空的那个分支，说明服务器启动时根本没读到这个环境变量，该去检查 .env 文件，而不是怀疑自己填错了令牌。"
+           data-kc-wrong="再回头看一眼 adminGuard 那段代码——401 和 500 是两个完全不同的分支，一个是‘你填的令牌不对’，一个是‘服务器压根没配置令牌’，状态码不一样，说明触发的根本不是同一行判断。">
+        <p class="kc-quiz__prompt">你在 /admin 页面填了令牌点 Delete，收到的报错是 500 加一句"Admin token is not configured on server."，你会先去哪里查？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>先查服务器的 .env 文件里有没有设置 ADMIN_TOKEN</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>先检查自己在页面上填的令牌是不是打错了字</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>先检查 public/styles.css，怀疑是输入框样式的问题</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m5" data-kc-kind="instruct" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你想让报错信息更明确一点，比如把"Message is required."换成能说明是哪个字段出问题的更详细提示。把你会对 AI 说的那句指令原样写出来。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">点名了要改 server.js 里 jsonError 抛出的具体文字</li>
+        <li class="kc-output__item">说清楚了这个改动不影响状态码本身，只改文字内容</li>
+        <li class="kc-output__item">提到了前端 apiFetch 会原样把这句新文字显示出来，不用额外改 app.js</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">让 AI 帮你跑起来时，你可以这样说</h3>
+    <p>五个模块走到这里，你已经知道这个项目由谁负责什么、数据怎么流动、都在防着谁、报错该去哪查。接下来是三句你可以直接抄给 AI 的话，中文在上，英文在下——英文是你将来在真实的终端和聊天窗口里会用到的原话。</p>
+    <div class="kc-cards">
+      <div class="kc-cards__item" data-kc-accent="1">
+        <span class="kc-cards__icon">◆</span>
+        <p class="kc-cards__title">跑起来</p>
+        <p class="kc-cards__body">帮我在这台电脑上把这个项目跑起来，运行环境是 Node.js，先装依赖再启动。<br /><span data-kc-lang="en">Help me get this project running locally — it is a Node.js app, install dependencies first then start it.</span></p>
+      </div>
+      <div class="kc-cards__item" data-kc-accent="2">
+        <span class="kc-cards__icon">◇</span>
+        <p class="kc-cards__title">加功能</p>
+        <p class="kc-cards__body">我想给每条留言加一个点赞按钮，点一下加一，告诉我需要改 server.js、db.js 和 app.js 里的哪些部分。<br /><span data-kc-lang="en">I want to add a like button to each message that increments a count — tell me exactly what needs to change in server.js, db.js and app.js.</span></p>
+      </div>
+      <div class="kc-cards__item" data-kc-accent="3">
+        <span class="kc-cards__icon">○</span>
+        <p class="kc-cards__title">修报错</p>
+        <p class="kc-cards__body">我在终端或者页面上看到这行报错，帮我看看是哪个文件、哪一行导致的，怎么修。<br /><span data-kc-lang="en">I am seeing this exact error, help me find which file and line is causing it and how to fix it.</span></p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">你最可能撞上的报错</h3>
+    <p>下面几条都是这个项目自己代码里写死的报错原文，一字不差——遇到的时候直接把整行拿去问 AI 就行。</p>
+    <div class="kc-deflist">
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Admin token is not configured on server.</code>
+        <p class="kc-deflist__value">状态码 500。服务器启动时没有读到 ADMIN_TOKEN 这个环境变量，通常是 .env 文件没建、或者忘了在里面填这一项。对 AI 说："帮我检查 .env 文件有没有正确设置 ADMIN_TOKEN，并确认 server.js 启动时能读到它。"</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Unauthorized admin token.</code>
+        <p class="kc-deflist__value">状态码 401。/admin 页面里填的令牌，跟服务器 .env 文件里的 ADMIN_TOKEN 对不上。对 AI 说："我在管理页面填的令牌一直提示 Unauthorized，帮我确认这两边的值到底哪里不一样。"</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Rate limit: maximum 10 transmissions per hour.</code>
+        <p class="kc-deflist__value">状态码 429。同一个 IP 一小时内发了超过 10 条留言，触发了 enforcePostRateLimit 里的次数限制。这是设计好的行为，不是故障，对 AI 说："帮我把这个限流的上限从 10 条改成 20 条，在哪个文件改。"</p>
+      </div>
+      <div class="kc-deflist__row">
+        <code class="kc-deflist__key" data-kc-lang="en">Error: Cannot find module 'express'</code>
+        <p class="kc-deflist__value">如果克隆下项目之后没有先执行 npm install 就直接运行 npm start，终端通常会报出类似这样"找不到某个模块"的错误。对 AI 说："我执行 npm start 报了 Cannot find module 的错误，是不是还没装依赖，帮我确认该跑哪条命令。"</p>
+      </div>
+    </div>
+  </section>
+</section>
+
+</main>
+<footer class="kc-colophon">本课程由 开箱（repo-unbox）从代码库生成 · 完全离线，不联网</footer>
+<script src="main.js"></script>
+</body>
+</html>

@@ -1,0 +1,193 @@
+<section class="kc-module" id="kc-m2" data-kc-tone="b" data-kc-metaphor="快递驿站">
+  <p class="kc-module__number">02</p>
+  <h2 class="kc-module__title">这个项目里都有谁</h2>
+  <p class="kc-module__subtitle">上一模块跟着一条留言走了一遍全程，路过了好几个文件名。这一模块停下来，把这几个文件当成几个角色，一个个认清楚：谁负责收发、谁只管硬盘、谁只管好看。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">五个文件，五个分工</h3>
+    <p>SIGNAL LOG 一共只有五个自己写的文件，就像一个开在网上的快递驿站：有人在窗口收件，有人在后头的仓库码货，还有人负责把门面装修得像回事。分工非常干净——每个文件只管一件事。</p>
+    <div class="kc-rolelist">
+      <div class="kc-rolelist__row" data-kc-accent="1">
+        <span class="kc-rolelist__icon">A</span>
+        <p class="kc-rolelist__name">public/app.js</p>
+        <p class="kc-rolelist__note">前台窗口。收你打的字，画你看到的页面，自己不留东西——关掉标签页，它记的一切都没了。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="2">
+        <span class="kc-rolelist__icon">S</span>
+        <p class="kc-rolelist__name">server.js</p>
+        <p class="kc-rolelist__note">驿站的分拣员。谁发来的东西，先查一遍、分好类，再决定往哪儿送，自己从不留货。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="3">
+        <span class="kc-rolelist__icon">D</span>
+        <p class="kc-rolelist__name">db.js</p>
+        <p class="kc-rolelist__note">后头的仓库。整个项目里只有它真正碰硬盘，货物进出都要经过它的账本。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="4">
+        <span class="kc-rolelist__icon">H</span>
+        <p class="kc-rolelist__name">public/index.html</p>
+        <p class="kc-rolelist__note">门面的骨架。表单有几个输入框、按钮摆在哪，都是它说了算，但它不管好不好看。</p>
+      </div>
+      <div class="kc-rolelist__row" data-kc-accent="5">
+        <span class="kc-rolelist__icon">C</span>
+        <p class="kc-rolelist__name">public/styles.css</p>
+        <p class="kc-rolelist__note">门面的装修。深蓝底色、荧光青边框，这一整套深空电台的味道全是它调出来的。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">server.js：只负责派活，不留一件东西</h3>
+    <p>server.js 用的是一个叫<span class="kc-term" data-kc-define="Express 是一款软件的名字，直译‘快车、快递’。它是这个项目用来搭建服务器的一套工具库，专门负责‘收到一个网址请求，该交给哪段代码处理’。国内工程师就直接说 Express，不翻译。">Express</span>的框架。它的核心工作就是给每一条<span class="kc-term" data-kc-define="路由 route 直译是‘路线’。这里指‘某个固定网址 + 某种请求方式’对应的一段处理代码，比如 GET slash api slash human-check 就是一条路由。国内工程师聊起来直接说路由或者 route。">路由</span>安排好该由哪段代码来接。下面这一段就是全项目里最短的一条路由——专门用来发一道人类验证题。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:143-146</p>
+        <pre data-kc-lang="en">app.get('/api/human-check', (_req, res) => {
+  const challenge = makeHumanCheck();
+  return res.json(challenge);
+});</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">这一行声明：只要有人拿 GET 方式访问 /api/human-check，就交给这个函数处理。</p>
+        <p class="kc-code-pair__line">调用 makeHumanCheck，生成一道新的加法题和一次性凭证，自己不参与出题逻辑。</p>
+        <p class="kc-code-pair__line">把结果转成一份大家能读的回复直接送出去——server.js 全程没有把这道题存进硬盘，转手就交出去了。</p>
+      </div>
+    </div>
+    <p>你会发现 server.js 里几乎每一条路由都是这个套路：接一下、查一下、转手交给别人，自己从不留东西。这也是为什么调试的时候，"数据丢了"这种问题从来不该先怪它。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">db.js：不只是存东西，还会算账</h3>
+    <p>整个项目只有 db.js 会碰那个叫 signal-log.db 的文件，用的是一个叫<span class="kc-term" data-kc-define="SQLite 是一款软件的名字。它是一种轻量级的数据库，不需要单独装一个数据库服务器，整个数据库就是一个文件。国内工程师就直接说 SQLite。">SQLite</span>的轻量数据库。但它不只是"存进去、读出来"这么简单——每条新留言送到它手上时，它还会顺手给这条留言算一个信号强度。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">db.js:95-100</p>
+        <pre data-kc-lang="en">function computeStrength(message, id) {
+  const len = message.length;
+  const base = Math.min(85, 20 + Math.floor((len / 300) * 65));
+  const noise = hashInt(id) % 16;
+  return Math.max(0, Math.min(100, base + noise));
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先量出这条留言有多少个字符，字越多，等一下算出来的基础分越高。</p>
+        <p class="kc-code-pair__line">base 是基础信号强度，最高封顶在 85，留言越长越接近这个上限。</p>
+        <p class="kc-code-pair__line">noise 是拿这条记录的 id 算出来的一个 0 到 15 之间的余数，给每条留言添一点看起来随机的浮动。</p>
+        <p class="kc-code-pair__line">最后把 base 和 noise 加起来，夹在 0 到 100 之间，这就是你在页面上看到的那个百分比。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="info">
+      <span class="kc-note__icon">ℹ</span>
+      <p class="kc-note__title">这个数字不是真的信号</p>
+      <p class="kc-note__body">signal-log.db 里存的这个 strength，本质上只是根据留言长度和 id 算出来的一个装饰性数字，跟真实的电台信号毫无关系——它的作用是让这个虚构的深空电台看起来更像那么回事。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">前端三件套：骨架、装修、行为，一层层叠上去</h3>
+    <p>public 目录下的三个文件，正好对应网页的三层：<code class="kc-code" data-kc-lang="en">index.html</code> 是<span class="kc-term" data-kc-define="DOM 直译是 Document Object Model，‘文档对象模型’。它是浏览器把一份 HTML 读进内存之后，搭出来的一棵可以被代码操作的结构树。国内工程师聊起来就直接说 DOM。">DOM</span>结构，<code class="kc-code" data-kc-lang="en">styles.css</code> 管外观，<code class="kc-code" data-kc-lang="en">app.js</code> 管交互。切一下下面这几个标签，看看同一个表单在不同阶段长什么样。</p>
+    <div class="kc-layers">
+      <div class="kc-layers__tabs">
+        <button class="kc-layers__tab" data-kc-layer="kc-layer-m2-a" data-kc-note="这一层只有骨架：Transmit 按钮和输入框都在，能点、能打字，但灰扑扑的，没有深空电台该有的样子。">只有 index.html</button>
+        <button class="kc-layers__tab" data-kc-layer="kc-layer-m2-b" data-kc-note="加上 styles.css 之后，深蓝底色、荧光青边框、卡片式布局全都出来了，但按钮点了没反应，输入框也不会提示字数。">加上 styles.css</button>
+        <button class="kc-layers__tab" data-kc-layer="kc-layer-m2-c" data-kc-note="再加上 app.js，点 Transmit 才会真的发请求，字数提示、过滤器、加载更多才会动起来——这一层才是‘活的’。">再加上 app.js</button>
+      </div>
+      <div class="kc-layers__panel" id="kc-layer-m2-a">只有骨架：能看到表单和按钮，样式全无，点了也没有任何反应。</div>
+      <div class="kc-layers__panel" id="kc-layer-m2-b">骨架加上装修：深空视觉出来了，但按钮和输入框仍然是摆设。</div>
+      <div class="kc-layers__panel" id="kc-layer-m2-c">骨架、装修、行为三层叠满：点击 Transmit 真的会发出请求，页面才算完整地"活"了起来。</div>
+      <p class="kc-layers__note"></p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">三个角色，怎么互相打招呼</h3>
+    <p>把模块一走过的那趟旅程，换成一段对话看一遍——同样的流程，换个角度，你会发现每句话都对应着你已经见过的那几行代码。</p>
+    <div class="kc-chat" id="kc-chat-m2">
+      <div class="kc-chat__stream">
+        <div class="kc-chat__message" data-kc-speaker="app.js">
+          <span class="kc-chat__avatar">A</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">app.js</p>
+            有人在 Message 里打了字，点了 Transmit。我先把呼号、来源、留言捆成一个包裹，发给你，server.js。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="server.js">
+          <span class="kc-chat__avatar">S</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">server.js</p>
+            收到 POST /api/messages。我不碰硬盘，我先挨个检查一遍，通过了才会往下派。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="server.js">
+          <span class="kc-chat__avatar">S</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">server.js</p>
+            检查全过了，交给你了，db.js。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="db.js">
+          <span class="kc-chat__avatar">D</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">db.js</p>
+            写进 messages 表了。我还顺手算了个信号强度，这条是 72。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="server.js">
+          <span class="kc-chat__avatar">S</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">server.js</p>
+            收到，我把这条新记录连同 72 一起还给 app.js。
+          </div>
+        </div>
+        <div class="kc-chat__message" data-kc-speaker="app.js">
+          <span class="kc-chat__avatar">A</span>
+          <div class="kc-chat__bubble">
+            <p class="kc-chat__speaker">app.js</p>
+            拿到了，我重新画一遍 Live Log，现在你能在页面上看到它了。
+          </div>
+        </div>
+      </div>
+      <div class="kc-chat__typing"></div>
+      <div class="kc-chat__actions">
+        <button class="kc-chat__next">下一条</button>
+        <button class="kc-chat__all">全部播放</button>
+        <button class="kc-chat__replay">重放</button>
+      </div>
+      <p class="kc-chat__progress"></p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">小结</h3>
+    <p>五个文件、五种分工：app.js 收发，server.js 分拣，db.js 存货又算账，index.html 搭骨架，styles.css 管装修。记住这张分工表，往后不管是找 bug 还是加功能，第一件事都是先问一句"这该归谁管"。</p>
+
+    <div class="kc-quiz" id="kc-quiz-m2">
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。origin 过滤、message 长度限制这些跟‘业务规则’有关的判断，理论上该由 server.js 或 db.js 决定，因为浏览器发的请求随时可能绕过 app.js。给出的两个选项都只提到了前端，而真正的答案是：无论前端怎么改，后端都要重新判一遍。"
+           data-kc-wrong="再想一下 db.js 只碰硬盘、app.js 只管前台这两条分工——‘要不要接受这条留言’这种业务判断，不该单独交给只管画面的那一层。">
+        <p class="kc-quiz__prompt">现在要新增一条规则：留言里不能包含某个屏蔽词。这个判断最应该放在哪个文件里？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>只放在 index.html 里，用一个提示语提醒用户</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>只放在 public/styles.css 里，把包含屏蔽词的留言标红</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>放在 server.js 里，跟 hasMeaningfulContent 那类检查放在一起</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m2" data-kc-kind="instruct" data-kc-min="80">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">你想给每条留言加一个"点赞数"，点一下加一。把你会对 AI 说的那句指令原样写出来，想清楚它需要动哪几个文件。</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">提到了 db.js 需要新增一个字段来存点赞数</li>
+        <li class="kc-output__item">提到了 server.js 需要新增一条路由来接收点赞请求</li>
+        <li class="kc-output__item">提到了 public/app.js 需要加一个按钮的点击处理</li>
+        <li class="kc-output__item">没有要求把这个逻辑塞进 public/styles.css</li>
+      </ul>
+    </div>
+  </section>
+</section>

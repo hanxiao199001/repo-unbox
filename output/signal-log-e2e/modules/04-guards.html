@@ -1,0 +1,173 @@
+<section class="kc-module" id="kc-m4" data-kc-tone="b" data-kc-metaphor="地铁进站安检链条">
+  <p class="kc-module__number">04</p>
+  <h2 class="kc-module__title">写代码的人在防着谁</h2>
+  <p class="kc-module__subtitle">这个网站是公开在互联网上的，任何人都能往 /api/messages 发请求，不只是坐在浏览器前的你。这一模块看看原作者留了哪几道关卡，专门挡那些不怀好意的请求。</p>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">如果没人守门，会发生什么</h3>
+    <p>一个对外开放的留言板，天生要面对三类麻烦：自动脚本一秒刷几百条灌水消息、有人在留言里塞一段能在别人浏览器里执行的代码、还有人干脆想篡改数据库删掉别人的话。这些请求排着队想挤进 <code class="kc-code" data-kc-lang="en">/api/messages</code>，就像地铁早高峰的进站口，得一道一道关卡过滤，才能保证站台上是安全的。</p>
+    <p>server.js 里请求先要经过的第一关，是一个叫<span class="kc-term" data-kc-define="Helmet 是一款软件的名字，直译‘头盔’。它是给 Express 服务器加一整套安全相关的响应头（header）的工具，帮你挡掉一批常见的网页攻击手法。国内工程师就直接说 Helmet。">Helmet</span>的<span class="kc-term" data-kc-define="middleware 直译 middle（中间）加 ware（东西），字面是‘夹在中间的那层东西’。这里指请求真正到达某条路由之前，会依次经过的一串检查函数，每一个都能选择放行或者直接拦下来。国内工程师叫中间件，口语里也直接说 middleware。">中间件</span>。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:15-26</p>
+        <pre data-kc-lang="en">app.use(helmet({
+  crossOriginEmbedderPolicy: false,
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", 'data:'],
+      connectSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"]</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">app.use 表示"每一个请求都要先过这一关"，不管它最终要去哪条路由。</p>
+        <p class="kc-code-pair__line">这一整段是<span class="kc-term" data-kc-define="CSP 直译 Content Security Policy，‘内容安全策略’。它是浏览器能听懂的一份规则清单，告诉浏览器‘这个页面只准从哪里加载脚本、样式、图片’，不在清单里的一律拒绝执行。国内工程师聊起来就直接说 CSP。">CSP</span>的配置，等于告诉浏览器"这个页面的脚本、样式、图片只准从自己这个网站加载"。</p>
+        <p class="kc-code-pair__line">scriptSrc 只写了 'self'，意味着任何想从别的网站偷偷插进来执行的脚本，浏览器直接就不会跑它。</p>
+        <p class="kc-code-pair__line">connectSrc 同理只准连自己——就算页面被塞进了坏代码，它也没法偷偷把你的数据发到别的服务器。</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第二关：一小时最多发十条</h3>
+    <p>过了 Helmet 这一关，POST 请求还要过一道专门为 <code class="kc-code" data-kc-lang="en">/api/messages</code> 设的中间件，防的是同一个人（更准确地说，同一个 IP）在短时间里疯狂刷屏。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:81-92</p>
+        <pre data-kc-lang="en">function enforcePostRateLimit(req, res, next) {
+  const ip = getClientIp(req);
+  const now = Date.now();
+  const entry = postRateByIp.get(ip) || { recent: [], lastPostAt: 0 };
+  entry.recent = entry.recent.filter((ts) => now - ts &lt;= rateWindowMs);
+
+  if (entry.lastPostAt && now - entry.lastPostAt &lt; minGapMs) {
+    return jsonError(res, 429, 'Rate limit: wait at least 10 seconds between transmissions.');
+  }
+  if (entry.recent.length >= maxPostsPerWindow) {
+    return jsonError(res, 429, 'Rate limit: maximum 10 transmissions per hour.');
+  }</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先按 IP 地址找出这个人最近的发送记录，一个内存里的 Map 结构，谁都没有单独的账号。</p>
+        <p class="kc-code-pair__line">把一小时之外的旧记录过滤掉，只留下窗口期内还算数的那些。</p>
+        <p class="kc-code-pair__line">距离上一次发送不满 10 秒，直接用 429 拒绝——这个状态码的意思就是"你发得太快了"。</p>
+        <p class="kc-code-pair__line">一小时内已经发过 10 条，同样用 429 拒绝，逻辑上跟前一条是两道独立的关卡。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="warning">
+      <span class="kc-note__icon">⚠</span>
+      <p class="kc-note__title">这道关卡关服务器重启就没了</p>
+      <p class="kc-note__body">postRateByIp 只是一个存在内存里的普通对象，不是数据库表。服务器一重启，所有人的发送记录全部清零——这也是 README 里强调"不把 IP 存进 SQLite"的原因：这份记录本来就只是临时挡一挡，不是要长期追踪谁。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第三关：证明你是人，不是脚本</h3>
+    <p>光靠限流还不够——一个脚本完全可以每 11 秒发一条，慢慢刷屏。所以真正发消息之前，页面会先问服务器要一道随机的加法题。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">server.js:53-60</p>
+        <pre data-kc-lang="en">function makeHumanCheck() {
+  const a = randomInt(2, 12);
+  const b = randomInt(1, 12);
+  const token = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`;
+  const answer = String(a + b);
+  humanChecks.set(token, { answer, expiresAt: Date.now() + humanCheckTTL });
+  return { token, question: `${a} + ${b} = ?` };
+}</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">随机出两个数字，凑成一道加法题，对一个真人来说毫不费力，对没有专门适配的脚本却是道坎。</p>
+        <p class="kc-code-pair__line">token 是这道题专属的一次性凭证，混进了当前时间和一段随机字符，几乎不会跟别的题撞上。</p>
+        <p class="kc-code-pair__line">正确答案连同这道题的<span class="kc-term" data-kc-define="TTL 直译 Time To Live，‘存活时间’。这里指这道验证题从生成到过期一共能撑多久，过了这个时间再拿旧的 token 来对答案，服务器一律不认。国内工程师就直接说 TTL。">TTL（有效期）</span>一起，存进服务器内存里的 humanChecks，等着后面用 humanToken 来对答案。</p>
+        <p class="kc-code-pair__line">只把题目和 token 送回前端，正确答案永远不会出现在发给浏览器的数据里。</p>
+      </div>
+    </div>
+    <p>还记得模块一里 server.js:158-169 那段代码吗？那里的 <code class="kc-code" data-kc-lang="en">website</code> 字段就是另一道关卡——<span class="kc-term" data-kc-define="honeypot 直译‘蜜罐’。这里指一个人眼看不见、只有自动脚本才会傻乎乎填上的输入框。人类用户根本不知道它的存在，一旦它被填了内容，就能几乎肯定这是个机器人。国内工程师就直接说 honeypot。">honeypot（蜜罐）</span>字段，人根本看不到它，只有不看页面样式、直接把每个输入框都填一遍的脚本才会中招。</p>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">第四关：前端画页面的时候也要挡一次</h3>
+    <p>就算前面几关都被绕过、一条带着恶意代码的留言真的存进了数据库，app.js 在把它画到页面上时，还留了最后一道防线。</p>
+    <div class="kc-code-pair">
+      <div class="kc-code-pair__code">
+        <p class="kc-code-pair__source">public/app.js:96-103</p>
+        <pre data-kc-lang="en">function renderItems(adminMode = false) {
+  if (!dom.logFeed) return;
+  dom.logFeed.innerHTML = state.items.map((item) => entryTemplate(item, adminMode)).join('');
+  const blocks = dom.logFeed.querySelectorAll('.entry');
+  blocks.forEach((entry, idx) => {
+    const textEl = entry.querySelector('.message-text');
+    textEl.textContent = state.items[idx].message;
+  });</pre>
+      </div>
+      <div class="kc-code-pair__lines">
+        <p class="kc-code-pair__line">先用 innerHTML 一次性把外层卡片、按钮这些"骨架"画出来——这部分内容都是代码里写死的，不是用户能改的。</p>
+        <p class="kc-code-pair__line">但留言正文没有跟着骨架一起用 innerHTML 塞进去，而是单独挑出来，逐条重新赋值。</p>
+        <p class="kc-code-pair__line">关键就在这句 <span class="kc-term" data-kc-define="textContent 是浏览器给每个页面元素提供的一个属性，赋值给它的文字会被当成纯文本显示，就算里面写了尖括号也不会被当成标签执行。跟它相对的是 innerHTML，那个会把文字当成真正的网页结构去解析。国内工程师聊起来就直接说 textContent。">textContent</span>：留言里就算写了一段像代码的文字，也只会被当成一串普普通通的字显示出来，不会被浏览器当真去执行。</p>
+      </div>
+    </div>
+    <div class="kc-note" data-kc-tone="insight">
+      <span class="kc-note__icon">✦</span>
+      <p class="kc-note__title">这道防线有个通用的名字</p>
+      <p class="kc-note__body">如果用户能提交的文字，被原样当成网页代码执行，攻击者就能在别人的浏览器里跑任意脚本——这类攻击统称<span class="kc-term" data-kc-define="XSS 直译 Cross-Site Scripting，‘跨站脚本攻击’。指攻击者把一段脚本藏进看起来无害的文字里，让它在别的用户浏览器里被当成真代码执行。国内工程师聊起来就直接说 XSS。">XSS</span>。这个项目挡它的办法很朴素：凡是用户自己写的内容，一律用 textContent 显示，绝不让浏览器把它当成标签解析。</p>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">找 bug：这段代码被人悄悄改坏了</h3>
+    <p>下面这段 validateMessageClient 是 app.js 里客户端那道校验，跟服务器端的检查是两道独立的关卡。它现在被人改坏了一处，点一下你觉得有问题的那一行。</p>
+    <div class="kc-bughunt">
+      <p class="kc-bughunt__lead">这段代码被人悄悄改坏了，点一下你觉得有问题的那一行。</p>
+      <div class="kc-bughunt__code" data-kc-lang="en">
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是给函数起名字和参数，本身没有毛病。"><span class="kc-bughunt__lineno">1</span>function validateMessageClient(message) {</button>
+        <button class="kc-bughunt__line" data-kc-bug data-kc-explain="这里应该调用 message.trim() 去掉首尾空格，再存进 trimmed，现在却直接把原始值赋给了它。用户只打几个空格提交，trimmed 也不会是空字符串，下一行的‘必填’检查就形同虚设，一条全是空格的留言会被当成合法留言发出去。把这一行改回 const trimmed = message.trim(); 就对了。"><span class="kc-bughunt__lineno">2</span>  const trimmed = message;</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行判断的是 trimmed 是不是空的，逻辑本身没问题，问题出在上一行传给它的值。"><span class="kc-bughunt__lineno">3</span>  if (!trimmed) return 'Message is required.';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行检查有没有字母或数字，写法本身没有问题。"><span class="kc-bughunt__lineno">4</span>  if (!/[\p{L}\p{N}]/u.test(trimmed)) return 'Message must include at least one letter or number.';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行专门抓连续重复同一个字符八次以上的灌水留言，跟这次的问题无关。"><span class="kc-bughunt__lineno">5</span>  if (/(.)\1{7,}/u.test(trimmed)) return 'Message looks like repeated-character spam.';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行表示‘没问题，可以放行’，本身没有毛病。"><span class="kc-bughunt__lineno">6</span>  return '';</button>
+        <button class="kc-bughunt__line" data-kc-hint="这一行只是收尾的花括号。"><span class="kc-bughunt__lineno">7</span>}</button>
+      </div>
+      <div class="kc-bughunt__feedback"></div>
+    </div>
+  </section>
+
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">小结</h3>
+    <p>四道关卡从外到里排好队：Helmet 挡跨站脚本和乱七八糟的资源加载，限流挡疯狂刷屏，人类验证加蜜罐挡自动脚本，最后 textContent 在画面上再兜底一次。哪怕前面全部失守，最后一道也不会让恶意代码真的跑起来。</p>
+
+    <div class="kc-quiz" id="kc-quiz-m4">
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。限流是按 IP 记发送时间和次数，跟内容是什么完全无关，就算你发的是一句完全正常的话，只要频率超了，一样会被 429 拦下来。"
+           data-kc-wrong="再看一眼 enforcePostRateLimit 这个函数——它检查的是 entry.recent 和 entry.lastPostAt，也就是‘发了几次、多久之前发的’，从头到尾没有读过 message 里到底写了什么。">
+        <p class="kc-quiz__prompt">你写了一句完全正常、没有任何屏蔽词的留言，但连续点了 11 次 Transmit，第 11 次会发生什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>被 429 拒绝，因为限流只看发送频率，不看留言内容</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>正常发出去，因为限流只针对带屏蔽词的内容</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>触发人类验证重新出题，但留言仍然会被存进数据库</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__actions">
+        <button class="kc-quiz__check">看看答案</button>
+        <button class="kc-quiz__reset">再来一次</button>
+      </div>
+    </div>
+
+    <div class="kc-output" id="kc-output-m4" data-kc-kind="retell" data-kc-min="90">
+      <span class="kc-output__label"></span>
+      <p class="kc-output__prompt">用你自己的话说一遍：一条留言从发出到显示在页面上，一共要过哪几道防护关卡，每一道分别挡的是什么？</p>
+      <textarea class="kc-output__input"></textarea>
+      <p class="kc-output__meter"></p>
+      <button class="kc-output__reveal">我说完了，看对照清单</button>
+      <ul class="kc-output__checklist">
+        <li class="kc-output__item">提到了 Helmet 挡的是脚本和资源来源，而不是发送频率</li>
+        <li class="kc-output__item">提到了 enforcePostRateLimit 按 IP 限制发送次数</li>
+        <li class="kc-output__item">提到了人类验证和 honeypot 是两种挡自动脚本的不同办法</li>
+        <li class="kc-output__item">提到了 textContent 是画面上最后一道防线</li>
+      </ul>
+    </div>
+  </section>
+</section>
