@@ -1,13 +1,13 @@
 # repo-unbox（开箱）
 
 把任意代码库变成给**中国 web 编程小白**看的中英双语交互式课程。
-基于 zarazhangrui/codebase-to-course 改造（原版在 upstream/，只读，不改）。
+方法论的来源写在 README 和 LICENSE 里。本仓库不包含任何第三方项目的代码。
 
 ## 目标学员
 中文母语，零编程基础，正在学 web coding。英文是和技术并列的第一道障碍。
 目标不是成为工程师，而是：看懂代码、看懂英文报错、能用准确的术语指挥 AI。
 
-## 与原版的核心差异（不可妥协）
+## 不可妥协的六条
 1. 语言关是第一原则：代码里的英文单词本身要被解释，不只是概念
 2. 术语三层对照：英文原词 / 直译词义 / 国内工程师叫法
 3. 每个模块结尾给出"你可以这样对 AI 说"的中英双语指令示例
@@ -32,13 +32,14 @@
 6. 标点用大陆规范：引号用 “” 和 ‘’，不用「」『』（那是港台和日文的用法）
 
 ## 仓库布局
-- `upstream/`  原版仓库（只读基线，不修改）
-- `SKILL.md`   我们的 skill（当前 = 原版副本，待改造）
-- `references/` 我们的参考文件（当前 = 原版副本，待改造）
+- `SKILL.md`   给模型的主指令
+- `spec/`      页面层的黑盒功能规格（22 份），描述行为不描述实现
+- `references/` 内容原则、18 种元素的写法、翻车清单
+- `references/{styles.css,main.js,_base.html,_footer.html}` 页面层实现，构建脚本原样复制进课程目录
 - `references/fonts/` 自托管字体（霞鹜文楷 + JetBrains Mono，OFL 1.1，含授权原文），由 `scripts/fetch-fonts.mjs` 生成
-- `scripts/`   稳定的构建/校验脚本（Node/Python，跨平台）
-- `examples/todo-api/` 贯穿全程的目标代码库（Express 待办 API + 浏览器前端，约 340 行）
-- `output/baseline/` 原版 skill 未经修改生成的课程（对照基线，不再改动）
+- `scripts/`   构建、校验、测试（Node，零依赖，跨平台）
+- `examples/`  示例代码库：`todo-api`（Express 待办 API，约 340 行）、`signal-log`（真实仓库）
+- `output/`    生成的课程，只保留 `v1` 和 `real-3-sonnet`
 
 ## 候选方向（记下来，现在不做）
 - **模块数随仓库规模浮动。** SKILL.md 目前固定 4–6 个模块，导致选型时把一个 109 行的项目

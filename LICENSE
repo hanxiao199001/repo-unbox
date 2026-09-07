@@ -22,26 +22,8 @@ SOFTWARE.
 
 --------------------------------------------------------------------------
 
-UPSTREAM ATTRIBUTION
-
-This project began as an adaptation of:
-
-    codebase-to-course — Copyright (c) Zara Zhang
-    https://github.com/zarazhangrui/codebase-to-course
-
-Parts of `references/styles.css`, `references/main.js`, `references/_base.html`
-and `references/_footer.html` are that project's work, carried over with
-modifications. The structure of SKILL.md and the reference documents also
-derives from it, although their content has been rewritten.
-
-**That repository publishes no licence file.** At the time of writing, GitHub
-reports no licence for it, which under default copyright means no permission to
-copy, modify or redistribute has been granted. The MIT grant above therefore
-covers only this project's own contributions, and cannot and does not grant
-rights over the upstream material.
-
-If you intend to use, fork or redistribute this project, seek permission from
-the upstream author for the parts derived from their work.
+Inspired by zarazhangrui/codebase-to-course (methodology). No code from that
+repository is included.
 
 --------------------------------------------------------------------------
 

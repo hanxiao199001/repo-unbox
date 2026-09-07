@@ -1,7 +1,5 @@
 .DS_Store
-.legacy/
 examples/*/data/
 examples/signal-log/
 node_modules/
 output/*/fonts/
-upstream/

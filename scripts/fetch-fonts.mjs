@@ -91,7 +91,7 @@ const monoResults = await pool(monoFiles, 4, (name) =>
   download(cdn(MONO.pkg, MONO.version, name), path.join(OUT, path.basename(name)))
 );
 
-/* ── fonts.css: concatenate upstream @font-face rules, repoint the URLs ── */
+/* ── fonts.css: concatenate the packages' own @font-face rules, repoint the URLs ── */
 const chunks = [];
 
 for (const weight of LXGW.weights) {

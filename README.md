@@ -2,27 +2,9 @@
 
 把任意代码库变成一门**中文交互式课程**，讲给零编程基础、正在学 vibe coding 的中文学员听。
 
-基于 [zarazhangrui/codebase-to-course](https://github.com/zarazhangrui/codebase-to-course) 改造。
-**原版不包含在本仓库里**——开发时把它 clone 到 `upstream/` 作为只读对照，该目录已 gitignore。
-想自己对照原版：
-
-```bash
-git clone --depth 1 https://github.com/zarazhangrui/codebase-to-course.git upstream
-```
-
-授权情况见 [LICENSE](LICENSE)：上游仓库目前没有发布任何授权文件，本项目的 MIT 只覆盖自己的部分。
-
-> ## ⚠️ 当前状态：重写中，构建是坏的
->
-> 从 `v0.1.1` 之后，这个仓库正在按 [`spec/`](spec/) 里的黑盒规格重写页面层。
-> 旧实现（`styles.css`、`main.js`、页面模板、旧的元素范例）已经移到 `.legacy/` 并不再跟踪，
-> 所以 **`scripts/build.mjs` 现在跑不起来，这是预期的**。
->
-> - 想要一个能用的版本：`git checkout v0.1.1`
-> - 想看新页面层要做成什么样：读 [`spec/README.md`](spec/README.md)
->
-> `spec/` 是功能规格，不含任何实现细节——class 和 id 全部重新命名，
-> 与旧实现没有任何名字上的继承关系。
+受 [zarazhangrui/codebase-to-course](https://github.com/zarazhangrui/codebase-to-course)
+**启发**（方法论）。**本仓库不包含该项目的任何代码**——页面层已按 [`spec/`](spec/)
+里的黑盒规格从零重写，class、id、data 属性全部重新命名。授权见 [LICENSE](LICENSE)。
 
 ## 和原版的区别
 
@@ -128,11 +110,7 @@ class 名、DOM 结构、构建链全部对不上，留着只会误导，已经�
 
 ## 授权
 
-见 [LICENSE](LICENSE)。三件事分开说：
+[MIT](LICENSE)，Copyright (c) 2026 韩宵。
 
-- **本项目自己的部分**：MIT，Copyright (c) 2026 韩宵。
-- **上游 `codebase-to-course`**：`styles.css`、`main.js`、`_base.html`、`_footer.html`
-  以及 SKILL.md 的结构来自它。**该仓库至今没有发布任何授权文件**，按默认版权即"保留所有权利"，
-  所以上面那份 MIT 覆盖不了这部分。要 fork 或再分发，请先向原作者取得许可。
-- **随附字体**：霞鹜文楷与 JetBrains Mono 均为 SIL Open Font License 1.1，
-  授权原文随字体一起放在 `references/fonts/LICENSE-*.txt`。
+随附字体单独授权：霞鹜文楷与 JetBrains Mono 均为 SIL Open Font License 1.1，
+授权原文随字体放在 `references/fonts/LICENSE-*.txt`。

@@ -7,7 +7,7 @@
 //   node scripts/install.mjs --target <dir>
 //
 // What goes: SKILL.md, references/ (including the fonts), scripts/.
-// What stays behind: upstream/, output/, examples/, .git, node_modules —
+// What stays behind: output/, examples/, spec/, .git, node_modules —
 // the repository's own working material, none of which a user of the skill needs.
 
 import fs from 'node:fs';
@@ -29,7 +29,7 @@ const target = targetFlag !== -1 && args[targetFlag + 1]
   : path.join(os.homedir(), '.claude', 'skills', SKILL_NAME);
 
 const INCLUDE = ['SKILL.md', 'references', 'scripts'];
-const EXCLUDE_DIRS = new Set(['upstream', 'output', 'examples', '.git', 'node_modules', '.DS_Store']);
+const EXCLUDE_DIRS = new Set(['output', 'examples', '.git', 'node_modules', '.DS_Store']);
 
 let files = 0;
 let bytes = 0;
