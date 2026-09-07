@@ -14,8 +14,8 @@ import { decodeHtml, extractCodeBlocks, findVerbatim, collectSources } from './l
 
 const SKILL_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
-// HTML comments hold template examples (the nav-dot sample in _base.html), so
-// strip them before any check that counts real elements.
+// Strip HTML comments before any check that counts real elements, so a
+// commented-out example never inflates a count.
 const stripComments = (html) => html.replace(/<!--[\s\S]*?-->/g, '');
 
 export function validate(courseDir, sourceDir) {
@@ -33,8 +33,8 @@ export function validate(courseDir, sourceDir) {
   const raw = fs.readFileSync(indexPath, 'utf8');
   const html = stripComments(raw);
 
-  /* ── 1. data-steps JSON parses ─────────────────────────────── */
-  const stepAttrs = [...html.matchAll(/data-steps='([^']*)'/g)];
+  /* ── 1. data-kc-steps JSON parses ─────────────────────────────── */
+  const stepAttrs = [...html.matchAll(/data-kc-steps='([^']*)'/g)];
   const badSteps = [];
   for (const [, json] of stepAttrs) {
     try {
@@ -45,7 +45,7 @@ export function validate(courseDir, sourceDir) {
       badSteps.push(err.message);
     }
   }
-  check(`data-steps JSON parses (${stepAttrs.length} found)`, badSteps.length === 0, badSteps.join('; '));
+  check(`data-kc-steps JSON parses (${stepAttrs.length} found)`, badSteps.length === 0, badSteps.join('; '));
 
   /* ── 2. ids are unique ─────────────────────────────────────── */
   const ids = [...html.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1]);
@@ -55,9 +55,15 @@ export function validate(courseDir, sourceDir) {
   check(`ids unique (${ids.length} total)`, dupes.length === 0, dupes.join(', '));
 
   /* ── 3. nav dots and modules line up, both directions ──────── */
-  const moduleIds = [...html.matchAll(/class="module"[^>]*id="([^"]+)"/g)].map((m) => m[1]);
-  const dotTargets = [...html.matchAll(/class="nav-dot"[^>]*data-target="([^"]+)"/g)].map((m) => m[1]);
-  const missingDot = moduleIds.filter((id) => !dotTargets.includes(id));
+  const moduleTags = [...html.matchAll(/<section class="kc-module"([^>]*)>/g)].map((m) => m[1]);
+  const moduleIds = moduleTags.map((a) => a.match(/\sid="([^"]+)"/)?.[1] || '');
+  const dotTargets = [...html.matchAll(/class="kc-nav__dot"[^>]*data-kc-target="([^"]+)"/g)].map((m) => m[1]);
+
+  // A module with no id cannot be reached by any dot, and the loops below would
+  // silently pair the wrong things up.
+  const namelessModules = moduleIds.filter((id) => !id).length;
+  check('every module has an id', namelessModules === 0, namelessModules ? `${namelessModules} module(s) without one` : '');
+  const missingDot = moduleIds.filter((id) => id && !dotTargets.includes(id));
   const danglingDot = dotTargets.filter((id) => !moduleIds.includes(id));
   check(
     `nav dots match modules (${moduleIds.length} modules, ${dotTargets.length} dots)`,
@@ -67,6 +73,22 @@ export function validate(courseDir, sourceDir) {
       danglingDot.length ? `dots pointing nowhere: ${danglingDot.join(', ')}` : '',
     ].filter(Boolean).join('; ')
   );
+
+  /* ── 3b. adjacent modules alternate their background tone ──── */
+  // spec/page-shell.md: alternating background is the ONLY signal the learner
+  // has that a new module started. Two in a row with the same tone and the
+  // boundary disappears, silently.
+  const tones = moduleTags.map((a) => a.match(/data-kc-tone="([^"]*)"/)?.[1] || '');
+  const badTone = [];
+  tones.forEach((t, i) => {
+    if (t !== 'a' && t !== 'b') badTone.push(`${moduleIds[i] || i + 1}: data-kc-tone="${t}"`);
+    else if (i > 0 && t === tones[i - 1]) badTone.push(`${moduleIds[i] || i + 1} repeats tone "${t}"`);
+  });
+  check(`adjacent modules alternate data-kc-tone (${tones.length} modules)`, badTone.length === 0, badTone.join('; '));
+
+  /* ── 3c. no template placeholder survived into the build ───── */
+  const leftover = [...new Set((raw.match(/\{\{[A-Z_]+\}\}/g) || []))];
+  check('no template placeholders left', leftover.length === 0, leftover.join(', '));
 
   /* ── 4. nothing loads from the network ─────────────────────── */
   // The whole point of self-hosting the fonts. One stray CDN link and the
@@ -104,20 +126,26 @@ export function validate(courseDir, sourceDir) {
   check('local assets exist', missingAssets.length === 0, missingAssets.join(', '));
 
   /* ── 7. quizzes are answerable ─────────────────────────────── */
-  const quizBlocks = [...html.matchAll(/<div class="quiz-question-block"([\s\S]*?)>/g)];
-  const noAnswer = quizBlocks.filter(([, attrs]) => !/data-correct="/.test(attrs)).length;
-  check(`every quiz question has data-correct (${quizBlocks.length} questions)`, noAnswer === 0, `${noAnswer} without an answer`);
+  const quizBlocks = [...html.matchAll(/<div class="kc-quiz__question"([\s\S]*?)>/g)];
+  const noAnswer = quizBlocks.filter(([, attrs]) => !/data-kc-answer="/.test(attrs)).length;
+  check(`every quiz question has data-kc-answer (${quizBlocks.length} questions)`, noAnswer === 0, `${noAnswer} without an answer`);
+
+  // Both explanations are required. Without them the answer reveal says
+  // "correct/incorrect" and teaches nothing, which is the one thing
+  // content-philosophy forbids outright.
+  const noWhy = quizBlocks.filter(([, a]) => !/data-kc-right="/.test(a) || !/data-kc-wrong="/.test(a)).length;
+  check('every quiz question has both explanations', noWhy === 0, noWhy ? `${noWhy} missing data-kc-right or data-kc-wrong` : '');
 
   /* ── 8. every module has an output task ────────────────────── */
   // A multiple-choice quiz proves the learner can recognise an answer. Only an
   // output task proves they can produce the words — which is the whole point,
   // since instructing an AI needs vocabulary you can produce, not just recognise.
-  const moduleBlocks = html.split(/<section class="module"/).slice(1);
+  const moduleBlocks = html.split(/<section class="kc-module"/).slice(1);
   const withoutTask = [];
   moduleBlocks.forEach((block, i) => {
-    if (!block.includes('class="output-task"')) withoutTask.push(moduleIds[i] || `module ${i + 1}`);
+    if (!block.includes('class="kc-output"')) withoutTask.push(moduleIds[i] || `module ${i + 1}`);
   });
-  const taskCount = (html.match(/class="output-task"/g) || []).length;
+  const taskCount = (html.match(/class="kc-output"/g) || []).length;
   check(
     `every module has an output task (${taskCount} tasks across ${moduleBlocks.length} modules)`,
     withoutTask.length === 0,
@@ -128,40 +156,40 @@ export function validate(courseDir, sourceDir) {
   // a final module with no code block at all and every course-wide count still
   // passed, so these are per module.
   const moduleText = (block) => block
-    .replace(/<pre lang="en">[\s\S]*?<\/pre>/g, '')
+    .replace(/<pre[^>]*>[\s\S]*?<\/pre>/g, '')
     .replace(/<[^>]+>/g, '');
 
   const thinCode = [];
   const thinProse = [];
   moduleBlocks.forEach((block, i) => {
     const id = moduleIds[i] || `module ${i + 1}`;
-    const codeBlocks = (block.match(/<pre lang="en">/g) || []).length;
+    const codeBlocks = (block.match(/class="kc-code-pair"/g) || []).length;
     if (codeBlocks === 0) thinCode.push(id);
     const hanzi = (moduleText(block).match(/[\u4e00-\u9fa5]/g) || []).length;
     if (hanzi < 800) thinProse.push(`${id} (${hanzi})`);
   });
-  check('every module has a code block', thinCode.length === 0, thinCode.join(', '));
+  check('every module has a code-pair block', thinCode.length === 0, thinCode.join(', '));
   check('every module has at least 800 Chinese characters', thinProse.length === 0, thinProse.join(', '));
 
   // The element that makes the learner point at a real mistake. Two is the floor
   // because one across a whole course reads as decoration.
-  const bugChallenges = (html.match(/class="bug-challenge"/g) || []).length;
+  const bugChallenges = (html.match(/class="kc-bughunt"/g) || []).length;
   check(`at least 2 spot-the-bug challenges (${bugChallenges} found)`, bugChallenges >= 2);
 
   const TASK_TYPES = ['retell', 'instruct', 'explain'];
-  const taskAttrs = [...html.matchAll(/<div class="output-task"([^>]*)>/g)].map((m) => m[1]);
+  const taskAttrs = [...html.matchAll(/<div class="kc-output"([^>]*)>/g)].map((m) => m[1]);
   const badType = taskAttrs.filter((a) => {
-    const m = a.match(/data-type="([^"]*)"/);
+    const m = a.match(/data-kc-kind="([^"]*)"/);
     return !m || !TASK_TYPES.includes(m[1]);
   }).length;
-  check(`output tasks have a valid data-type (${TASK_TYPES.join('/')})`, badType === 0, `${badType} without one`);
+  check(`output tasks have a valid data-kc-kind (${TASK_TYPES.join('/')})`, badType === 0, `${badType} without one`);
 
   // 60 is the floor: shorter than that and the learner types 就是那样 and moves on,
   // which defeats the only element that makes them produce anything.
-  const mins = taskAttrs.map((a) => Number(a.match(/data-min="(\d+)"/)?.[1] ?? NaN));
+  const mins = taskAttrs.map((a) => Number(a.match(/data-kc-min="(\d+)"/)?.[1] ?? NaN));
   const badMin = mins.filter((m) => !Number.isFinite(m) || m < 60);
   check(
-    'output tasks have data-min of at least 60',
+    'output tasks have data-kc-min of at least 60',
     badMin.length === 0,
     badMin.length ? `${badMin.length} below 60 or missing: ${badMin.join(', ')}` : ''
   );
@@ -169,9 +197,9 @@ export function validate(courseDir, sourceDir) {
   const noId = taskAttrs.filter((a) => !/\sid="/.test(a)).length;
   check('output tasks have an id (localStorage key)', noId === 0, `${noId} without one`);
 
-  const textareas = (html.match(/class="output-task-input"/g) || []).length;
-  const reveals = (html.match(/output-task-reveal-btn/g) || []).length;
-  const lists = (html.match(/class="output-task-checklist"/g) || []).length;
+  const textareas = (html.match(/class="kc-output__input"/g) || []).length;
+  const reveals = (html.match(/class="kc-output__reveal"/g) || []).length;
+  const lists = (html.match(/class="kc-output__checklist"/g) || []).length;
   check(
     'output tasks are complete (input + reveal button + checklist)',
     textareas === taskCount && reveals === taskCount && lists === taskCount,
@@ -179,9 +207,11 @@ export function validate(courseDir, sourceDir) {
   );
 
   // 3-4 tick boxes: fewer and it is not a checklist, more and nobody reads it.
-  const checklistBlocks = [...html.matchAll(/class="output-task-checklist"[^>]*>([\s\S]*?)<\/div>/g)];
+  // The tick boxes are created by main.js at runtime, so count the items the
+  // author actually writes, not the inputs.
+  const checklistBlocks = [...html.matchAll(/class="kc-output__checklist"[^>]*>([\s\S]*?)<\/ul>/g)];
   const wrongSize = checklistBlocks
-    .map((m) => (m[1].match(/type="checkbox"/g) || []).length)
+    .map((m) => (m[1].match(/class="kc-output__item"/g) || []).length)
     .filter((n) => n < 3 || n > 4).length;
   check('every checklist has 3-4 items', wrongSize === 0, `${wrongSize} outside that range`);
 
@@ -190,24 +220,24 @@ export function validate(courseDir, sourceDir) {
   // <code lang="en">: a file or function for retell and instruct tasks, and for
   // an explain task the English word for the concept itself — that task asks the
   // learner to avoid jargon, so demanding a filename would fight its purpose.
-  const vagueLists = checklistBlocks.filter((m) => !/<code lang="en">/.test(m[1])).length;
+  const vagueLists = checklistBlocks.filter((m) => !/[A-Za-z]{2,}/.test(m[1].replace(/<[^>]+>/g, ''))).length;
   check(
     'every checklist names a file, function or English term',
     vagueLists === 0,
-    vagueLists ? `${vagueLists} checklist(s) with no <code lang="en"> item` : ''
+    vagueLists ? `${vagueLists} checklist(s) with no English word in any item` : ''
   );
 
   /* ── 12b. one metaphor per module, never twice in a course ── */
   // content-philosophy bans reusing a metaphor; nothing could enforce it until
   // each module declared its own. The first real run carried three metaphors
   // straight over from an unrelated course, and no check noticed.
-  const metaphors = [...html.matchAll(/<section class="module"([^>]*)>/g)].map((m) => {
-    const id = m[1].match(/id="([^"]+)"/)?.[1] || '?';
-    return { id, metaphor: m[1].match(/data-metaphor="([^"]*)"/)?.[1]?.trim() || '' };
-  });
+  const metaphors = moduleTags.map((a, i) => ({
+    id: moduleIds[i] || '?',
+    metaphor: a.match(/data-kc-metaphor="([^"]*)"/)?.[1]?.trim() || '',
+  }));
   const missingMetaphor = metaphors.filter((m) => !m.metaphor).map((m) => m.id);
   check(
-    `every module declares data-metaphor (${metaphors.length} modules)`,
+    `every module declares data-kc-metaphor (${metaphors.length} modules)`,
     missingMetaphor.length === 0,
     missingMetaphor.join(', ')
   );
@@ -221,7 +251,7 @@ export function validate(courseDir, sourceDir) {
 
   /* ── 9. the course is actually in Chinese ──────────────────── */
   const bodyText = html
-    .replace(/<pre lang="en">[\s\S]*?<\/pre>/g, '')
+    .replace(/<pre[^>]*>[\s\S]*?<\/pre>/g, '')
     .replace(/<[^>]+>/g, '');
   const hanzi = (bodyText.match(/[\u4e00-\u9fa5]/g) || []).length;
   check(`Chinese prose present (${hanzi} characters)`, hanzi >= 3000, hanzi < 3000 ? 'under 3000 — this is meant to be a Chinese course' : '');
@@ -230,9 +260,11 @@ export function validate(courseDir, sourceDir) {
   // 「」 is Taiwan/HK/Japanese convention. Code, error text and badge codes are
   // exempt: whatever punctuation the source uses is the source's business.
   let prose = raw
-    .replace(/<pre lang="en">[\s\S]*?<\/pre>/g, '')
-    .replace(/<div class="bug-code"[^>]*>[\s\S]*?<\/div>\s*<div class="bug-feedback">/g, '')
-    .replace(/<code class="badge-code"[^>]*>[\s\S]*?<\/code>/g, '');
+    .replace(/<pre[^>]*>[\s\S]*?<\/pre>/g, '')
+    .replace(/<div class="kc-bughunt__code"[\s\S]*?<\/div>/g, '')
+    .replace(/<code class="kc-deflist__key"[^>]*>[\s\S]*?<\/code>/g, '')
+    .replace(/<code class="kc-tree__name"[^>]*>[\s\S]*?<\/code>/g, '')
+    .replace(/<code class="kc-code"[^>]*>[\s\S]*?<\/code>/g, '');
   const brackets = (prose.match(/[「」『』]/g) || []).length;
   check('mainland quotation marks (no 「」)', brackets === 0, brackets ? `${brackets} corner brackets in prose — use “” and ‘’` : '');
 
@@ -272,17 +304,39 @@ export function validate(courseDir, sourceDir) {
 
   /* ── 13. interactive engines can find what they need ────────── */
   // main.js keys off ids and control-button classes; a missing one fails silently.
-  const chatWindows = [...html.matchAll(/<div class="chat-window"([^>]*)>/g)];
-  const chatNoId = chatWindows.filter(([, a]) => !/\sid="/.test(a)).length;
-  check(`chat windows have an id (${chatWindows.length} found)`, chatNoId === 0, `${chatNoId} without one`);
+  // Elements whose drafts are kept apart by an id. Two of them on one page
+  // without ids and they overwrite each other's saved state.
+  for (const cls of ['kc-chat', 'kc-output', 'kc-quiz', 'kc-match']) {
+    const tags = [...html.matchAll(new RegExp(`<div class="${cls}"([^>]*)>`, 'g'))];
+    const noId = tags.filter(([, a]) => !/\sid="/.test(a)).length;
+    check(`${cls} blocks have an id (${tags.length} found)`, noId === 0, `${noId} without one`);
+  }
 
-  for (const [cls, buttons] of [
-    ['flow-animation', ['flow-next-btn', 'flow-reset-btn']],
-    ['chat-window', ['chat-next-btn', 'chat-reset-btn']],
+  // main.js keys off these class names; a missing button fails silently.
+  for (const [cls, parts] of [
+    ['kc-flow', ['kc-flow__actor', 'kc-flow__packet', 'kc-flow__caption', 'kc-flow__next', 'kc-flow__reset']],
+    ['kc-chat', ['kc-chat__stream', 'kc-chat__typing', 'kc-chat__next', 'kc-chat__replay']],
+    ['kc-quiz', ['kc-quiz__option', 'kc-quiz__feedback', 'kc-quiz__check', 'kc-quiz__reset']],
+    ['kc-bughunt', ['kc-bughunt__code', 'kc-bughunt__line', 'kc-bughunt__feedback']],
+    ['kc-match', ['kc-match__card', 'kc-match__slot', 'kc-match__drop', 'kc-match__check', 'kc-match__reset']],
+    ['kc-layers', ['kc-layers__tab', 'kc-layers__panel', 'kc-layers__note']],
+    ['kc-map', ['kc-map__node', 'kc-map__about']],
+    ['kc-output', ['kc-output__label', 'kc-output__input', 'kc-output__meter', 'kc-output__reveal', 'kc-output__checklist']],
   ]) {
     const count = (html.match(new RegExp(`class="${cls}"`, 'g')) || []).length;
-    const missing = buttons.filter((b) => !html.includes(b));
-    check(`${cls} controls present (${count} found)`, count === 0 || missing.length === 0, missing.join(', '));
+    const missing = parts.filter((b) => !html.includes(`class="${b}"`));
+    check(`${cls} parts present (${count} found)`, count === 0 || missing.length === 0, missing.join(', '));
+  }
+
+  // Two feedback areas with the same id is exactly the bug the spec renamed
+  // these elements to prevent.
+  const idBearing = [
+    ['kc-bughunt__feedback', /<div class="kc-bughunt__feedback"([^>]*)>/g],
+    ['kc-map__about', /<p class="kc-map__about"([^>]*)>/g],
+  ];
+  for (const [cls, re] of idBearing) {
+    const withId = [...html.matchAll(re)].filter(([, a]) => /\sid="/.test(a)).length;
+    check(`${cls} carries no id`, withId === 0, withId ? `${withId} with an id — it must be located by its block` : '');
   }
 
   /* ── 14. the element examples must not ship fixed ids ────── */

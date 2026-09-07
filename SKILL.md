@@ -140,8 +140,8 @@ description: "开箱任意代码库，生成中文交互课程——讲给零编
 **每个模块写一份 brief 到 `course-name/briefs/0N-slug.md`，包含：**
 - 教学线索（比喻、开场钩子、核心洞察）
 - **预先摘好的代码片段**（从代码库里原样复制，带文件路径和行号）
-- 交互元素清单：**按文件名列出**要用的元素（如 `elements/code-translation.md`、
-  `elements/group-chat.md`），细到能照着做。写模块的人只会读你列出的这几个文件
+- 交互元素清单：**按文件名列出**要用的元素（如 `elements/code-pair.md`、
+  `elements/chat.md`），细到能照着做。写模块的人只会读你列出的这几个文件
 - **输出题类型和它的 3–4 条对照清单**
 - 前一个模块和后一个模块各讲了什么（好接上下文）
 
@@ -168,14 +168,18 @@ course-name/
   index.html       ← 构建脚本拼装（不要手写）
 ```
 
-**第 1 步：定制 `_base.html`** —— 读 `references/_base.html`，写到 `course-name/_base.html`，
-只做三处替换：
-- 两处 `COURSE_TITLE` → 课程标题
-- 四个 `ACCENT_*` → 选定的主色（从 `_base.html` 注释里的配色方案挑一套）
-- `NAV_DOTS` → 每个模块一个按钮，形如：
+**第 1 步：定制 `_base.html`** —— 把 `references/_base.html` 复制到
+`course-name/_base.html`，只替换两个占位符，**别的一个字都不要改**：
+
+- `{{KC_COURSE_TITLE}}`（出现两次：`<title>` 和导航条标题）→ 课程标题纯文本
+- `{{KC_NAV_DOTS}}` → 每个模块一个按钮，顺序与模块一致：
   ```html
-  <button class="nav-dot" data-target="module-1" data-tooltip="模块标题" role="tab" aria-label="模块 1：模块标题"></button>
+  <button class="kc-nav__dot" type="button" data-kc-target="kc-m1" data-kc-label="模块标题"></button>
   ```
+  `role`、`aria-label` 由 `main.js` 在运行时补，不用写。
+
+**没有配色可选。** 配色、字号、间距全部由 `styles.css` 决定，构建脚本原样复制进去，
+你不挑也不改。
 
 **第 2 步：写模块** —— 一次写一个，写完一个再写下一个。
 一口气写完所有模块会导致后面的模块越来越薄——这是最常见的质量塌方方式。
@@ -186,13 +190,18 @@ course-name/
 照着它们对齐格式的结果是：比喻、开场、句式一起被搬过来，你这门课会变成上一门的翻版。
 元素的写法看 `references/interactive-elements.md`，那才是规范；`output/` 里的是成品，不是模板。
 每个模块写成 `course-name/modules/0N-slug.html`，只包含
-`<section class="module" id="module-N" data-metaphor="...">` 这一块及其内容。
+`<section class="kc-module" id="kc-mN" data-kc-tone="a" data-kc-metaphor="...">` 这一块及其内容。
+`data-kc-tone` 在 `a` 和 `b` 之间**逐模块交替**（第 1 个 `a`、第 2 个 `b`、第 3 个 `a`……），
+相邻两个相同校验会卡——那是学员判断"我进入下一个模块了"的唯一视觉信号。
+模块内部分屏用 `<section class="kc-screen">`，模块头三件：
+`kc-module__number` / `kc-module__title` / `kc-module__subtitle`。
 不要写 `<html>`、`<head>`、`<body>`、`<style>`、`<script>` 标签。
 
 交互元素的写法：**先看索引** `references/interactive-elements.md`（61 行），
 从里面挑出这个模块要用的几种，**只读那几个** `references/elements/<名字>.md`。
 一门课通常只用 6–8 种，**不要把 `elements/` 下 18 个文件全读一遍**——那是这份 skill 最大的一笔冤枉钱。
-视觉规范见 `references/design-system.md`。
+排版规则见 `spec/typography-zh.md`；具体数值全在 `references/styles.css` 顶部的
+token 块里，要查就直接 grep 它。
 
 复杂代码库有 brief 时，按 brief 逐个写：每个模块只需要它自己的 brief、
 `content-philosophy.md`、`gotchas.md`，以及 brief 里点名的那几个
@@ -230,40 +239,47 @@ node <SKILL_DIR>/scripts/build.mjs course-name --source <代码库路径>
 **关键规则：**
 - **不要往课程目录里写** `styles.css`、`main.js`、`_footer.html`、`fonts/`——那是构建脚本的地盘
 - 模块文件只包含 `<section>` 的内容，不含任何外壳
-- 滚动吸附用 `scroll-snap-type: y proximity`（**不要** `mandatory`，会把人困在长模块里）
-- `.module` 用 `min-height: 100dvh`，并保留 `100vh` 兜底
-- 交互元素的 JS 全在 `main.js` 里，通过 `data-*` 属性和 class 名接上，见 `interactive-elements.md`
-- 群聊容器需要 `id`；数据流动画需要 `.flow-animation` 上的 `data-steps='[...]'` JSON
-- 输出题需要 `id`、`data-type`、`data-min`，以及 3–4 条对照清单
+- 滚动吸附、模块高度、字重、行高这些**一概不用你管**，`styles.css` 已经定死了
+- 交互元素的 JS 全在 `main.js` 里，靠 class 名和 `data-kc-*` 属性自动接上，
+  写法见 `references/elements/<名字>.md`
+- 群聊、输出题、选择题、拖拽匹配这四种容器需要 `id`，且**整页唯一**；
+  数据流演示需要 `.kc-flow` 上的 `data-kc-steps='[...]'` JSON
+- 输出题需要 `id`、`data-kc-kind`、`data-kc-min`，以及 3–4 条对照清单
+- 找 bug 的反馈区、架构图的说明区**一律不带 `id`**——一门课出现两处就必然撞名
 - **代码块是硬规则**：每个代码块必须是源文件里**连续的若干行**、**逐字复制**，
-  并在 `translation-label` 里标注 `文件名:起止行`（如 `src/store.js:45-55`）。
+  并在 `kc-code-pair__source` 里标注 `文件名:起止行`（如 `src/store.js:45-55`）。
   允许整体去掉公共缩进，不许改相对缩进。原作者的注释是代码的一部分，不要删。
   要展示不相邻的代码，就开两个代码块，各自连续，**永远不拼接**。
   写完自己跑构建，校验通不过不算写完。
 - 标点用大陆规范：引号 `“”` / `‘’`，不用 `「」`
-- 每个 `<section class="module">` 必须有 `data-metaphor="<这个模块的比喻>"`，
-  五个模块的比喻**不许重复**，校验会卡
-- 输出题的 `data-min` 不得低于 60；对照清单里**至少一条**要用 `<code lang="en">` 点名一个英文的东西：
+- 每个 `<section class="kc-module">` 必须有 `data-kc-metaphor="<这个模块的比喻>"`，
+  一门课里的比喻**不许重复**，校验会卡
+- 输出题的 `data-kc-min` 不得低于 60；对照清单里**至少一条**要点名一个英文的东西：
   `retell` / `instruct` 类型点文件名或函数名；`explain` 类型点**这个概念的英文原词**
   （那道题本来就要求学员别用术语，逼他写文件名是和题意打架）
-- `data-steps` 的 label 里**不能出现英文单引号**，会把属性提前截断，动画会静默失效
+- `data-kc-steps` 的说明文字里**不能出现英文单引号**，会把属性提前截断，动画会静默失效
 
 ---
 
 ## 视觉身份
 
-整体感觉是**一本暖色的开发者手账**——温暖、有性格、不像模板。
-完整的 token 体系见 `references/design-system.md`，这里只列不可妥协的几条：
+整体是**一本暖色的手账**：米白纸底、朱红做主色、留白多、代码块深底。
 
-- **暖色底**：米白、暖灰，**不要**冷白和冷蓝
-- **一个明确的主色**：朱红、珊瑚、青蓝——**不要**紫色渐变
-- **字体自托管**：霞鹜文楷（正文和标题）+ JetBrains Mono（代码），
-  从 `references/fonts/` 来，**永远不要引 CDN，包括 Google Fonts**。
-  霞鹜文楷只有 400 和 700 两个字重，别的字重会被浏览器伪造，很难看
-- **留白要足**：模块要能喘气，每屏最多 3–4 段短文字
-- **交替底色**：奇偶模块在两种暖色底之间交替，形成节奏
-- **深色代码块**：IDE 风格，深靛炭底 (#1E1E2E)
-- **阴影要暖**：不要纯黑投影
+**但这一节你什么都不用做。** 配色、字号、行高、间距、动效全部写死在
+`references/styles.css` 里，由构建脚本原样复制进课程目录。
+你不挑主色，不写 `<style>`，不覆盖任何值。
+
+需要知道的只有这几条，因为它们会影响你**写内容**的方式：
+
+- **每屏至少一半的面积不是段落。** 连续三段以上纯文字没有任何视觉元素，视为不合格
+- **相邻模块底色交替**，靠 `data-kc-tone` 的 `a`/`b` 控制，你必须逐模块交替着写
+- **字体只有 400 和 700 两档。** 霞鹜文楷没有别的字重，也没有真斜体，
+  所以正文里**不要用倾斜表示强调**，用粗体或换个说法
+- **正文每行 30–40 个汉字**已经由版心宽度保证，你不用数，但别把长句堆成一大坨
+- **代码永远不横向滚动**，长行自动折行
+
+要查具体数值，grep `references/styles.css` 顶部的 `@layer tokens` 块；
+排版规则的完整表述在 `spec/typography-zh.md`。
 
 ---
 
@@ -273,11 +289,9 @@ node <SKILL_DIR>/scripts/build.mjs course-name --source <代码库路径>
 
 - **`references/content-philosophy.md`** —— 学员画像、语言关三层格式、输出题、比喻库、
   视觉密度、术语气泡、测验设计、课程末尾固定块。Phase 2.5 和 Phase 3 必读。
-- **`references/interactive-elements.md`** —— 交互元素**索引**，61 行，列出 18 种元素
+- **`references/interactive-elements.md`** —— 交互元素**索引**，列出 18 种元素
   各自的文件名和适用场景。Phase 2 挑元素时读它。
 - **`references/elements/*.md`** —— 每种元素一个文件，含完整 HTML 写法和规则。
   **只读你这个模块用到的那几个。**
-- **`references/design-system.md`** —— 完整的 CSS 变量、配色、字号、间距、阴影、动画。
-  Phase 3 写模块 HTML 时读。
 - **`references/gotchas.md`** —— 常见翻车点清单。Phase 3 和 Phase 4 读。
 - **`references/module-brief-template.md`** —— Phase 2.5 的 brief 模板，只有复杂代码库用得上。

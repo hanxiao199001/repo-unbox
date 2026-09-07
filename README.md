@@ -102,16 +102,17 @@ node scripts/validate.mjs <课程目录> --source <代码库路径>
 |---|---|
 | `scripts/install.mjs` | 装到 `~/.claude/skills/` |
 | `scripts/build.mjs` | 拼装课程 + 复制资源 + 补 `lang="en"` + 跑校验 |
-| `scripts/validate.mjs` | **28 项校验**，含代码块逐字比对、每模块代码块与中文字数下限、找 bug 数量、比喻查重、标点、数量词清单 |
+| `scripts/validate.mjs` | 结构校验：代码块逐字比对、每模块代码块与中文字数下限、导航与模块双向对应、模块底色交替、找 bug 数量、比喻查重、标点、数量词清单 |
 | `scripts/fetch-fonts.mjs` | 重新抓取自托管字体（霞鹜文楷 + JetBrains Mono，均为 OFL 1.1） |
 | `scripts/measure-fonts.mjs` | 用真实 Chrome 量一门课实际下载多少字体 |
-| `scripts/test-output-task.mjs` | 输出题交互引擎的功能测试 |
+| `scripts/test-elements.mjs` | 用真实的 headless Chrome 跑每一种交互元素的行为测试，零第三方依赖 |
+| `scripts/test-validate.mjs` | 校验脚本的负向测试：把一门合规课程逐条破坏，确认每项检查都真的会红 |
 
 ## 目录
 
 ```
 SKILL.md              给模型的主指令（中文，≤500 行）
-references/           内容原则、交互元素规范、设计系统、翻车清单、字体
+references/           内容原则、交互元素规范、翻车清单、页面层实现、字体
 scripts/              构建与校验（Node，零依赖，跨平台）
 examples/todo-api/    贯穿全程的示例代码库（Express 待办 API，约 340 行）
 output/               生成的课程，按时间顺序：

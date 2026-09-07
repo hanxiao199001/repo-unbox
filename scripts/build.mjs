@@ -3,7 +3,7 @@
 //
 //   node scripts/build.mjs <course-dir>
 //
-// Replaces the original build.sh. Node only, no dependencies, works on Windows.
+// Node only, no dependencies, works on Windows.
 //
 // The writing agent is responsible for exactly two things: _base.html and
 // modules/*.html. Everything else — styles.css, main.js, _footer.html, the
@@ -40,11 +40,11 @@ if (!fs.existsSync(sourceDir)) die(`--source path does not exist: ${sourceDir}`)
 /* ── What the agent must have written ────────────────────────── */
 const basePath = path.join(courseDir, '_base.html');
 const modulesDir = path.join(courseDir, 'modules');
-if (!fs.existsSync(basePath)) die(`${path.relative(ROOT, basePath)} not found — write it from references/_base.html first`);
+if (!fs.existsSync(basePath)) die(`${path.relative(ROOT, basePath)} not found — copy references/_base.html there and fill in {{KC_COURSE_TITLE}} and {{KC_NAV_DOTS}} first`);
 if (!fs.existsSync(modulesDir)) die(`${path.relative(ROOT, modulesDir)} not found — module HTML goes there`);
 
-// Sorted explicitly rather than trusting the order the filesystem hands back.
-// build.sh relied on shell glob order, which is not guaranteed across shells.
+// Sorted explicitly rather than trusting the order the filesystem hands back:
+// readdir order is not guaranteed, and module order is the course's narrative.
 const moduleFiles = fs
   .readdirSync(modulesDir)
   .filter((f) => f.endsWith('.html'))
@@ -70,31 +70,39 @@ for (const file of fs.readdirSync(fontsSrc)) {
   fontBytes += fs.statSync(from).size;
 }
 
-/* ── lang="en" backstop ──────────────────────────────────────── */
-// The page is lang="zh-CN". English-only content must say so, or the browser
-// applies Chinese line-breaking and font substitution to code and error text.
-// references/interactive-elements.md tells the agent to write these attributes;
-// this is the safety net. The count is the point: a non-zero number means the
-// module HTML was not written to the rule, which is a quality signal when
-// comparing agents. Tagging happens on the assembled output only — the module
-// files are left alone so the count stays honest on every rebuild.
+/* ── data-kc-lang="en" backstop ───────────────────────────────── */
+// The page is lang="zh-CN". English-only content must say so, or Chinese
+// line-breaking and font substitution get applied to code and error text.
+// references/interactive-elements.md tells the agent to write the attribute;
+// this is the safety net. The count is the point: non-zero means the module
+// HTML was not written to the rule, which is a quality signal when comparing
+// agents. Tagging happens on the assembled output only — the module files are
+// left alone so the count stays honest on every rebuild.
+//
+// main.js mirrors data-kc-lang onto the real lang attribute at load time, so
+// the data attribute is the single thing an author has to remember.
+const EN_TARGETS = [
+  ['.kc-bughunt__code', /<div class="kc-bughunt__code"(?![^>]*\sdata-kc-lang=)([^>]*)>/g, '<div class="kc-bughunt__code" data-kc-lang="en"'],
+  ['.kc-deflist__key', /<code class="kc-deflist__key"(?![^>]*\sdata-kc-lang=)([^>]*)>/g, '<code class="kc-deflist__key" data-kc-lang="en"'],
+  ['.kc-tree__name', /<code class="kc-tree__name"(?![^>]*\sdata-kc-lang=)([^>]*)>/g, '<code class="kc-tree__name" data-kc-lang="en"'],
+  ['.kc-code', /<code class="kc-code"(?![^>]*\sdata-kc-lang=)([^>]*)>/g, '<code class="kc-code" data-kc-lang="en"'],
+];
+
 function tagEnglish(html) {
-  const counts = { 'pre in .translation-code': 0, '.bug-code': 0, '.badge-code': 0 };
+  const counts = { 'pre in .kc-code-pair__code': 0 };
+  for (const [name] of EN_TARGETS) counts[name] = 0;
 
-  html = html.replace(/<div class="bug-code"(?![^>]*\slang=)([^>]*)>/g, (m, rest) => {
-    counts['.bug-code'] += 1;
-    return `<div class="bug-code" lang="en"${rest}>`;
-  });
+  for (const [name, re, open] of EN_TARGETS) {
+    html = html.replace(re, (m, rest) => {
+      counts[name] += 1;
+      return `${open}${rest}>`;
+    });
+  }
 
-  html = html.replace(/<code class="badge-code"(?![^>]*\slang=)([^>]*)>/g, (m, rest) => {
-    counts['.badge-code'] += 1;
-    return `<code class="badge-code" lang="en"${rest}>`;
-  });
-
-  // Scoped scan: only the <pre> that opens inside a .translation-code block.
+  // Scoped scan: only the <pre> that opens inside a .kc-code-pair__code block.
   let out = '';
   let cursor = 0;
-  const marker = /class="translation-code"/g;
+  const marker = /class="kc-code-pair__code"/g;
   let hit;
   while ((hit = marker.exec(html)) !== null) {
     const preIndex = html.indexOf('<pre', hit.index);
@@ -102,11 +110,11 @@ function tagEnglish(html) {
     const preEnd = html.indexOf('>', preIndex);
     const tag = html.slice(preIndex, preEnd + 1);
     out += html.slice(cursor, preIndex);
-    if (/\slang=/.test(tag)) {
+    if (/\sdata-kc-lang=/.test(tag)) {
       out += tag;
     } else {
-      out += tag.replace(/^<pre/, '<pre lang="en"');
-      counts['pre in .translation-code'] += 1;
+      out += tag.replace(/^<pre/, '<pre data-kc-lang="en"');
+      counts['pre in .kc-code-pair__code'] += 1;
     }
     cursor = preEnd + 1;
     marker.lastIndex = cursor;
@@ -134,7 +142,7 @@ console.log(`  order: ${moduleFiles.join(', ')}`);
 console.log(`  copied styles.css, main.js, _footer.html and fonts/ (${fontFiles} files, ${(fontBytes / 1048576).toFixed(2)} MB — woff2 subsets plus fonts.css and licences)`);
 console.log(`  index.html: ${(fs.statSync(indexPath).size / 1024).toFixed(1)} KB`);
 
-const taskTypes = [...html.matchAll(/class="output-task"[^>]*data-type="([^"]*)"/g)].map((m) => m[1]);
+const taskTypes = [...html.matchAll(/class="kc-output"[^>]*data-kc-kind="([^"]*)"/g)].map((m) => m[1]);
 const moduleCount = moduleFiles.length;
 if (taskTypes.length === 0) {
   console.log(`  output tasks: none — every module needs at least one`);
@@ -146,10 +154,10 @@ if (taskTypes.length === 0) {
 
 const added = Object.values(counts).reduce((a, b) => a + b, 0);
 if (added === 0) {
-  console.log('  lang="en" backstop: 0 added (module HTML already correct)');
+  console.log('  data-kc-lang="en" backstop: 0 added (module HTML already correct)');
 } else {
   const detail = Object.entries(counts).filter(([, n]) => n > 0).map(([k, n]) => `${k} ×${n}`).join(', ');
-  console.log(`  lang="en" backstop: ${added} added — ${detail}`);
+  console.log(`  data-kc-lang="en" backstop: ${added} added — ${detail}`);
   console.log('    (non-zero means the module HTML did not follow references/interactive-elements.md)');
 }
 

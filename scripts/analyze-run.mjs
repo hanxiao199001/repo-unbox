@@ -30,7 +30,7 @@ let model = null;
 function classify(tools) {
   if (tools.length === 0) return 'no-tool';
   const joined = tools.join(' | ');
-  if (/build\.mjs|validate\.mjs|test-output-task/.test(joined)) return 'build-validate';
+  if (/build\.mjs|validate\.mjs|test-elements/.test(joined)) return 'build-validate';
   if (/(cat|tee) *> *[^|]*output\/|Write:.*output\/|Edit:.*output\//.test(joined)) return 'write-course';
   if (/SKILL\.md|references\/|scripts\//.test(joined)) return 'read-skill';
   if (/signal-log/.test(joined)) return 'read-repo';

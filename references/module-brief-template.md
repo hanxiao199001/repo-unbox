@@ -37,7 +37,7 @@
 
 - **类型：** [`retell` 复述路径 / `instruct` 给 AI 下指令 / `explain` 解释给朋友听]
 - **题干：** [一句话]
-- **`data-min`：** [60–120]
+- **`data-kc-min`：** [60–120]
 - **对照清单（3–4 条，每条点名一个具体的东西）：**
   1. 说出了 `[文件名]`
   2. 提到了「[术语]（[English]）」
@@ -60,9 +60,8 @@
 只列这个模块用得上的小节，不要整份文件。
 
 - `references/elements/…` → [按文件名列出这个模块要用的元素，例如
-  `elements/output-task.md`、`elements/code-translation.md`、`elements/group-chat.md`。
+  `elements/output.md`、`elements/code-pair.md`、`elements/chat.md`。
   写模块的人只会读这几个，漏了他就写不出来]
-- `references/design-system.md` → [只在需要 brief 里没有的 token 时列]
 - `references/content-philosophy.md` → [永远要读，内容规则在里面]
 - `references/gotchas.md` → [永远要读，翻车清单在里面]
 

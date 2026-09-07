@@ -39,14 +39,17 @@ export function collectSources(sourceDir) {
   return out;
 }
 
-// Pull each <pre lang="en"> block out of the assembled HTML, along with the
-// file:line label that should sit immediately before it.
+// Pull each code-pair block out of the assembled HTML, along with the
+// file:line source label that sits immediately before it.
+//
+// Only .kc-code-pair blocks are checked. .kc-bughunt code is deliberately
+// broken — running it through the verbatim check would fail every course.
 export function extractCodeBlocks(html) {
   const blocks = [];
-  const re = /(?:<span class="translation-label"[^>]*>([^<]*)<\/span>\s*)?<pre lang="en"><code>([\s\S]*?)<\/code><\/pre>/g;
+  const re = /(?:<p class="kc-code-pair__source"[^>]*>([\s\S]*?)<\/p>\s*)?<pre[^>]*\bdata-kc-lang="en"[^>]*>([\s\S]*?)<\/pre>/g;
   let m;
   while ((m = re.exec(html)) !== null) {
-    const label = (m[1] || '').trim();
+    const label = (m[1] || '').replace(/<[^>]+>/g, '').trim();
     const text = decodeHtml(m[2].replace(/<[^>]+>/g, ''));
     const lines = text.split('\n').map((l) => l.replace(/\s+$/, ''));
     // Blank lines INSIDE the block are part of it; only trim the edges.
