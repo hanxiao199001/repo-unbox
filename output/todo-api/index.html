@@ -186,6 +186,16 @@
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。preventDefault 挡掉了浏览器的默认反应，页面才没有整个刷新一次。"
+           data-kc-wrong="想一想：如果那一行不在，浏览器会按它对表单的老习惯办事——把整个页面重新加载一遍，你写的那段 JavaScript 根本没机会跑完。">
+        <p class="kc-quiz__prompt">如果把提交函数里 preventDefault 那一行删掉，会发生什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>什么都不会变，那一行本来就没用</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>整个页面会刷新一次，后面那段发请求的代码来不及跑完</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>待办会被添加两次</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>
@@ -363,6 +373,16 @@ router.post('/', validateCreate, async (req, res, next) =&gt; {
         <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>src/server.js，因为所有请求都先到它那儿</button>
         <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>public/index.html，因为按钮在页面上</button>
         <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>src/routes/todos.js 加一条新路由，src/store.js 加对应的操作</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。201 专门表示“新东西已经建出来了”，比笼统的 200 多告诉你一件事。"
+           data-kc-wrong="再看一眼那一行：res.status(201)。作者本可以直接用默认的 200，他特意写了 201，说明这个数字带了额外信息。">
+        <p class="kc-quiz__prompt">新建成功时返回 201 而不是 200，多告诉了调用方什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>这次请求花的时间更长</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>数据已经写到硬盘上了</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>有一个新东西被创建出来了，而不只是“成功了”</button>
         <div class="kc-quiz__feedback"></div>
       </div>
 
@@ -546,6 +566,16 @@ export function validateCreate(req, res, next) {
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。express.json() 排在最前面，它先把网线上传来的那串字变回对象，后面的代码才拿得到 req.body。"
+           data-kc-wrong="想一想第三模块开头那条关卡链：解析 JSON 是第一关。没有它，req.body 根本还没被拼出来，后面的人拿到的是 undefined。">
+        <p class="kc-quiz__prompt">如果把 <code class="kc-code" data-kc-lang="en">app.use(express.json())</code> 那一行删掉，校验中间件会看到什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>req.body 是 undefined，标题永远取不到，每次都被判成不合格</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>照常工作，因为 Express 默认就会解析 JSON</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>服务器启动时直接报错</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>
@@ -723,6 +753,16 @@ let writeQueue = Promise.resolve();</pre>
         <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>store.js，尤其是 persist 那一个函数</button>
         <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>每一条路由都要改，因为它们都在存数据</button>
         <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>server.js，因为它是入口</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。先进数组再落盘，而且要等落盘完成——顺序反了或者不等，都会出现“页面上有、文件里没有”。"
+           data-kc-wrong="再看一眼 create 的最后三行：todos.push 在前，await persist() 在后。这个顺序不是随手写的。">
+        <p class="kc-quiz__prompt">在 create 里，为什么 <code class="kc-code" data-kc-lang="en">todos.push(todo)</code> 要写在 <code class="kc-code" data-kc-lang="en">await persist()</code> 前面？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>没有原因，两行换个顺序完全一样</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>persist 写的就是 todos 这个数组，不先放进去，写出来的文件里就没有这一条</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>为了让写盘更快</button>
         <div class="kc-quiz__feedback"></div>
       </div>
 

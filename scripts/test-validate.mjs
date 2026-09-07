@@ -31,7 +31,23 @@ const CODE = `async function persist() {
   return writeQueue;
 }`;
 
-const moduleHtml = (n, tone, metaphor) => `
+const CLOSING = `
+  <section class="kc-screen">
+    <h3 class="kc-screen__title">让 AI 帮你跑起来时，你可以这样说</h3>
+    <div class="kc-cards">
+      <div class="kc-cards__item" data-kc-accent="1"><span class="kc-cards__icon">◆</span><p class="kc-cards__title">跑起来</p><p class="kc-cards__body">帮我把这个项目在本地跑起来。<br><span data-kc-lang="en">Help me get this Express project running locally and tell me which URL to open.</span></p></div>
+      <div class="kc-cards__item" data-kc-accent="2"><span class="kc-cards__icon">◇</span><p class="kc-cards__title">加功能</p><p class="kc-cards__body">给待办加一个截止日期字段。<br><span data-kc-lang="en">Add a due date field to todos and validate it before saving to disk.</span></p></div>
+      <div class="kc-cards__item" data-kc-accent="3"><span class="kc-cards__icon">○</span><p class="kc-cards__title">修报错</p><p class="kc-cards__body">端口被占了，帮我改成从环境变量读。<br><span data-kc-lang="en">Port 3000 is already in use — show me how to read the port from an environment variable.</span></p></div>
+    </div>
+    <h3 class="kc-screen__title">你最可能撞上的报错</h3>
+    <div class="kc-deflist">
+      <div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">Error: listen EADDRINUSE: address already in use :::3000</code><p class="kc-deflist__value">端口被占了，关掉上一个终端。</p></div>
+      <div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">{"error":"title is required"}</code><p class="kc-deflist__value">标题是空的，校验关把它挡住了。</p></div>
+      <div class="kc-deflist__row"><code class="kc-deflist__key" data-kc-lang="en">SyntaxError: Unexpected token } in JSON</code><p class="kc-deflist__value">数据文件被手动改坏了。</p></div>
+    </div>
+  </section>`;
+
+const moduleHtml = (n, tone, metaphor, closing = '') => `
 <section class="kc-module" id="kc-m${n}" data-kc-tone="${tone}" data-kc-metaphor="${metaphor}">
   <p class="kc-module__number">0${n}</p>
   <h2 class="kc-module__title">第 ${n} 个模块</h2>
@@ -84,6 +100,18 @@ const moduleHtml = (n, tone, metaphor) => `
         <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>store.js</button>
         <div class="kc-quiz__feedback"></div>
       </div>
+      <div class="kc-quiz__question" data-kc-answer="a" data-kc-right="对。写盘是排队进行的。" data-kc-wrong="再看一眼 persist 里那个队列。">
+        <p class="kc-quiz__prompt">两个请求同时来，为什么文件不会被写坏？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>写盘被排成了一队</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>操作系统会自己处理</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+      <div class="kc-quiz__question" data-kc-answer="b" data-kc-right="对。await 保证写完才往下走。" data-kc-wrong="想想少了 await 会发生什么。">
+        <p class="kc-quiz__prompt">persist 前面那个 await 去掉会怎样？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>完全没有区别</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>还没写完就回复了，断电时数据可能对不上</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
       <div class="kc-quiz__actions"><button class="kc-quiz__check">看看答案</button><button class="kc-quiz__reset">再来一次</button></div>
     </div>
     <div class="kc-output" id="kc-output-m${n}" data-kc-kind="retell" data-kc-min="80">
@@ -98,7 +126,7 @@ const moduleHtml = (n, tone, metaphor) => `
         <li class="kc-output__item">说清楚了写盘是排队进行的</li>
       </ul>
     </div>
-  </section>
+  </section>${closing}
 </section>`;
 
 function buildCourse (dir) {
@@ -120,7 +148,7 @@ function buildCourse (dir) {
     .replace(/\{\{KC_COURSE_TITLE\}\}/g, '待办 API 是怎么跑起来的')
     .replace(/\{\{KC_NAV_DOTS\}\}/g, dots);
   const footer = fs.readFileSync(path.join(REFS, '_footer.html'), 'utf8');
-  const html = base + moduleHtml(1, 'a', '快递驿站') + moduleHtml(2, 'b', '白板与档案柜') + footer;
+  const html = base + moduleHtml(1, 'a', '快递驿站') + moduleHtml(2, 'b', '白板与档案柜', CLOSING) + footer;
   fs.writeFileSync(path.join(dir, 'index.html'), html);
   return path.join(dir, 'index.html');
 }
@@ -151,9 +179,20 @@ const MUTATIONS = [
     .replace('提到了 persist 这个函数', '讲明白了原理')],
   ['every module declares data-kc-metaphor', (h) => h.replace(/ data-kc-metaphor="快递驿站"/, '')],
   ['no metaphor used twice in one course', (h) => h.replace('白板与档案柜', '快递驿站')],
+  ['every module has 3-5 quiz questions', (h) => {
+    // 每组只留第一道，其余删掉 —— 正好复现 e2e 那次每模块 1 道题的情况
+    let i = 0;
+    return h.replace(/<div class="kc-quiz__question"[\s\S]*?<div class="kc-quiz__feedback"><\/div>\s*<\/div>\s*/g,
+      (m) => (i++ % 3 === 0 ? m : ''));
+  }],
+  ['“” is the primary quote, ‘’ only nested inside it', (h) => h.replace(/[“”]/g, '‘')],
+  ['course ends with the fixed block (bilingual AI instructions + real errors)',
+    (h) => h.replace(/<span data-kc-lang="en">[^<]*<\/span>/g, '')],
   ['Chinese prose present', (h) => h.replace(new RegExp(PROSE, 'g'), 'x')],
   ['mainland quotation marks', (h) => h.replace('点“下一步”', '点「下一步」')],
   ['code blocks verbatim and correctly cited', (h) => h.replace('return writeQueue;\n}', 'return writeQueue\n}')],
+  // 未转义的 < ：剥标签时会把半行吃掉，报错必须直接点名，而不是说"对不上"
+  ['code blocks verbatim and correctly cited', (h) => h.replace('async () =&gt; {', 'async () => {\n    if (a < b) return;')],
   ['kc-chat blocks have an id', (h) => h.replace(/ id="kc-chat-m1"/, '')],
   ['kc-flow parts present', (h) => h.replace(/class="kc-flow__packet"/g, 'class="kc-flow__packet-x"')],
   ['kc-bughunt__feedback carries no id', (h) => h.replace('<div class="kc-bughunt__feedback">', '<div class="kc-bughunt__feedback" id="bug-feedback">')],

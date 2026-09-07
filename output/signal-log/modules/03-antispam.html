@@ -159,6 +159,16 @@
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。蜜罐和算术题挡的是“不是人”，限流挡的是“是人但发得太勤”，三道各管一种情况。"
+           data-kc-wrong="想一想：一个真人打开页面，老老实实答对了算术题，也不会去填那个看不见的框——但他可以一秒一条地发。挡他的只有限流那一道。">
+        <p class="kc-quiz__prompt">一个真人打开页面，正常答对了算术题，然后一秒发一条。哪一道防线会拦住他？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>蜜罐，因为他发得不像人</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>限流，两条之间不到 10 秒就会收到 429</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>算术题，因为票据只能用一次</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>

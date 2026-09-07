@@ -293,5 +293,7 @@ node <SKILL_DIR>/scripts/build.mjs course-name --source <代码库路径>
   各自的文件名和适用场景。Phase 2 挑元素时读它。
 - **`references/elements/*.md`** —— 每种元素一个文件，含完整 HTML 写法和规则。
   **只读你这个模块用到的那几个。**
+- **`references/metaphor-fallback.md`** —— 中国日常场景的比喻兜底表。
+  **只有当项目题材接不上某个概念时才读它**——读了就会用，一整门课的比喻会全变成通用款。
 - **`references/gotchas.md`** —— 常见翻车点清单。Phase 3 和 Phase 4 读。
 - **`references/module-brief-template.md`** —— Phase 2.5 的 brief 模板，只有复杂代码库用得上。

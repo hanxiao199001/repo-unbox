@@ -165,6 +165,16 @@
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。preventDefault 挡掉了浏览器的默认反应，页面才没有整个刷新一次。"
+           data-kc-wrong="想一想：如果那一行不在，浏览器会按它对表单的老习惯办事——把整个页面重新加载一遍，你写的那段 JavaScript 根本没机会跑完。">
+        <p class="kc-quiz__prompt">如果把提交函数里 preventDefault 那一行删掉，会发生什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>什么都不会变，那一行本来就没用</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>整个页面会刷新一次，后面那段发请求的代码来不及跑完</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>待办会被添加两次</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>

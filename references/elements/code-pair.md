@@ -37,6 +37,23 @@
 | `kc-code-pair__lines` | 右栏 | 是 |
 | `kc-code-pair__line` | 右栏每一条中文 | 是 |
 
+## 一条必须先知道的机械规则：转义
+
+`<pre>` 里放的是 HTML，所以**代码里的 `<` 和 `&` 必须写成 `&lt;` 和 `&amp;`**：
+
+| 源文件里是 | `<pre>` 里要写成 |
+|---|---|
+| `now - ts <= max` | `now - ts &lt;= max` |
+| `if (a && b)` | `if (a &amp;&amp; b)` |
+| `<div class="x">` | `&lt;div class="x"&gt;` |
+
+`>` 不写成 `&gt;` 也能显示（`=>` 就没事），但一并转了更省心。
+
+**忘了转义 `<` 的后果是最难查的那种**：校验会报
+“does not match any continuous run”，看起来像你抄错了代码，
+其实是 `<= max)` 被当成 HTML 标签整段吃掉了。
+`scripts/validate.mjs` 现在会在这种情况下直接点名是哪个字符，但你一开始就转好更省事。
+
 ## 内容规则
 
 **这是全项目最硬的一条约束：**

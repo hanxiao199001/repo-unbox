@@ -156,6 +156,16 @@ let writeQueue = Promise.resolve();</pre>
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。先进数组再落盘，而且要等落盘完成——顺序反了或者不等，都会出现“页面上有、文件里没有”。"
+           data-kc-wrong="再看一眼 create 的最后三行：todos.push 在前，await persist() 在后。这个顺序不是随手写的。">
+        <p class="kc-quiz__prompt">在 create 里，为什么 <code class="kc-code" data-kc-lang="en">todos.push(todo)</code> 要写在 <code class="kc-code" data-kc-lang="en">await persist()</code> 前面？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>没有原因，两行换个顺序完全一样</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>persist 写的就是 todos 这个数组，不先放进去，写出来的文件里就没有这一条</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>为了让写盘更快</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>

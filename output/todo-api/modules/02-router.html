@@ -156,6 +156,16 @@ router.post('/', validateCreate, async (req, res, next) =&gt; {
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。201 专门表示“新东西已经建出来了”，比笼统的 200 多告诉你一件事。"
+           data-kc-wrong="再看一眼那一行：res.status(201)。作者本可以直接用默认的 200，他特意写了 201，说明这个数字带了额外信息。">
+        <p class="kc-quiz__prompt">新建成功时返回 201 而不是 200，多告诉了调用方什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>这次请求花的时间更长</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>数据已经写到硬盘上了</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>有一个新东西被创建出来了，而不只是“成功了”</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>

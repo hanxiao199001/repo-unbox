@@ -153,6 +153,16 @@
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。normalizeText 会把超长的部分直接截掉，不报错，所以你只会看到前 300 个字符。"
+           data-kc-wrong="再看一眼服务器那一侧：message 是用 normalizeText(payload.message, 300) 取出来的。这个函数不是“检查太长就拒绝”，它是“压掉多余空格再切一刀”。">
+        <p class="kc-quiz__prompt">你在留言框里贴了 500 个字符，然后按下 TRANSMIT。结果是什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>服务器返回 400，说留言太长</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>全部 500 个字符都存进去了</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>只有前 300 个字符被存下来，其余被悄悄截掉，不报错</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>
@@ -329,6 +339,16 @@
         <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>让页面知道还有没有下一页，好决定 Load more 能不能点</button>
         <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>统计这个网站的访问量</button>
         <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>它是这一页里留言的条数</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="a"
+           data-kc-right="对。GET 只是“我看看”，POST 是“我要新建一个”。同一个地址配不同的方法，做的是完全不同的事。"
+           data-kc-wrong="看那张频道表：/api/messages 出现了两次，一次配 GET，一次配 POST。地址一样，方法不一样，走的是两段完全不同的代码。">
+        <p class="kc-quiz__prompt">为什么 <code class="kc-code" data-kc-lang="en">/api/messages</code> 这一个地址下面挂了两条路由？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>GET 是“把这一页留言给我看”，POST 是“我要新发一条”，方法不同就是两件事</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>写错了，重复挂了两次</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>一条给管理员用，一条给普通访客用</button>
         <div class="kc-quiz__feedback"></div>
       </div>
 
@@ -514,6 +534,16 @@
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="b"
+           data-kc-right="对。蜜罐和算术题挡的是“不是人”，限流挡的是“是人但发得太勤”，三道各管一种情况。"
+           data-kc-wrong="想一想：一个真人打开页面，老老实实答对了算术题，也不会去填那个看不见的框——但他可以一秒一条地发。挡他的只有限流那一道。">
+        <p class="kc-quiz__prompt">一个真人打开页面，正常答对了算术题，然后一秒发一条。哪一道防线会拦住他？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>蜜罐，因为他发得不像人</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>限流，两条之间不到 10 秒就会收到 429</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>算术题，因为票据只能用一次</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>
@@ -655,6 +685,16 @@
         <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>把 signal-log.db 这个文件拷过去</button>
         <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>逐条调 API 导出再逐条导入</button>
         <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>没办法，数据在内存里</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。callsign 和 origin 建表时没写 NOT NULL，所以它们可以为空；message 和 strength 写了，留空数据库直接拒绝。"
+           data-kc-wrong="回头看那段建表语句：哪几行末尾带着 NOT NULL？带的就是必填，不带的就可以空着。这件事在建表时就定死了，比写在代码里的检查更靠得住。">
+        <p class="kc-quiz__prompt">按建表语句，一条留言里哪些字段可以是空的？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>都不能空，全是必填</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>只有 strength 可以空</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>callsign 和 origin 可以空，message 和 strength 不行</button>
         <div class="kc-quiz__feedback"></div>
       </div>
 

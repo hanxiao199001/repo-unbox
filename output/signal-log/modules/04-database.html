@@ -120,6 +120,16 @@
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。callsign 和 origin 建表时没写 NOT NULL，所以它们可以为空；message 和 strength 写了，留空数据库直接拒绝。"
+           data-kc-wrong="回头看那段建表语句：哪几行末尾带着 NOT NULL？带的就是必填，不带的就可以空着。这件事在建表时就定死了，比写在代码里的检查更靠得住。">
+        <p class="kc-quiz__prompt">按建表语句，一条留言里哪些字段可以是空的？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>都不能空，全是必填</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>只有 strength 可以空</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>callsign 和 origin 可以空，message 和 strength 不行</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>

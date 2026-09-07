@@ -132,6 +132,16 @@
         <div class="kc-quiz__feedback"></div>
       </div>
 
+      <div class="kc-quiz__question" data-kc-answer="c"
+           data-kc-right="对。normalizeText 会把超长的部分直接截掉，不报错，所以你只会看到前 300 个字符。"
+           data-kc-wrong="再看一眼服务器那一侧：message 是用 normalizeText(payload.message, 300) 取出来的。这个函数不是“检查太长就拒绝”，它是“压掉多余空格再切一刀”。">
+        <p class="kc-quiz__prompt">你在留言框里贴了 500 个字符，然后按下 TRANSMIT。结果是什么？</p>
+        <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>服务器返回 400，说留言太长</button>
+        <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>全部 500 个字符都存进去了</button>
+        <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>只有前 300 个字符被存下来，其余被悄悄截掉，不报错</button>
+        <div class="kc-quiz__feedback"></div>
+      </div>
+
       <div class="kc-quiz__actions">
         <button class="kc-quiz__check">看看答案</button>
         <button class="kc-quiz__reset">再来一次</button>

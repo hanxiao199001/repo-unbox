@@ -25,6 +25,9 @@ export function validate(courseDir, sourceDir) {
     checks.push({ name, ok, detail });
     if (!ok) errors.push(`${name}${detail ? ': ' + detail : ''}`);
   };
+  // A warning is a thing worth a human's eye that must not fail the build:
+  // there are real projects whose own subject matter cannot carry a metaphor.
+  const warn = (name, ok, detail = '') => { checks.push({ name, ok, detail, warn: true }); };
 
   const indexPath = path.join(courseDir, 'index.html');
   if (!fs.existsSync(indexPath)) {
@@ -169,6 +172,17 @@ export function validate(courseDir, sourceDir) {
     if (hanzi < 800) thinProse.push(`${id} (${hanzi})`);
   });
   check('every module has a code-pair block', thinCode.length === 0, thinCode.join(', '));
+
+  // elements/quiz.md: one set per module, 3-5 questions. The +1 is for a
+  // scenario-wrapped question, which is a single question by design.
+  // A one-question module passed every whole-course count before this check.
+  const thinQuiz = [];
+  moduleBlocks.forEach((block, i) => {
+    const n = (block.match(/class="kc-quiz__question"/g) || []).length;
+    if (n < 3 || n > 6) thinQuiz.push(`${moduleIds[i] || `module ${i + 1}`} (${n})`);
+  });
+  check('every module has 3-5 quiz questions', thinQuiz.length === 0,
+    thinQuiz.length ? `${thinQuiz.join(', ')} — 3-5 per module, plus at most one scenario question` : '');
   check('every module has at least 800 Chinese characters', thinProse.length === 0, thinProse.join(', '));
 
   // The element that makes the learner point at a real mistake. Two is the floor
@@ -249,6 +263,36 @@ export function validate(courseDir, sourceDir) {
   const repeated = [...metaphorCounts].filter(([, n]) => n > 1).map(([k, n]) => `${k} (${n}x)`);
   check('no metaphor used twice in one course', repeated.length === 0, repeated.join(', '));
 
+  // Metaphors should grow out of the project's own subject matter. A metaphor
+  // is counted as generic when it comes from references/metaphor-fallback.md
+  // AND its wording appears nowhere in the codebase's own text — so a Chinese
+  // repo, or one that reuses the same word, still counts as native.
+  // WARN, never FAIL: some projects genuinely have no subject matter to borrow.
+  const fallbackFile = path.join(SKILL_ROOT, 'references', 'metaphor-fallback.md');
+  if (fs.existsSync(fallbackFile) && metaphors.length) {
+    const table = fs.readFileSync(fallbackFile, 'utf8');
+    const generic = [...table.matchAll(/\|\s*`([^`]+)`\s*\|/g)].map((m) => m[1].trim()).filter(Boolean);
+    let repoText = '';
+    if (sourceDir && fs.existsSync(sourceDir)) {
+      for (const [, src] of collectSources(sourceDir)) repoText += src;
+      for (const name of ['README.md', 'readme.md', 'README.markdown']) {
+        const rp = path.join(sourceDir, name);
+        if (fs.existsSync(rp)) repoText += fs.readFileSync(rp, 'utf8');
+      }
+    }
+    const borrowed = metaphors.filter((m) => {
+      const hit = generic.find((g) => m.metaphor.includes(g) || g.includes(m.metaphor));
+      if (!hit) return false;
+      return !repoText.includes(m.metaphor);
+    });
+    const native = metaphors.length - borrowed.length;
+    warn(
+      `metaphors growing out of the codebase (${native}/${metaphors.length})`,
+      native >= 3,
+      native >= 3 ? '' : `${borrowed.map((m) => m.metaphor).join('、')} come straight from metaphor-fallback.md — fine when the project has no subject matter of its own, worth a look otherwise`
+    );
+  }
+
   /* ── 9. the course is actually in Chinese ──────────────────── */
   const bodyText = html
     .replace(/<pre[^>]*>[\s\S]*?<\/pre>/g, '')
@@ -268,6 +312,38 @@ export function validate(courseDir, sourceDir) {
   const brackets = (prose.match(/[「」『』]/g) || []).length;
   check('mainland quotation marks (no 「」)', brackets === 0, brackets ? `${brackets} corner brackets in prose — use “” and ‘’` : '');
 
+  // “” is the primary quote; ‘’ is only for a quote inside a quote. A course
+  // that uses ‘’ throughout and “” nowhere has the nesting backwards — the
+  // first end-to-end run did exactly this, 53 times, and nothing caught it.
+  const singles = (prose.match(/[‘’]/g) || []).length;
+  const doubles = (prose.match(/[“”]/g) || []).length;
+  check('“” is the primary quote, ‘’ only nested inside it',
+    !(singles > 0 && doubles === 0),
+    singles > 0 && doubles === 0 ? `${singles} single quotes and no double quotes — ‘’ is only for a quote inside a quote` : '');
+
+  /* ── 10b. the fixed closing block ────────────────────────────── */
+  // content-philosophy requires the course to end with two things. The first
+  // end-to-end run wrote the error list and silently skipped the instructions,
+  // and every whole-course count still passed.
+  const lastModule = moduleBlocks.length ? moduleBlocks[moduleBlocks.length - 1] : '';
+  const errorRows = (lastModule.match(/class="kc-deflist__key"/g) || []).length;
+  // English instruction sentences, excluding the deflist keys (those are the
+  // error originals, which are the OTHER half of the closing block).
+  const withoutKeys = lastModule
+    .replace(/<pre[\s\S]*?<\/pre>/g, '')
+    .replace(/<code class="kc-deflist__key"[^>]*>[\s\S]*?<\/code>/g, '');
+  const instructions = [...withoutKeys.matchAll(/data-kc-lang="en"[^>]*>([\s\S]*?)</g)]
+    .map((m) => decodeHtml(m[1]).trim())
+    .filter((t) => t.length >= 25 && (t.match(/ /g) || []).length >= 4 && /^[A-Z]/.test(t));
+  check(
+    'course ends with the fixed block (bilingual AI instructions + real errors)',
+    instructions.length >= 3 && errorRows >= 3,
+    [
+      instructions.length < 3 ? `only ${instructions.length} English instruction sentence(s) — need 3+ in <code class="kc-code" data-kc-lang="en">, covering run it / add a feature / fix an error` : '',
+      errorRows < 3 ? `only ${errorRows} error row(s) — need 3+ real error originals in a kc-deflist` : '',
+    ].filter(Boolean).join('; ')
+  );
+
   /* ── 11. code blocks are verbatim, continuous, correctly cited ── */
   // The one mechanical guarantee behind CLAUDE.md's "code is never edited".
   // Doctored code reads BETTER than the real thing, so review will not catch it.
@@ -280,6 +356,14 @@ export function validate(courseDir, sourceDir) {
     for (const block of blocks) {
       if (!block.label) {
         problems.push(`a block near "${block.firstLine.slice(0, 40)}" has no file:line label`);
+        continue;
+      }
+      // An unescaped < swallows the rest of the line when tags are stripped, so
+      // the block silently stops matching. Say that, instead of letting it look
+      // like the code was mistyped — the first end-to-end run lost 90 seconds here.
+      const rawLt = (block.raw || '').match(/<(?!\/?[a-zA-Z])[^\n]{0,30}/g);
+      if (rawLt) {
+        problems.push(`${block.label} has an unescaped < — write &lt; instead (found: ${rawLt.slice(0, 2).map((x) => x.trim()).join(' , ')})`);
         continue;
       }
       const found = findVerbatim(block.lines, sources, sourceDir);
@@ -370,6 +454,10 @@ export function report(courseDir, { errors, checks }) {
     if (c.numerals) { numerals = c.numerals; console.log(`  LIST  ${c.name}`); continue; }
     if (c.skipped) {
       console.log(`  SKIP  ${c.name} — no --source given, so the strongest check in this file did not run`);
+      continue;
+    }
+    if (c.warn) {
+      console.log(`  ${c.ok ? 'PASS' : 'WARN'}  ${c.name}${c.ok || !c.detail ? '' : ' — ' + c.detail}`);
       continue;
     }
     console.log(`  ${c.ok ? 'PASS' : 'FAIL'}  ${c.name}${c.ok || !c.detail ? '' : ' — ' + c.detail}`);

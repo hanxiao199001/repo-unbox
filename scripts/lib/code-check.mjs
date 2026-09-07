@@ -57,6 +57,10 @@ export function extractCodeBlocks(html) {
     while (lines.length && !lines[lines.length - 1].trim()) lines.pop();
     blocks.push({
       label: /^[\w./-]+:\d+-\d+$/.test(label) ? label : '',
+      // The <pre> body exactly as written, before tags are stripped. validate.mjs
+      // uses it to tell "you mistyped the code" apart from "you forgot to escape <",
+      // which look identical once the stripping has eaten half a line.
+      raw: m[2],
       lines,
       firstLine: (lines[0] || '').trim(),
     });
