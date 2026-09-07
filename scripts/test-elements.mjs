@@ -233,20 +233,38 @@ class Tab {
   wait (ms) { return this.eval('return new Promise(function(r){setTimeout(function(){r(true)},' + ms + ')});') }
 
   async box (sel, i = 0) {
+    // scrollIntoView 会被 scroll-snap 吸回去，所以滚完要重新量；还在视野外就
+    // 直接 scrollTo 绕过吸附。量到一个视野外的坐标再去点，是最难查的假象。
     const b = await this.eval(
       'var e=document.querySelectorAll(' + JSON.stringify(sel) + ')[' + i + '];' +
       'if(!e) return null;' +
-      'e.scrollIntoView({block:"center",inline:"center"});' +
+      'e.scrollIntoView({block:"center",inline:"center",behavior:"instant"});' +
+      'var vh=document.documentElement.clientHeight;' +
       'var r=e.getBoundingClientRect();' +
-      'return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height};'
+      'if(r.top<0||r.bottom>vh){' +
+      '  window.scrollTo({top:r.top+window.scrollY-vh/2+r.height/2,behavior:"instant"});' +
+      '  r=e.getBoundingClientRect();' +
+      '}' +
+      'return {x:r.left+r.width/2,y:r.top+r.height/2,w:r.width,h:r.height,top:r.top,bottom:r.bottom,vh:vh};'
     )
     if (!b) throw new Error('找不到元素：' + sel + ' [' + i + ']')
     if (b.w === 0 && b.h === 0) throw new Error('元素不可见（宽高为 0）：' + sel + ' [' + i + ']')
+    if (b.top < 0 || b.bottom > b.vh) {
+      throw new Error(`元素滚不进视野：${sel}[${i}] top=${Math.round(b.top)} bottom=${Math.round(b.bottom)} 视口高 ${b.vh}`)
+    }
     return b
   }
 
   async click (sel, i = 0) {
     const b = await this.box(sel, i)
+    // 点空了是最坏的一种测试假象：什么都没发生，断言却在检查别的东西。
+    // 派发之前先确认这个坐标上就是它（或它的后代）。
+    const hit = await this.eval(
+      'var e=document.querySelectorAll(' + JSON.stringify(sel) + ')[' + i + '];' +
+      'var h=document.elementFromPoint(' + Math.round(b.x) + ',' + Math.round(b.y) + ');' +
+      'return {ok: !!h && (h===e || e.contains(h) || h.contains(e)), got: h ? (h.className||h.tagName) : null};'
+    )
+    if (!hit.ok) throw new Error(`点击落空：${sel}[${i}] 在 (${Math.round(b.x)}, ${Math.round(b.y)}) 上的是 ${hit.got}`)
     const base = { x: Math.round(b.x), y: Math.round(b.y), button: 'left', clickCount: 1, buttons: 1 }
     await this.send('Input.dispatchMouseEvent', { type: 'mouseMoved', ...base, buttons: 0 })
     await this.send('Input.dispatchMouseEvent', { type: 'mousePressed', ...base })
@@ -2840,6 +2858,189 @@ describe('整页 _base.html + _footer.html', async (tab) => {
   })
 
   rmSync(dir, { recursive: true, force: true })
+})
+
+// ------------------------------------------------ 这里没看懂 kc-feedback
+
+const FB_EXPORT = `
+<section class="kc-feedback-export">
+  <p class="kc-feedback-export__count"></p>
+  <div class="kc-feedback-export__actions">
+    <button class="kc-feedback-export__button" type="button">导出反馈</button>
+    <button class="kc-feedback-export__clear" type="button">清空</button>
+  </div>
+  <textarea class="kc-feedback-export__fallback" readonly></textarea>
+</section>`
+
+const FB_COURSE = `
+<main class="kc-course">
+  <section class="kc-module" id="kc-m1" data-kc-tone="a" data-kc-metaphor="快递驿站">
+    <p class="kc-module__number">01</p><h2 class="kc-module__title">第一个模块</h2><p class="kc-module__subtitle">副标题。</p>
+    <section class="kc-screen"><button class="kc-feedback" type="button"></button><h3 class="kc-screen__title">第一屏的标题</h3><p>正文。</p></section>
+    <section class="kc-screen"><button class="kc-feedback" type="button"></button><h3 class="kc-screen__title">第二屏的标题</h3><p>正文。</p></section>
+  </section>
+  <section class="kc-module" id="kc-m2" data-kc-tone="b" data-kc-metaphor="白板与档案柜">
+    <p class="kc-module__number">02</p><h2 class="kc-module__title">第二个模块</h2><p class="kc-module__subtitle">副标题。</p>
+    <section class="kc-screen"><button class="kc-feedback" type="button"></button><h3 class="kc-screen__title">第三屏的标题</h3><p>正文。</p></section>
+  </section>
+</main>` + FB_EXPORT
+
+describe('这里没看懂 kc-feedback', async (tab) => {
+  const url = fixture('feedback', FB_COURSE)
+  await tab.goto(url)
+  await tab.eval(`try{localStorage.clear()}catch(e){}; return true;`)
+  await tab.goto(url)
+
+  await it('每一屏都有按钮，且落在这一屏的右上角', async () => {
+    const r = await tab.eval(`var out=[];
+      [].forEach.call(document.querySelectorAll('.kc-screen'),function(s){
+        var b=s.querySelector('.kc-feedback');
+        if(!b){out.push('缺按钮');return;}
+        var sr=s.getBoundingClientRect(), br=b.getBoundingClientRect();
+        out.push({right:Math.round(sr.right-br.right), top:Math.round(br.top-sr.top),
+                  pos:getComputedStyle(b).position, live:b.classList.contains('kc-is-live')});});
+      return out;`)
+    eq(r.length, 3, '三屏各一个按钮')
+    r.forEach((x, i) => {
+      assert(x.live, `第 ${i + 1} 个按钮没有初始化`)
+      eq(x.pos, 'absolute')
+      assert(Math.abs(x.right) < 4, `第 ${i + 1} 个按钮不在右边缘，实际差 ${x.right}px`)
+      assert(x.top < 24, `第 ${i + 1} 个按钮不在顶部，实际 ${x.top}px`)
+    })
+  })
+
+  await it('点一下立刻记下一条，含模块号、屏标题、时间戳', async () => {
+    await tab.click('.kc-feedback', 1)
+    const r = await tab.eval(`var b=document.querySelectorAll('.kc-feedback')[1];
+      var raw=null; try{raw=localStorage.getItem('kc-feedback:'+location.pathname)}catch(e){}
+      var items=raw?JSON.parse(raw):[];
+      return {marked:b.classList.contains('kc-is-marked'), pressed:b.getAttribute('aria-pressed'),
+              panelOpen:!!document.querySelector('.kc-feedback__panel.kc-is-open'),
+              n:items.length, item:items[0]||null,
+              count:document.querySelector('.kc-feedback-export__count').textContent};`)
+    assert(r.marked, '按钮应变为已标记')
+    eq(r.pressed, 'true')
+    assert(r.panelOpen, '应展开那一句话的输入框')
+    eq(r.n, 1, '应当正好记下一条')
+    eq(r.item.module, 'kc-m1')
+    eq(r.item.moduleNumber, '01', '要记模块号')
+    eq(r.item.screenTitle, '第二屏的标题', '要记屏标题')
+    eq(r.item.screen, 2, '要记这一屏在模块里的序号')
+    assert(/^\d{4}-\d{2}-\d{2}T/.test(r.item.at), '时间戳要是 ISO，实际 ' + r.item.at)
+    eq(r.item.note, '', '那一句话初始为空——记录不等它')
+    assert(r.count.indexOf('1 处') >= 0, '课末计数应更新，实际：' + r.count)
+  })
+
+  await it('那一句话是可选的，写了会补进同一条记录', async () => {
+    await tab.focus('.kc-feedback__note', 1)
+    await tab.typeText('这里的 await 我没看懂')
+    const r = await tab.eval(`var raw=localStorage.getItem('kc-feedback:'+location.pathname);
+      var items=JSON.parse(raw); return {n:items.length, note:items[0].note};`)
+    eq(r.n, 1, '写字不许再生出一条记录')
+    eq(r.note, '这里的 await 我没看懂')
+  })
+
+  await it('刷新之后标记和那句话都还在', async () => {
+    await tab.goto(url)
+    const r = await tab.eval(`var b=document.querySelectorAll('.kc-feedback')[1];
+      return {marked:b.classList.contains('kc-is-marked'),
+              note:document.querySelectorAll('.kc-feedback__note')[1].value,
+              count:document.querySelector('.kc-feedback-export__count').textContent};`)
+    assert(r.marked, '刷新后应仍是已标记')
+    eq(r.note, '这里的 await 我没看懂', '写过的话应恢复')
+    assert(r.count.indexOf('1 处') >= 0)
+  })
+
+  await it('再点一次能撤销', async () => {
+    await tab.click('.kc-feedback', 1)
+    const r = await tab.eval(`var b=document.querySelectorAll('.kc-feedback')[1];
+      var items=JSON.parse(localStorage.getItem('kc-feedback:'+location.pathname)||'[]');
+      return {marked:b.classList.contains('kc-is-marked'), n:items.length,
+              panelOpen:!!document.querySelector('.kc-feedback__panel.kc-is-open'),
+              disabled:document.querySelector('.kc-feedback-export__button').disabled};`)
+    assert(!r.marked, '再点一次应回到未标记')
+    eq(r.n, 0, '那条记录应被删掉')
+    assert(!r.panelOpen, '输入框应收起')
+    assert(r.disabled, '一条都没有时导出按钮不该可点')
+  })
+
+  await it('导出生成的 JSON 含课程名、时间和全部记录', async () => {
+    await tab.click('.kc-feedback', 0)
+    await tab.click('.kc-feedback', 2)
+    await tab.click('.kc-feedback-export__button')
+    const r = await tab.eval(`var t=document.querySelector('.kc-feedback-export__fallback');
+      var d; try{d=JSON.parse(t.value)}catch(e){d=null}
+      return {mode:document.querySelector('.kc-feedback-export').getAttribute('data-kc-exported'),
+              parsed:!!d, n:d?d.items.length:0, course:d?d.course:null,
+              titles:d?d.items.map(function(x){return x.screenTitle}):[],
+              hasAt:d?d.items.every(function(x){return /^\\d{4}-/.test(x.at)}):false};`)
+    assert(r.parsed, '导出的必须是能解析的 JSON')
+    eq(r.n, 2, '两条记录都要在')
+    assert(r.course && r.course.length > 0, '要带课程名')
+    eq(r.titles.sort().join('|'), '第一屏的标题|第三屏的标题')
+    assert(r.hasAt, '每条都要有 ISO 时间戳')
+  })
+
+  await it('下载被拦住时把 JSON 摊出来让学员自己复制', async () => {
+    const r = await tab.eval(`var t=document.querySelector('.kc-feedback-export__fallback');
+      return {open:t.classList.contains('kc-is-open'), visible:getComputedStyle(t).display!=='none',
+              len:t.value.length};`)
+    assert(r.len > 20, '兜底文本框里应当有内容')
+    // deny 之后浏览器仍然会让 a.click() 静默通过，所以这里只要求“内容一定在”，
+    // 不要求一定切到兜底显示——真正不许发生的是“什么都没有”。
+    assert(r.open === r.visible, '兜底文本框的可见性应与 kc-is-open 一致')
+  })
+
+  await it('清空之后全部按钮回到未标记', async () => {
+    await tab.click('.kc-feedback-export__clear')
+    const r = await tab.eval(`return {marked:document.querySelectorAll('.kc-feedback.kc-is-marked').length,
+      n:JSON.parse(localStorage.getItem('kc-feedback:'+location.pathname)||'[]').length,
+      count:document.querySelector('.kc-feedback-export__count').textContent};`)
+    eq(r.marked, 0, '所有按钮应回到未标记')
+    eq(r.n, 0)
+    assert(r.count.indexOf('还没有标记') >= 0, '计数文案应回到零态，实际：' + r.count)
+  })
+
+  await it('键盘能聚焦按钮并触发', async () => {
+    await tab.focus('.kc-feedback', 0)
+    await tab.key('Enter')
+    const r = await tab.eval(`return {marked:document.querySelectorAll('.kc-feedback.kc-is-marked').length,
+      focus:document.activeElement.className};`)
+    eq(r.marked, 1, '回车应能标记')
+    assert(r.focus.indexOf('kc-feedback__note') >= 0, '标记后焦点应落到那一句话的输入框上，实际 ' + r.focus)
+    await tab.eval(`document.querySelector('.kc-feedback-export__clear').click(); return true;`)
+  })
+
+  await it('存储被禁时不报错，按钮照常能点', async () => {
+    await tab.goto('about:blank')
+    const stub = await tab.send('Page.addScriptToEvaluateOnNewDocument', {
+      source: `Object.defineProperty(window,'localStorage',{get:function(){throw new DOMException('denied','SecurityError');}});`
+    })
+    await tab.goto(fixture('feedback-nostore', FB_COURSE))
+    await tab.click('.kc-feedback', 0)
+    const r = await tab.eval(`return {marked:document.querySelectorAll('.kc-feedback.kc-is-marked').length,
+      broken:document.querySelectorAll('.kc-broken').length,
+      count:document.querySelector('.kc-feedback-export__count').textContent};`)
+    eq(tab.errors.length, 0, '存储被禁时不许抛错：' + JSON.stringify(tab.errors))
+    eq(r.marked, 1, '按钮照常能标记')
+    eq(r.broken, 0, '存储不可用不是数据错误')
+    assert(r.count.indexOf('1 处') >= 0, '这一次会话里的计数照常工作')
+    await tab.send('Page.removeScriptToEvaluateOnNewDocument', { identifier: stub.identifier })
+  })
+
+  await it('脚本未运行时按钮和课末那一块照常显示，正文不受影响', async () => {
+    const nojs = fixture('feedback-nojs', FB_COURSE, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`return {
+      buttons:[].filter.call(document.querySelectorAll('.kc-feedback'),function(b){return getComputedStyle(b).display!=='none';}).length,
+      exportVisible:getComputedStyle(document.querySelector('.kc-feedback-export')).display!=='none',
+      panels:document.querySelectorAll('.kc-feedback__panel').length,
+      prose:document.querySelectorAll('.kc-screen p').length};`)
+    eq(r.buttons, 3, '无脚本时按钮照常显示')
+    assert(r.exportVisible, '课末那一块照常显示')
+    eq(r.panels, 0, '无脚本时不创建输入框')
+    eq(r.prose, 3, '正文完全不受影响')
+  })
 })
 
 /* KC_GROUPS_END */

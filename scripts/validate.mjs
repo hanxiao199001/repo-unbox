@@ -423,6 +423,21 @@ export function validate(courseDir, sourceDir) {
     check(`${cls} carries no id`, withId === 0, withId ? `${withId} with an id — it must be located by its block` : '');
   }
 
+  /* ── 13b. every screen can be told "I did not get this" ───── */
+  // The learner's only channel back. A screen without the button is a screen
+  // whose confusion is invisible, and there is no other way to notice.
+  const screens = html.split(/<section class="kc-screen"[^>]*>/).slice(1);
+  const noButton = screens.filter((seg) => {
+    const own = seg.split('<section class="kc-screen"')[0];
+    return !/class="kc-feedback"/.test(own);
+  }).length;
+  check(`every screen has a feedback button (${screens.length} screens)`, noButton === 0,
+    noButton ? `${noButton} screen(s) without one — scripts/build.mjs injects them, so this means the file was assembled some other way` : '');
+
+  const exportParts = ['kc-feedback-export', 'kc-feedback-export__count', 'kc-feedback-export__button', 'kc-feedback-export__clear', 'kc-feedback-export__fallback'];
+  const missingExport = exportParts.filter((c) => !html.includes(`class="${c}"`));
+  check('course ends with the feedback export block', missingExport.length === 0, missingExport.join(', '));
+
   /* ── 14. the element examples must not ship fixed ids ────── */
   // Ids are global to the assembled course, so a literal id in an example is a
   // duplicate waiting to happen the moment two modules use that element. One

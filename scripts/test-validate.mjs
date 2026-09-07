@@ -32,7 +32,7 @@ const CODE = `async function persist() {
 }`;
 
 const CLOSING = `
-  <section class="kc-screen">
+  <section class="kc-screen"><button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">让 AI 帮你跑起来时，你可以这样说</h3>
     <div class="kc-cards">
       <div class="kc-cards__item" data-kc-accent="1"><span class="kc-cards__icon">◆</span><p class="kc-cards__title">跑起来</p><p class="kc-cards__body">帮我把这个项目在本地跑起来。<br><span data-kc-lang="en">Help me get this Express project running locally and tell me which URL to open.</span></p></div>
@@ -52,7 +52,7 @@ const moduleHtml = (n, tone, metaphor, closing = '') => `
   <p class="kc-module__number">0${n}</p>
   <h2 class="kc-module__title">第 ${n} 个模块</h2>
   <p class="kc-module__subtitle">这一模块带你把一条待办从按钮追到硬盘。</p>
-  <section class="kc-screen">
+  <section class="kc-screen"><button class="kc-feedback" type="button"></button>
     ${filler(18)}
     <div class="kc-code-pair">
       <div class="kc-code-pair__code">
@@ -91,7 +91,7 @@ const moduleHtml = (n, tone, metaphor, closing = '') => `
       <p class="kc-flow__progress"></p>
     </div>
   </section>
-  <section class="kc-screen">
+  <section class="kc-screen"><button class="kc-feedback" type="button"></button>
     ${filler(12)}
     <div class="kc-quiz" id="kc-quiz-m${n}">
       <div class="kc-quiz__question" data-kc-answer="b" data-kc-right="对。只有它碰硬盘。" data-kc-wrong="再看一眼写盘那一行是谁调的。">
@@ -179,6 +179,8 @@ const MUTATIONS = [
     .replace('提到了 persist 这个函数', '讲明白了原理')],
   ['every module declares data-kc-metaphor', (h) => h.replace(/ data-kc-metaphor="快递驿站"/, '')],
   ['no metaphor used twice in one course', (h) => h.replace('白板与档案柜', '快递驿站')],
+  ['every screen has a feedback button', (h) => h.replace('<button class="kc-feedback" type="button"></button>', '')],
+  ['course ends with the feedback export block', (h) => h.replace('class="kc-feedback-export__button"', 'class="kc-feedback-export__button-x"')],
   ['every module has 3-5 quiz questions', (h) => {
     // 每组只留第一道，其余删掉 —— 正好复现 e2e 那次每模块 1 道题的情况
     let i = 0;

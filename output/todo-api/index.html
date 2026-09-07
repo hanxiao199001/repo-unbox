@@ -25,6 +25,7 @@
   <p class="kc-module__subtitle">从你敲的三个字，一路追到硬盘上的那个文件。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">先做一件你已经做过的事</h3>
     <p>页面上有一个输入框，你在里面打了“买牛奶”，按了旁边的“Add”。列表里多出来一条。你刷新页面，它还在。</p>
     <p>这一门课要讲的全部内容，就是这三句话背后发生的事。不是从“什么是<span class="kc-term" data-kc-define="server（服务器）字面就是“提供服务的人”，serve（伺候、上菜）加上 -er（干这事的人）。在这个项目里，它是你电脑上一直开着的那个 node 程序，别人问它要待办，它就把待办找出来给别人。国内工程师就叫服务器，也直接说 server。">服务器</span>”开始讲，是从你的手指开始讲。</p>
@@ -38,6 +39,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">这个项目里有谁</h3>
     <p>先认四个主要的，各管一摊。名字全是英文，你会反复见到它们，所以现在就认脸。</p>
 
@@ -93,6 +95,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">点下去之后，这句话走了哪条路</h3>
     <p>点“下一步”，跟着“买牛奶”走一遍。这条路你后面四个模块都会反复走，先有个整体印象。</p>
 
@@ -124,6 +127,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">页面这一头，代码长什么样</h3>
     <p>下面这段是你按下 Add 时真正跑起来的代码。左边是原文，右边一行一行讲。</p>
 
@@ -163,6 +167,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m1">
@@ -224,6 +229,7 @@
   <p class="kc-module__subtitle">大门口不干活，它只负责把你指到对的柜台。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">大门口只做一件事</h3>
     <p>上一模块里，请求飞到了 server.js。你可能以为它就是那个“干活的”。其实正相反——它一件活都不干。</p>
     <p>它像医院的挂号分诊台：你说哪儿不舒服，它给你指一个诊室。它不给你看病，它只负责别把你指错地方。</p>
@@ -260,6 +266,7 @@ app.get('/api/health', (req, res) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">柜台里发生了什么</h3>
     <p>被指到待办柜台之后，真正处理“新建一条”的是下面这九行。</p>
 
@@ -290,6 +297,7 @@ router.post('/', validateCreate, async (req, res, next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">让它们自己说</h3>
     <p>同样一件事，换成这几个文件在群里对话，是这样的。点“下一条”一条条看。</p>
 
@@ -335,6 +343,7 @@ router.post('/', validateCreate, async (req, res, next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">这段被人改坏了</h3>
     <p>下面是“查一条待办”的代码，被人悄悄动了一处。点一下你觉得有问题的那一行。点错没有惩罚，可以一直点到找到为止。</p>
 
@@ -353,6 +362,7 @@ router.post('/', validateCreate, async (req, res, next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m2">
@@ -413,6 +423,7 @@ router.post('/', validateCreate, async (req, res, next) =&gt; {
   <p class="kc-module__subtitle">请求到达柜台之前，先被几个人依次摸了一遍。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">中间那一层</h3>
     <p>上一模块留了一个尾巴：那一行里，validateCreate 排在真正干活的函数前面。它是什么？</p>
     <p>它是<span class="kc-term" data-kc-define="middleware 拆开是 middle（中间）+ ware（东西），字面就是“夹在中间的那层东西”。在这个项目里，它是请求到达柜台之前依次经过的一串检查函数：解析 JSON、记日志、校验标题。国内叫中间件，口语里也直接说 middleware。">中间件</span>。</p>
@@ -431,6 +442,7 @@ router.post('/', validateCreate, async (req, res, next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第二关：每一次请求都被记了一笔</h3>
     <p>这段是项目自己写的一个中间件。它谁也不拦，只是把每次请求记下来。</p>
 
@@ -468,6 +480,7 @@ app.use((req, res, next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第三关：真正会拦人的那一道</h3>
     <p>上一道关谁都放行。这一道不一样——标题不合格，它直接把你挡在门外。</p>
 
@@ -510,6 +523,7 @@ export function validateCreate(req, res, next) {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">各在哪一层</h3>
     <p>点一个方块，看它负责什么。</p>
 
@@ -543,6 +557,7 @@ export function validateCreate(req, res, next) {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m3">
@@ -604,6 +619,7 @@ export function validateCreate(req, res, next) {
   <p class="kc-module__subtitle">为什么刷新还在，关机重启也还在。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">两个地方，性格完全不同</h3>
     <p>“数据存在哪”这个问题，在这个项目里有两个答案，而且两个都对。</p>
     <p>一个是<span class="kc-term" data-kc-define="内存（memory）是电脑临时放东西的地方，读写极快，但断电就没。程序运行时的变量都住在这儿。国内叫内存，英文里也常说 in-memory，意思是“放在内存里的”。">内存</span>，一个是<span class="kc-term" data-kc-define="硬盘（disk）是电脑长期存东西的地方，慢一些，但关机之后还在。文件都住在这儿。国内叫硬盘或磁盘，英文说 disk。">硬盘</span>。它们的关系就像办公室里的白板和档案柜：白板写起来快，一擦就没，停电也没；档案柜慢，但明天来了它还在。</p>
@@ -629,6 +645,7 @@ export function validateCreate(req, res, next) {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">原作者自己写了答案</h3>
     <p>这四行里有两行是注释。它们是整个项目里最值钱的两句话——写代码的人在解释他为什么这么设计。</p>
 
@@ -680,6 +697,7 @@ let writeQueue = Promise.resolve();</pre>
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">新建一条，代码是这样的</h3>
 
     <div class="kc-code-pair">
@@ -714,6 +732,7 @@ let writeQueue = Promise.resolve();</pre>
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">这段也被改坏了</h3>
     <p>删除一条待办的代码，同样只动了一处。</p>
 
@@ -733,6 +752,7 @@ let writeQueue = Promise.resolve();</pre>
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m4">
@@ -794,6 +814,7 @@ let writeQueue = Promise.resolve();</pre>
   <p class="kc-module__subtitle">看懂那行英文，比会写代码更早派上用场。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">所有的错都走同一个出口</h3>
     <p>前面几个模块里，你见过好几次 <code class="kc-code" data-kc-lang="en">next(err)</code>。它们最后都去了同一个地方。</p>
     <p>这就像小区里的自助取件柜：取件码错了、格子是空的、机器本身坏了——三件完全不同的事，但柜子上只有一块屏幕在提示你。区别在于它显示哪一句。</p>
@@ -834,6 +855,7 @@ export function errorHandler(err, req, res, next) {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">页面那一头怎么接住</h3>
 
     <div class="kc-code-pair">
@@ -868,6 +890,7 @@ export function errorHandler(err, req, res, next) {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">先判断，再动手</h3>
 
     <div class="kc-scenario">
@@ -926,6 +949,7 @@ export function errorHandler(err, req, res, next) {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">让 AI 帮你跑起来时，你可以这样说</h3>
     <p>下面三句可以直接复制。中文在上，英文在下——英文那句是你将来在英文界面里要用的原话。</p>
 
@@ -971,6 +995,7 @@ export function errorHandler(err, req, res, next) {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">最后检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m5">
@@ -1016,6 +1041,14 @@ export function errorHandler(err, req, res, next) {
 </section>
 
 </main>
+<section class="kc-feedback-export">
+<p class="kc-feedback-export__count"></p>
+<div class="kc-feedback-export__actions">
+<button class="kc-feedback-export__button" type="button">导出反馈</button>
+<button class="kc-feedback-export__clear" type="button">清空</button>
+</div>
+<textarea class="kc-feedback-export__fallback" readonly></textarea>
+</section>
 <footer class="kc-colophon">本课程由 开箱（repo-unbox）从代码库生成 · 完全离线，不联网</footer>
 <script src="main.js"></script>
 </body>

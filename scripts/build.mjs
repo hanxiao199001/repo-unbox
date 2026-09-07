@@ -124,6 +124,27 @@ function tagEnglish(html) {
   return { html: out, counts };
 }
 
+/* ── "这里没看懂" buttons ─────────────────────────────────────── */
+// One per screen, identical everywhere — exactly the mechanical work this
+// script exists to take off the writing agent. Injected into the assembled
+// output only; the module files stay clean, so a rebuild never doubles them.
+function injectFeedback(html) {
+  const parts = html.split(/(<section class="kc-screen"[^>]*>)/);
+  let added = 0;
+  let out = parts[0];
+  for (let i = 1; i < parts.length; i += 2) {
+    const open = parts[i];
+    const body = parts[i + 1] || '';
+    if (/class="kc-feedback"/.test(body.split('<section class="kc-screen"')[0])) {
+      out += open + body;
+      continue;
+    }
+    added += 1;
+    out += open + '\n    <button class="kc-feedback" type="button"></button>' + body;
+  }
+  return { html: out, added };
+}
+
 /* ── Assemble ────────────────────────────────────────────────── */
 const parts = [
   fs.readFileSync(basePath, 'utf8'),
@@ -131,7 +152,10 @@ const parts = [
   fs.readFileSync(path.join(courseDir, '_footer.html'), 'utf8'),
 ];
 
-const { html, counts } = tagEnglish(parts.join('\n'));
+const tagged = tagEnglish(parts.join('\n'));
+const feedback = injectFeedback(tagged.html);
+const html = feedback.html;
+const counts = tagged.counts;
 const indexPath = path.join(courseDir, 'index.html');
 fs.writeFileSync(indexPath, html);
 
@@ -151,6 +175,8 @@ if (taskTypes.length === 0) {
   const breakdown = Object.entries(byType).map(([t, n]) => `${t} ×${n}`).join(', ');
   console.log(`  output tasks: ${taskTypes.length} across ${moduleCount} modules — ${breakdown}`);
 }
+
+console.log(`  “这里没看懂” buttons: ${feedback.added} injected (one per screen)`);
 
 const added = Object.values(counts).reduce((a, b) => a + b, 0);
 if (added === 0) {

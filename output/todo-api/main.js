@@ -285,7 +285,8 @@
 
   function initReveal () {
     if (!('IntersectionObserver' in win)) return;
-    var targets = qsa('.kc-module__number, .kc-module__title, .kc-module__subtitle, .kc-screen > *');
+    var targets = qsa('.kc-module__number, .kc-module__title, .kc-module__subtitle, .kc-screen > *')
+      .filter(function (t) { return !t.classList.contains('kc-feedback') && !t.classList.contains('kc-feedback__panel'); });
     if (!targets.length) return;
 
     var io = new IntersectionObserver(function (entries) {
@@ -1505,6 +1506,161 @@
     live(root);
   });
 
+  /* ------------------------------------------- 这里没看懂 kc-feedback (19) */
+  /* 学员唯一能对课程说话的地方。不联网、不上报、不判分 ——
+     记录只存在他自己的浏览器里，导不导出、发给谁，都由他决定。 */
+
+  var feedback = (function () {
+    var KEY = 'kc-feedback:' + win.location.pathname;
+    var items = null;
+
+    function load () {
+      if (items) return items;
+      items = [];
+      var raw = store.get(KEY);
+      if (raw) { try { var p = JSON.parse(raw); if (Array.isArray(p)) items = p; } catch (e) {} }
+      return items;
+    }
+    /* 存不下就算了：隐私模式下按钮照样能点，只是刷新之后不留。 */
+    function save () { store.set(KEY, JSON.stringify(load())); }
+    function idOf (moduleId, screenIndex) { return moduleId + '#' + screenIndex; }
+    function find (key) { return load().filter(function (x) { return x.key === key; })[0] || null; }
+
+    return {
+      all: load,
+      get: find,
+      add: function (rec) { load().push(rec); save(); },
+      remove: function (key) { items = load().filter(function (x) { return x.key !== key; }); save(); },
+      note: function (key, text) { var r = find(key); if (r) { r.note = text; save(); } },
+      clear: function () { items = []; save(); },
+      keyOf: idOf
+    };
+  })();
+
+  var feedbackWatchers = [];
+
+  register('这里没看懂', '.kc-feedback', function (root) {
+    var screen = root.closest('.kc-screen');
+    var mod = root.closest('.kc-module');
+    if (!screen || !mod) { broken(root, '反馈按钮必须在一个 kc-screen 里，而这一屏又必须在一个 kc-module 里'); return; }
+
+    var screens = qsa('.kc-screen', mod);
+    var screenIndex = screens.indexOf(screen) + 1;
+    var key = feedback.keyOf(mod.id || '?', screenIndex);
+    var titleEl = qs('.kc-screen__title', screen);
+    var screenTitle = titleEl ? titleEl.textContent.trim() : '（这一屏没有标题）';
+
+    root.setAttribute('type', 'button');
+    root.setAttribute('aria-pressed', 'false');
+    root.setAttribute('aria-label', '这里没看懂：' + screenTitle);
+    root.textContent = '这里没看懂';
+
+    var panel = el('div', 'kc-feedback__panel');
+    var note = doc.createElement('input');
+    note.type = 'text';
+    note.className = 'kc-feedback__note';
+    note.setAttribute('placeholder', '想补一句吗？不写也行');
+    note.setAttribute('aria-label', '这一屏哪里没看懂（可以不填）');
+    var hint = el('p', 'kc-feedback__hint', '已记下。再点一次按钮可以撤销。这条只存在你自己的浏览器里。');
+    panel.appendChild(note);
+    panel.appendChild(hint);
+    screen.appendChild(panel);
+
+    function paint () {
+      var on = !!feedback.get(key);
+      root.classList.toggle('kc-is-marked', on);
+      root.setAttribute('aria-pressed', on ? 'true' : 'false');
+      panel.classList.toggle('kc-is-open', on);
+      if (on) note.value = feedback.get(key).note || '';
+    }
+
+    on(root, 'click', function () {
+      if (feedback.get(key)) {
+        feedback.remove(key);
+      } else {
+        var num = qs('.kc-module__number', mod);
+        feedback.add({
+          key: key,
+          module: mod.id || '',
+          moduleNumber: num ? num.textContent.trim() : '',
+          moduleTitle: (qs('.kc-module__title', mod) || {}).textContent || '',
+          screen: screenIndex,
+          screenTitle: screenTitle,
+          note: '',
+          at: new Date().toISOString()
+        });
+      }
+      paint();
+      if (feedback.get(key)) note.focus();
+      feedbackWatchers.forEach(function (f) { f(); });
+    });
+
+    /* 那一句话是可选的：写到一半关掉页面，那条记录也已经在了。 */
+    on(note, 'input', function () { feedback.note(key, note.value); });
+    on(note, 'keydown', function (ev) { if (ev.key === 'Escape') root.focus(); });
+
+    feedbackWatchers.push(paint);
+    paint();
+    live(root);
+  });
+
+  function initFeedbackExport () {
+    var root = qs('.kc-feedback-export');
+    if (!root) return;
+    var count = qs('.kc-feedback-export__count', root);
+    var button = qs('.kc-feedback-export__button', root);
+    var clear = qs('.kc-feedback-export__clear', root);
+    var fallback = qs('.kc-feedback-export__fallback', root);
+    if (!count || !button || !clear || !fallback) { broken(root, '课末反馈块缺件'); return; }
+
+    function refresh () {
+      var n = feedback.all().length;
+      count.textContent = n === 0
+        ? '你还没有标记过任何一屏。看不懂的地方点一下那一屏右上角的“这里没看懂”，只记在你自己的浏览器里。'
+        : '你一共标了 ' + n + ' 处没看懂。';
+      button.disabled = n === 0;
+    }
+    feedbackWatchers.push(refresh);
+
+    [button, clear].forEach(function (b) { b.setAttribute('type', 'button'); });
+
+    on(button, 'click', function () {
+      var payload = JSON.stringify({
+        course: doc.title,
+        exportedAt: new Date().toISOString(),
+        items: feedback.all()
+      }, null, 2);
+      var name = 'feedback-' + new Date().toISOString().slice(0, 10) + '.json';
+      /* 有些环境不允许页面发起下载。拦住了就把 JSON 摊出来让学员自己复制，
+         绝不能什么都不发生。 */
+      var ok = false;
+      try {
+        var blob = new Blob([payload], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = doc.createElement('a');
+        a.href = url;
+        a.download = name;
+        doc.body.appendChild(a);
+        a.click();
+        a.remove();
+        win.setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+        ok = true;
+      } catch (e) { ok = false; }
+      fallback.value = payload;
+      fallback.classList.toggle('kc-is-open', !ok);
+      root.setAttribute('data-kc-exported', ok ? 'download' : 'fallback');
+    });
+
+    on(clear, 'click', function () {
+      feedback.clear();
+      fallback.classList.remove('kc-is-open');
+      feedbackWatchers.forEach(function (f) { f(); });
+    });
+
+    refresh();
+    live(root);
+  }
+
   /* KC_MODULES_END */
 
   /* ----------------------------------------------------------------- boot */
@@ -1524,6 +1680,7 @@
       });
     });
 
+    try { initFeedbackExport(); } catch (e) {}
     try { bindTerms(); } catch (e) {}
     try { initReveal(); } catch (e) {}
   }

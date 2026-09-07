@@ -33,6 +33,7 @@
   </div>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       打开 SIGNAL LOG 首页，你会看到一个深蓝色的收报台。左边是一张表：
       <span class="kc-term" data-kc-define="呼号是无线电通讯里给一个电台起的代号，比如“CQ9-7”。在这个项目里，callsign 是发信人给自己起的匿名昵称，最多 24 个字符，可以不填，不填就显示 Anonymous。国内工程师聊起来会直接说 callsign，不特意翻译。">呼号（callsign）</span>、
@@ -52,6 +53,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       app.js 里有一段专门处理这件事的
       <span class="kc-term" data-kc-define="function 直译是“功能、函数”。它是一段被取了名字、可以反复被调用的代码块，像一个专门干一件事的小机器。在这个项目里，submitTransmission 就是专门处理“提交留言”这件事的函数。国内工程师就叫它函数或者 function。">函数（function）</span>，
@@ -83,6 +85,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>整条路上，真正落盘的只有最后那一步。看看 db.js 里的 createMessage 长什么样：</p>
     <div class="kc-code-pair">
       <div class="kc-code-pair__code">
@@ -113,6 +116,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-note" data-kc-tone="insight">
       <span class="kc-note__icon">✦</span>
       <p class="kc-note__title">单一出口</p>
@@ -154,6 +158,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-output" id="kc-output-m1" data-kc-kind="retell" data-kc-min="90">
       <span class="kc-output__label"></span>
       <p class="kc-output__prompt">用你自己的话说一遍：你在留言框里打字、点了 Transmit 之后，这条留言依次经过了哪些文件，最后停在哪里？</p>
@@ -178,6 +183,7 @@
   </div>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       上一节我们看到，一条留言要经过三个文件才能真正落地。这一节把地面站控制室的门推开，
       认全每个岗位——项目里一共五个主要文件，各管一摊，互不越界。
@@ -212,6 +218,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       下面这几位要互相打个招呼。留意 server.js 提到的
       <span class="kc-term" data-kc-define="route 直译是“路线”。在 Web 开发里，它指“某个网址对应哪一段代码”这套规则，比如 GET /api/messages 就对应 server.js 里的一段代码。国内工程师就叫它路由或者 route。">路由（route）</span>
@@ -282,6 +289,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>把 server.js 里真实的那段路由代码打开看看——它到底有没有自己去碰数据库：</p>
     <div class="kc-code-pair">
       <div class="kc-code-pair__code">
@@ -307,6 +315,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-note" data-kc-tone="insight">
       <span class="kc-note__icon">✦</span>
       <p class="kc-note__title">关注点分离</p>
@@ -347,6 +356,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-output" id="kc-output-m2" data-kc-kind="instruct" data-kc-min="80">
       <span class="kc-output__label"></span>
       <p class="kc-output__prompt">如果你想给每条留言加一个“点赞数”字段，你会怎么跟 AI 说，让它一次说清楚要动哪几个文件？把这句话原样写出来。</p>
@@ -371,6 +381,7 @@
   </div>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       你在搜索框里打上“orbit”，或者点一下 EARTH 这个筛选按钮，页面上的列表立刻变了——只剩下带这个词、
       或者来源是 Earth 的留言。这背后到底发生了什么？
@@ -390,6 +401,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>server.js 把这几个参数原样递给 db.js，真正“翻书”的活儿在这个函数里发生：</p>
     <div class="kc-code-pair">
       <div class="kc-code-pair__code">
@@ -427,6 +439,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-note" data-kc-tone="insight">
       <span class="kc-note__icon">✦</span>
       <p class="kc-note__title">拼 SQL 不等于拼字符串</p>
@@ -450,6 +463,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-quiz" id="kc-quiz-m3">
       <div class="kc-quiz__question" data-kc-answer="a"
            data-kc-right="对。像 %orbit% 这样的模糊匹配全靠首尾两个 %，少了它们，LIKE 就变成了必须完全相等才算数。"
@@ -486,6 +500,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-output" id="kc-output-m3" data-kc-kind="explain" data-kc-min="70">
       <span class="kc-output__label"></span>
       <p class="kc-output__prompt">朋友问你，网址里 origin=Earth 这种东西是什么意思，用不超过三句话讲给他听。</p>
@@ -509,6 +524,7 @@
   </div>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       凌晨三点，一个脚本盯上了 SIGNAL LOG：它每秒钟往 /api/messages 灌一遍一模一样的留言，
       想把 Live Log 刷成自己的广告牌。如果服务器什么都不做，数据库很快就会被灌满垃圾电文。
@@ -549,6 +565,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>先看第一道关卡——频率限制——真实的样子：</p>
     <div class="kc-code-pair">
       <div class="kc-code-pair__code">
@@ -578,6 +595,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       前面拦下来的是“发得太快”，接下来这一关拦的是“看着不像人话”。这段函数被悄悄改坏了，点一下你觉得有问题的那一行：
     </p>
@@ -596,6 +614,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       拦住了机器人，还有最后一件事：就算是真人发来的正常留言，也不能被当成代码执行。看看 app.js 是怎么把留言正文画到页面上的：
     </p>
@@ -632,6 +651,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-quiz" id="kc-quiz-m4">
       <div class="kc-quiz__question" data-kc-answer="a"
            data-kc-right="对。enforcePostRateLimit 是最早跑的一段中间件，请求根本进不到后面判断内容、判断人机验证那些代码。"
@@ -668,6 +688,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-output" id="kc-output-m4" data-kc-kind="instruct" data-kc-min="80">
       <span class="kc-output__label"></span>
       <p class="kc-output__prompt">你想再加一条反作弊规则：同一个 callsign 一天最多只能发 20 条留言。把你会对 AI 说的那句话原样写出来。</p>
@@ -691,6 +712,7 @@
   </div>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       你把留言填好，点了 Transmit。10 秒都没到，手一抖又点了一次——这一次表单没有清空，
       反而在按钮附近弹出了一行红字。这是这个项目里真的会抛出来的报错，一字不改：
@@ -739,6 +761,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>
       在自己电脑上运行时，端口和管理员密码都是随手写的。真要把电台搬上云端信号塔，这几行就变得很关键：
     </p>
@@ -761,6 +784,7 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';</pre>
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>把这几个文件按它们实际跑在哪一层重新摆一遍，点任意一个方块看它负责什么：</p>
     <div class="kc-map">
       <div class="kc-map__zone">
@@ -797,6 +821,7 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';</pre>
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <div class="kc-output" id="kc-output-m5" data-kc-kind="retell" data-kc-min="90">
       <span class="kc-output__label"></span>
       <p class="kc-output__prompt">用你自己的话说一遍：如果后端报错 Human check expired. Request a new challenge.，你会按什么顺序去查？</p>
@@ -812,6 +837,7 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';</pre>
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>课程到这里就结束了。往后你自己改代码时，这几句话可以直接抄给 AI 用：</p>
     <div class="kc-steps">
       <div class="kc-steps__item">
@@ -836,6 +862,7 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';</pre>
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <p>这个项目最可能撞上的几条英文报错，一字不改地列在这里：</p>
     <div class="kc-deflist">
       <div class="kc-deflist__row">
@@ -863,6 +890,14 @@ const ADMIN_TOKEN = process.env.ADMIN_TOKEN || '';</pre>
 </section>
 
 </main>
+<section class="kc-feedback-export">
+<p class="kc-feedback-export__count"></p>
+<div class="kc-feedback-export__actions">
+<button class="kc-feedback-export__button" type="button">导出反馈</button>
+<button class="kc-feedback-export__clear" type="button">清空</button>
+</div>
+<textarea class="kc-feedback-export__fallback" readonly></textarea>
+</section>
 <footer class="kc-colophon">本课程由 开箱（repo-unbox）从代码库生成 · 完全离线，不联网</footer>
 <script src="main.js"></script>
 </body>

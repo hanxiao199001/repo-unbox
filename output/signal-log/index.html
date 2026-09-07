@@ -25,6 +25,7 @@
   <p class="kc-module__subtitle">一条留言从输入框出发，到落进数据库为止。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">先做一件你已经做过的事</h3>
     <p>SIGNAL LOG 是一个深空电台主题的留言板。你填一个<span class="kc-term" data-kc-define="callsign 拆开是 call（呼叫）+ sign（标记），无线电里指电台的呼号，也就是“我是谁”。在这个项目里它就是你留言时署的名，可以不填，最多 24 个字符。国内叫呼号。">callsign</span>（呼号）、一个 origin（来源），写一句话，按下 TRANSMIT。</p>
     <p>下一秒，你的留言出现在下面那条滚动的信号流最上面，旁边还有一个 0 到 100 的信号强度。</p>
@@ -56,6 +57,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">按下去之后，这句话走了哪条路</h3>
 
     <div class="kc-flow" data-kc-steps='[
@@ -84,6 +86,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">页面这一头，代码长什么样</h3>
 
     <div class="kc-code-pair">
@@ -130,6 +133,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m1">
@@ -191,6 +195,7 @@
   <p class="kc-module__subtitle">接收站自己不存东西，它只负责把每一单指到对的地方。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">一台收音机上的几个频道</h3>
     <p>server.js 一共对外开了五条 API 路由（另外还有一个 /admin 管理页面，第五模块讲）。它们就像一台收音机上的几个频道，每个频道播的东西完全不同：</p>
 
@@ -221,6 +226,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">最简单的一条：出一道题</h3>
 
     <div class="kc-code-pair">
@@ -247,6 +253,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">复杂一点的一条：要一页留言</h3>
 
     <div class="kc-code-pair">
@@ -283,6 +290,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">让它们自己说</h3>
 
     <div class="kc-chat" id="kc-chat-m2">
@@ -319,6 +327,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m2">
@@ -379,6 +388,7 @@
   <p class="kc-module__subtitle">三道完全不同的防线，各挡一种人。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">为什么留言板一定会被刷</h3>
     <p>任何人不用登录就能发的地方，一定会被自动脚本盯上。这个项目布了三道防线，而且三道挡的是完全不同的三种情况。</p>
     <p>就像接收站上串起来的三个滤波器：一个滤掉发得太频繁的，一个滤掉根本不是人的，一个滤掉内容本身是垃圾的。</p>
@@ -403,6 +413,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第一道：数次数</h3>
 
     <div class="kc-code-pair">
@@ -433,6 +444,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第二、三道：内容和身份</h3>
 
     <div class="kc-code-pair">
@@ -493,6 +505,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">这段被人改坏了</h3>
 
     <div class="kc-bughunt">
@@ -511,6 +524,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m3">
@@ -572,6 +586,7 @@
   <p class="kc-module__subtitle">留言存进 SQLite，信号强度是算出来的。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">一个文件，就是整个数据库</h3>
     <p>上一门课里，待办是存在一个 JSON 文件里的。这个项目换了个更正经的东西：<span class="kc-term" data-kc-define="SQLite 读作“S-Q-L-light”，字面是“轻量版的 SQL 数据库”。它的特别之处是整个数据库就是硬盘上的一个文件，不需要单独装服务、不需要账号密码。国内直接念 SQLite。">SQLite</span>。</p>
     <p>它的特别之处是：整个数据库就是项目根目录下的一个文件，叫 signal-log.db。不用装服务，不用配账号。你把那个文件拷走，数据就跟着走了。</p>
@@ -605,6 +620,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">信号强度是编出来的</h3>
     <p>页面上那个 0 到 100 的信号强度看着很酷，其实它不是测出来的，是按留言长度算出来的。</p>
 
@@ -636,6 +652,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">先写一行，再回头补一个字段</h3>
     <p>这里有一个先有鸡还是先有蛋的问题：强度要用编号来算，可编号是插入之后数据库才给的。</p>
 
@@ -665,6 +682,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m4">
@@ -726,6 +744,7 @@
   <p class="kc-module__subtitle">谁能删留言，以及看懂那行英文报错。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">一把钥匙，一道门</h3>
     <p>这个项目里，谁都能发留言、谁都能举报，但只有一件事需要身份：删除。</p>
     <p>它没有账号密码，只有一把钥匙——一个写在服务器环境变量里的字符串。你把这把钥匙放进请求头里，门才开。这就像值班室的门：不问你是谁，只问你有没有钥匙。</p>
@@ -766,6 +785,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">所有的错都走同一个出口</h3>
 
     <div class="kc-code-pair">
@@ -788,6 +808,7 @@ app.use((err, _req, res, _next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">留言里写 HTML 会怎样</h3>
     <p>这是留言板绕不开的一个问题：有人在留言里写一段脚本，别人打开页面就中招了。这个项目的处理方式在这八行里。</p>
 
@@ -823,6 +844,7 @@ app.use((err, _req, res, _next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">先判断，再动手</h3>
 
     <div class="kc-scenario">
@@ -881,6 +903,7 @@ app.use((err, _req, res, _next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">这段也被改坏了</h3>
 
     <div class="kc-bughunt">
@@ -899,6 +922,7 @@ app.use((err, _req, res, _next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">让 AI 帮你跑起来时，你可以这样说</h3>
     <p>下面三句可以直接复制。中文在上，英文在下——英文那句是你将来在英文界面里要用的原话。</p>
 
@@ -944,6 +968,7 @@ app.use((err, _req, res, _next) =&gt; {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">最后检查一下</h3>
 
     <div class="kc-quiz" id="kc-quiz-m5">
@@ -989,6 +1014,14 @@ app.use((err, _req, res, _next) =&gt; {
 </section>
 
 </main>
+<section class="kc-feedback-export">
+<p class="kc-feedback-export__count"></p>
+<div class="kc-feedback-export__actions">
+<button class="kc-feedback-export__button" type="button">导出反馈</button>
+<button class="kc-feedback-export__clear" type="button">清空</button>
+</div>
+<textarea class="kc-feedback-export__fallback" readonly></textarea>
+</section>
 <footer class="kc-colophon">本课程由 开箱（repo-unbox）从代码库生成 · 完全离线，不联网</footer>
 <script src="main.js"></script>
 </body>

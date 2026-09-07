@@ -31,6 +31,7 @@
   <p class="kc-module__subtitle">你在左边的表单里打了一句话，点了那个写着 Transmit 的按钮。这一模块要做的，就是把这几乎看不见的一瞬间拉长、拆开，看看这句话到底走了哪几步，才变成右边那条带着信号强度的新记录。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">这东西到底是什么</h3>
     <p>SIGNAL LOG 是一个带着深空电台外壳的留言板。首页左边是一张写着<span class="kc-term" data-kc-define="callsign 直译是‘呼号’，业余无线电爱好者用来自报身份的代号，比如 Nomad-7。在这个项目里它就是一个可选的昵称输入框，国内工程师聊起来就直接说 callsign 或者‘呼号字段’。">Transmit</span>的表单，右边是一条不断滚动的日志。你在 Message 里打一句话、点一下 Transmit，几乎同一瞬间，右边"Live Log"那栏就会多出一条新记录，旁边还带着一个类似"Signal 87%"的百分比。</p>
     <p>这条留言最终会落进一个叫 <code class="kc-code" data-kc-lang="en">signal-log.db</code> 的文件里——那才是真正意义上的"发出去"：刷新页面、关掉浏览器，它都还在那儿。这一路走过的几个文件，就是接下来五个模块要一个个拆开看的东西。</p>
@@ -42,6 +43,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第一站：浏览器先把你打的字捆成一个包裹</h3>
     <p>点击 Transmit 按钮触发的第一件事，发生在 <code class="kc-code" data-kc-lang="en">public/app.js</code> 里。这个文件负责把表单里的几个输入框读出来，捆成一个统一的<span class="kc-term" data-kc-define="payload 直译是‘负载、装载的东西’，字面意思是‘真正要运的那批货’。在这个项目里，它指的是即将发给服务器的那一整包数据：呼号、来源、留言正文、人类验证的答案。国内工程师聊起来就直接说 payload。">payload</span>，然后再送出去。</p>
     <div class="kc-code-pair">
@@ -69,6 +71,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第二站：包裹要过网线，走的是哪条路</h3>
     <p>点着走一遍这个包裹的完整旅程——从你打字，到它真正落进数据库，再到你在屏幕上看见结果。</p>
     <div class="kc-flow" data-kc-steps='[
@@ -96,6 +99,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第三站：server.js 里都过了哪些关卡</h3>
     <p>包裹到达服务器之后，并不会被直接相信。<span class="kc-term" data-kc-define="接口在这里是 API 的另一种说法，API 直译是 Application Programming Interface，‘应用程序编程接口’。它指服务器专门开放出来、给别的程序调用的一个个网址，比如 slash api slash messages。国内工程师简称接口或者 API。">接口</span> <code class="kc-code" data-kc-lang="en">/api/messages</code> 背后的函数，会重新<span class="kc-term" data-kc-define="validate 直译是‘验证’。这里指服务器收到数据之后，不管浏览器有没有查过，自己再挨个检查一遍是不是符合要求，比如 message 不能是空的。国内工程师叫校验或者验证。">校验</span>一遍每一样东西——它从来不假设浏览器那边已经查过了。</p>
     <div class="kc-code-pair">
@@ -126,6 +130,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">小结</h3>
     <p>一句话捋一遍：app.js 把表单捆成 payload 发出去，server.js 重新校验一遍，通过了才会交给 db.js 落盘，最后 app.js 再把最新的列表画出来。三个文件，各管一段，谁都不完全信任谁。</p>
 
@@ -167,6 +172,7 @@
   <p class="kc-module__subtitle">上一模块跟着一条留言走了一遍全程，路过了好几个文件名。这一模块停下来，把这几个文件当成几个角色，一个个认清楚：谁负责收发、谁只管硬盘、谁只管好看。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">五个文件，五个分工</h3>
     <p>SIGNAL LOG 一共只有五个自己写的文件，就像一个开在网上的快递驿站：有人在窗口收件，有人在后头的仓库码货，还有人负责把门面装修得像回事。分工非常干净——每个文件只管一件事。</p>
     <div class="kc-rolelist">
@@ -199,6 +205,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">server.js：只负责派活，不留一件东西</h3>
     <p>server.js 用的是一个叫<span class="kc-term" data-kc-define="Express 是一款软件的名字，直译‘快车、快递’。它是这个项目用来搭建服务器的一套工具库，专门负责‘收到一个网址请求，该交给哪段代码处理’。国内工程师就直接说 Express，不翻译。">Express</span>的框架。它的核心工作就是给每一条<span class="kc-term" data-kc-define="路由 route 直译是‘路线’。这里指‘某个固定网址 + 某种请求方式’对应的一段处理代码，比如 GET slash api slash human-check 就是一条路由。国内工程师聊起来直接说路由或者 route。">路由</span>安排好该由哪段代码来接。下面这一段就是全项目里最短的一条路由——专门用来发一道人类验证题。</p>
     <div class="kc-code-pair">
@@ -219,6 +226,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">db.js：不只是存东西，还会算账</h3>
     <p>整个项目只有 db.js 会碰那个叫 signal-log.db 的文件，用的是一个叫<span class="kc-term" data-kc-define="SQLite 是一款软件的名字。它是一种轻量级的数据库，不需要单独装一个数据库服务器，整个数据库就是一个文件。国内工程师就直接说 SQLite。">SQLite</span>的轻量数据库。但它不只是"存进去、读出来"这么简单——每条新留言送到它手上时，它还会顺手给这条留言算一个信号强度。</p>
     <div class="kc-code-pair">
@@ -246,6 +254,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">前端三件套：骨架、装修、行为，一层层叠上去</h3>
     <p>public 目录下的三个文件，正好对应网页的三层：<code class="kc-code" data-kc-lang="en">index.html</code> 是<span class="kc-term" data-kc-define="DOM 直译是 Document Object Model，‘文档对象模型’。它是浏览器把一份 HTML 读进内存之后，搭出来的一棵可以被代码操作的结构树。国内工程师聊起来就直接说 DOM。">DOM</span>结构，<code class="kc-code" data-kc-lang="en">styles.css</code> 管外观，<code class="kc-code" data-kc-lang="en">app.js</code> 管交互。切一下下面这几个标签，看看同一个表单在不同阶段长什么样。</p>
     <div class="kc-layers">
@@ -262,6 +271,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">三个角色，怎么互相打招呼</h3>
     <p>把模块一走过的那趟旅程，换成一段对话看一遍——同样的流程，换个角度，你会发现每句话都对应着你已经见过的那几行代码。</p>
     <div class="kc-chat" id="kc-chat-m2">
@@ -320,6 +330,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">小结</h3>
     <p>五个文件、五种分工：app.js 收发，server.js 分拣，db.js 存货又算账，index.html 搭骨架，styles.css 管装修。记住这张分工表，往后不管是找 bug 还是加功能，第一件事都是先问一句"这该归谁管"。</p>
 
@@ -361,12 +372,14 @@
   <p class="kc-module__subtitle">你在搜索框里打了"orbit"两个字，什么都没点，列表却自己刷新了。这一模块跟着这几个字，看它怎么变成一句网址、又怎么变成一条能在数据库里查东西的语句。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">你打字，它不用你点确认</h3>
     <p>Live Log 上方有一个搜索框，左边还有四个筛选按钮：ALL、EARTH、UNKNOWN、CUSTOM。你在搜索框里打字，停顿了大约三分之一秒之后，列表会自己刷新——这个"停顿一下才出手"的动作叫<span class="kc-term" data-kc-define="debounce 直译是‘去抖动’，工程上借用了这个词表示‘等你别再改主意了，我再动手’。这里指用户在搜索框里停止打字大约 300 毫秒之后，才真正去问服务器要数据，避免每敲一个字就发一次请求。国内工程师就直接说 debounce 或者防抖。">debounce（防抖）</span>。</p>
     <p>这就好比食堂的打饭窗口：你不用先递交一份正式申请，说一句"我要这个"，师傅就动手了。搜索框背后的<span class="kc-term" data-kc-define="接口 API 直译 Application Programming Interface，‘应用程序编程接口’。这里指服务器开放出来、专门接收某一类请求的网址，比如 GET slash api slash messages。国内工程师简称接口或者 API。">接口</span> <code class="kc-code" data-kc-lang="en">GET /api/messages</code>，就是那个打饭窗口——你说清楚要什么，师傅按你说的给，具体怎么从后厨的一大锅菜里舀出来，你不需要知道。</p>
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第一站：你打的字变成一段网址</h3>
     <p>app.js 里有个专门负责去要数据的函数，它先把你现在的搜索词、筛选条件，统统塞进一个叫<span class="kc-term" data-kc-define="URLSearchParams 是浏览器内置的一个工具，专门用来把一堆‘键和值’拼成网址后面那一长串参数，比如 limit=50&offset=0。国内工程师聊起来就直接说 URLSearchParams。">URLSearchParams</span>的工具里。</p>
     <div class="kc-code-pair">
@@ -395,6 +408,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第二站：服务器把网址参数拆开来读</h3>
     <p>这段参数飞到服务器之后，server.js 要把它从一串文字，重新拆成几个能用的变量。</p>
     <div class="kc-code-pair">
@@ -420,6 +434,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第三站：这些条件拼成一句能查数据库的话</h3>
     <p>真正会写<span class="kc-term" data-kc-define="SQL 直译 Structured Query Language，‘结构化查询语言’。它是专门用来对数据库说‘我要查什么、按什么条件’的一种语言。国内工程师就直接说 SQL，读作‘S-Q-L’或者‘sequel’。">SQL</span>语句的，只有 db.js。它会根据你有没有搜索词、有没有选筛选条件，一段一段地往一句大的查询语句上拼接。</p>
     <div class="kc-code-pair">
@@ -453,6 +468,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">串起来看一眼</h3>
     <div class="kc-chain">
       <div class="kc-chain__step"><span class="kc-chain__num">1</span>你打字</div>
@@ -469,6 +485,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">小结</h3>
     <div class="kc-quiz" id="kc-quiz-m3">
       <div class="kc-quiz__question" data-kc-answer="b"
@@ -507,6 +524,7 @@
   <p class="kc-module__subtitle">这个网站是公开在互联网上的，任何人都能往 /api/messages 发请求，不只是坐在浏览器前的你。这一模块看看原作者留了哪几道关卡，专门挡那些不怀好意的请求。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">如果没人守门，会发生什么</h3>
     <p>一个对外开放的留言板，天生要面对三类麻烦：自动脚本一秒刷几百条灌水消息、有人在留言里塞一段能在别人浏览器里执行的代码、还有人干脆想篡改数据库删掉别人的话。这些请求排着队想挤进 <code class="kc-code" data-kc-lang="en">/api/messages</code>，就像地铁早高峰的进站口，得一道一道关卡过滤，才能保证站台上是安全的。</p>
     <p>server.js 里请求先要经过的第一关，是一个叫<span class="kc-term" data-kc-define="Helmet 是一款软件的名字，直译‘头盔’。它是给 Express 服务器加一整套安全相关的响应头（header）的工具，帮你挡掉一批常见的网页攻击手法。国内工程师就直接说 Helmet。">Helmet</span>的<span class="kc-term" data-kc-define="middleware 直译 middle（中间）加 ware（东西），字面是‘夹在中间的那层东西’。这里指请求真正到达某条路由之前，会依次经过的一串检查函数，每一个都能选择放行或者直接拦下来。国内工程师叫中间件，口语里也直接说 middleware。">中间件</span>。</p>
@@ -536,6 +554,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第二关：一小时最多发十条</h3>
     <p>过了 Helmet 这一关，POST 请求还要过一道专门为 <code class="kc-code" data-kc-lang="en">/api/messages</code> 设的中间件，防的是同一个人（更准确地说，同一个 IP）在短时间里疯狂刷屏。</p>
     <div class="kc-code-pair">
@@ -569,6 +588,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第三关：证明你是人，不是脚本</h3>
     <p>光靠限流还不够——一个脚本完全可以每 11 秒发一条，慢慢刷屏。所以真正发消息之前，页面会先问服务器要一道随机的加法题。</p>
     <div class="kc-code-pair">
@@ -594,6 +614,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">第四关：前端画页面的时候也要挡一次</h3>
     <p>就算前面几关都被绕过、一条带着恶意代码的留言真的存进了数据库，app.js 在把它画到页面上时，还留了最后一道防线。</p>
     <div class="kc-code-pair">
@@ -622,6 +643,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">找 bug：这段代码被人悄悄改坏了</h3>
     <p>下面这段 validateMessageClient 是 app.js 里客户端那道校验，跟服务器端的检查是两道独立的关卡。它现在被人改坏了一处，点一下你觉得有问题的那一行。</p>
     <div class="kc-bughunt">
@@ -640,6 +662,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">小结</h3>
     <p>四道关卡从外到里排好队：Helmet 挡跨站脚本和乱七八糟的资源加载，限流挡疯狂刷屏，人类验证加蜜罐挡自动脚本，最后 textContent 在画面上再兜底一次。哪怕前面全部失守，最后一道也不会让恶意代码真的跑起来。</p>
 
@@ -681,6 +704,7 @@
   <p class="kc-module__subtitle">你在 /admin 页面填错了管理员令牌，点了 Delete，屏幕右下角弹出一行红字："Unauthorized admin token."。这一模块拆开这行字背后的机制，教你看到报错之后，第一反应该往哪个文件里翻。</p>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">同一句"出错了"，其实分好几种</h3>
     <p>自助取件柜上贴的提示语通常分好几种：取件码打错了、格子本来就是空的、机器本身坏了——三件完全不同的事，处理方式也完全不一样。SIGNAL LOG 的报错也是这个道理，全部用一个统一的<span class="kc-term" data-kc-define="状态码是服务器在每次回应里附带的一个数字，用来说明这次请求到底处理得怎么样。数字的头一位大致分类：2 开头是成功，4 开头是‘你发来的请求本身有问题’，5 开头是‘服务器自己出了故障’。国内工程师聊起来直接说‘状态码’或者读数字，比如‘404 了’。">状态码</span>加一句文字来表达，但意思天差地别。</p>
     <div class="kc-note" data-kc-tone="insight">
@@ -691,6 +715,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">同一个把关函数，两种完全不同的报错</h3>
     <p>DELETE 一条留言之前，请求要先过 adminGuard 这道关卡。它短短几行，却给出了两种意思完全不同的拒绝。</p>
     <div class="kc-code-pair">
@@ -718,6 +743,7 @@
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">路走错了，或者哪儿都没接住</h3>
     <p>如果请求压根不属于任何一条已知路由呢？比如你手滑把网址打成了 <code class="kc-code" data-kc-lang="en">/api/message</code>，少了一个 s。server.js 末尾留了两道兜底。</p>
     <div class="kc-code-pair">
@@ -738,6 +764,7 @@ app.use((err, _req, res, _next) => {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">前端怎么把这句报错捞出来，显示给你看</h3>
     <p>服务器回的那句 <code class="kc-code" data-kc-lang="en">{ "error": "..." }</code>，最终要变成你在页面上看见的那个红色提示，中间要经过 app.js 里一个统一的请求函数。</p>
     <div class="kc-code-pair">
@@ -766,6 +793,7 @@ app.use((err, _req, res, _next) => {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">找 bug：这个清理函数被人悄悄改坏了</h3>
     <p>normalizeText 是全项目用得最频繁的一个小函数，留言、呼号、来源、搜索词全靠它清理。它现在被改坏了一处，点一下你觉得有问题的那一行。</p>
     <div class="kc-bughunt">
@@ -782,6 +810,7 @@ app.use((err, _req, res, _next) => {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">小结</h3>
     <p>看到报错先做三件事：看状态码是 4 开头还是 5 开头，判断该改自己还是该查后端；看报错文字，它十有八九能在 server.js 里用文字原样搜到，直接定位到是哪一句 jsonError；最后看浏览器控制台，确认前端有没有把这句话正确地捞出来显示。</p>
 
@@ -816,6 +845,7 @@ app.use((err, _req, res, _next) => {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">让 AI 帮你跑起来时，你可以这样说</h3>
     <p>五个模块走到这里，你已经知道这个项目由谁负责什么、数据怎么流动、都在防着谁、报错该去哪查。接下来是三句你可以直接抄给 AI 的话，中文在上，英文在下——英文是你将来在真实的终端和聊天窗口里会用到的原话。</p>
     <div class="kc-cards">
@@ -838,6 +868,7 @@ app.use((err, _req, res, _next) => {
   </section>
 
   <section class="kc-screen">
+    <button class="kc-feedback" type="button"></button>
     <h3 class="kc-screen__title">你最可能撞上的报错</h3>
     <p>下面几条都是这个项目自己代码里写死的报错原文，一字不差——遇到的时候直接把整行拿去问 AI 就行。</p>
     <div class="kc-deflist">
@@ -862,6 +893,14 @@ app.use((err, _req, res, _next) => {
 </section>
 
 </main>
+<section class="kc-feedback-export">
+<p class="kc-feedback-export__count"></p>
+<div class="kc-feedback-export__actions">
+<button class="kc-feedback-export__button" type="button">导出反馈</button>
+<button class="kc-feedback-export__clear" type="button">清空</button>
+</div>
+<textarea class="kc-feedback-export__fallback" readonly></textarea>
+</section>
 <footer class="kc-colophon">本课程由 开箱（repo-unbox）从代码库生成 · 完全离线，不联网</footer>
 <script src="main.js"></script>
 </body>
