@@ -110,7 +110,8 @@ description: "开箱任意代码库，生成中文交互课程——讲给零编
 - **纯前端项目**（没有后端，双击 `index.html` 就能跑）→ 用 `<iframe>` 嵌进来。
   **`src` 必须是课程目录内的相对路径**，把项目复制到 `course-name/demo/` 下面。
   构建脚本不替你复制，你自己复制——嵌一个外网地址就破坏了"零外部请求"。
-- **有后端的项目** → 放一张**真实跑起来的截图**（放进 `course-name/`，用相对路径引），
+- **有后端的项目** → 放一张**真实跑起来的截图**（图片放进 `course-name/` 根下，
+  用 `kc-figure` 元素引，`src` 只写文件名，**不要写 `../`**），
   加一句"先去把它跑起来，玩五分钟再回来"，并给出确切的启动命令。
 - **截图做不出来**（跑不起来、装不上依赖）→ 用一段"界面速写"代替：
   文字描述屏幕上有什么、能点什么，加上启动命令。
@@ -276,6 +277,8 @@ node <SKILL_DIR>/scripts/build.mjs course-name --source <代码库路径>
 脚本会把 `styles.css`、`main.js`、`_footer.html`、`fonts/` 复制进课程目录，
 按文件名顺序拼出 `index.html`，补上漏掉的 `lang="en"`，然后跑校验。
 **校验不过就退出非零**——那意味着课程是坏的，不是脚本挑剔。改模块 HTML，重跑。
+每条失败都带一个编号（`C17` 这样），**去 `references/CHECKS.md` 按编号查那一项在说什么。
+不要打开 `scripts/` 下的任何脚本**——清单那一页就是全部内容。
 
 有三个数值得看：
 - **`output tasks: N across M modules`** —— 每个模块都得有，少了会直接校验失败
@@ -349,5 +352,9 @@ node <SKILL_DIR>/scripts/build.mjs course-name --source <代码库路径>
   **只读你这个模块用到的那几个。**
 - **`references/metaphor-fallback.md`** —— 中国日常场景的比喻兜底表。
   **只有当项目题材接不上某个概念时才读它**——读了就会用，一整门课的比喻会全变成通用款。
+- **`references/CHECKS.md`** —— **校验清单，55 项，每项一行人话。**
+  写模块之前扫一眼，构建失败之后按报错里的编号回来查。
+  **不要去读 `scripts/validate.mjs` 或 `scripts/build.mjs`**——那是这份清单的实现，
+  四百多行，读完你得到的还是这一页的内容，代价是把上下文塞满。
 - **`references/gotchas.md`** —— 常见翻车点清单。Phase 3 和 Phase 4 读。
 - **`references/module-brief-template.md`** —— Phase 2.5 的 brief 模板，只有复杂代码库用得上。

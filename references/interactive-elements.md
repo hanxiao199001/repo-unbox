@@ -58,6 +58,7 @@
 | `elements/tree.md` | 文件树 `kc-tree` | **目录结构本身就是知识**的项目：按功能分目录、约定优于配置 |
 | `elements/rolelist.md` | 角色行 `kc-rolelist` | **开场介绍"这个项目由谁组成"**：三到五个文件，一行一个 |
 | `elements/deflist.md` | 代号表 `kc-deflist` | **成组的代号**：HTTP 状态码、配置键、环境变量、课末的报错原文清单 |
+| `elements/figure.md` | 图示 `kc-figure` | **任何一张图**：项目跑起来的截图、示意图。`<img>` 不许带内联 style，校验会卡 |
 
 ## 容易选错的三对
 

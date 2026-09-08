@@ -271,6 +271,11 @@ const MUTATIONS = [
   ['every module declares data-kc-metaphor', (h) => h.replace(/ data-kc-metaphor="快递驿站"/, '')],
   ['no metaphor used twice in one course', (h) => h.replace('白板与档案柜', '快递驿站')],
   ['every screen has a feedback button', (h) => h.replace('<button class="kc-feedback" type="button"></button>', '')],
+  // 图片：src 借用 styles.css，好让 C10「本地文件存在」不跟着一起红
+  ['no inline style on <img>', (h) => h.replace('<div class="kc-map">',
+    '<figure class="kc-figure"><img class="kc-figure__image" src="styles.css" alt="一张图" style="width:50%"><figcaption class="kc-figure__caption">说明。</figcaption></figure><div class="kc-map">')],
+  ['every picture is a kc-figure with alt and a caption', (h) => h.replace('<div class="kc-map">',
+    '<img src="styles.css" alt="裸的图，没有包在 kc-figure 里"><div class="kc-map">')],
   // 固定五段结构
   ['the course has 5-7 modules', (h) => h.replace(/<section class="kc-module" id="kc-m5"[\s\S]*?(?=<section class="kc-feedback-export")/, '')],
   ['模块 0「这是什么项目」has exactly 3 screens', (h) => {
@@ -321,6 +326,23 @@ function line (ok, msg) {
   if (ok) pass += 1; else fail += 1;
 }
 
+// ── 0. CHECKS.md and validate.mjs agree on the list ──────────
+// references/CHECKS.md is what the writing agent reads instead of this script.
+// A row that drifts out of sync is worse than no row at all — it sends the
+// agent looking for a check that no longer exists, or hides one that does.
+{
+  const src = fs.readFileSync(path.join(ROOT, 'scripts', 'validate.mjs'), 'utf8');
+  const inCode = new Set([...src.matchAll(/'(C\d{2})'/g)].map((m) => m[1]));
+  const doc = fs.readFileSync(path.join(ROOT, 'references', 'CHECKS.md'), 'utf8');
+  const inDoc = new Set([...doc.matchAll(/^\| (C\d{2})/gm)].map((m) => m[1]));
+  const missing = [...inCode].filter((id) => !inDoc.has(id)).sort();
+  const extra = [...inDoc].filter((id) => !inCode.has(id)).sort();
+  line(missing.length === 0 && extra.length === 0,
+    `CHECKS.md 与 validate.mjs 的编号一一对应（${inCode.size} 项）` +
+    (missing.length ? ` — CHECKS.md 缺: ${missing.join(', ')}` : '') +
+    (extra.length ? ` — CHECKS.md 多出: ${extra.join(', ')}` : ''));
+}
+
 // ── 1. the clean course passes everything ────────────────────
 const baseDir = path.join(work, 'clean');
 buildCourse(baseDir);
@@ -338,7 +360,7 @@ for (const [name, mutate] of MUTATIONS) {
   if (after === before) { line(false, `${name} — 变异没有改动任何内容，这条测了等于没测`); continue; }
   fs.writeFileSync(path.join(dir, 'index.html'), after);
   const { errors } = run(dir);
-  line(errors.some((e) => e.startsWith(name)), `${name} —— 破坏之后被抓到` +
+  line(errors.some((e) => e.includes(name)), `${name} —— 破坏之后被抓到` +
     (errors.some((e) => e.startsWith(name)) ? '' : `（实际报的是：${errors.join(' | ') || '什么都没报'}）`));
 }
 
@@ -347,7 +369,7 @@ for (const [name, mutate] of FS_MUTATIONS) {
   buildCourse(dir);
   mutate(dir);
   const { errors } = run(dir);
-  line(errors.some((e) => e.startsWith(name)), `${name} —— 破坏之后被抓到` +
+  line(errors.some((e) => e.includes(name)), `${name} —— 破坏之后被抓到` +
     (errors.some((e) => e.startsWith(name)) ? '' : `（实际报的是：${errors.join(' | ') || '什么都没报'}）`));
 }
 

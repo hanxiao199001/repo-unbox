@@ -3043,6 +3043,79 @@ describe('这里没看懂 kc-feedback', async (tab) => {
   })
 })
 
+// ------------------------------------------------------ 图示 kc-figure
+
+describe('图示 kc-figure', async (tab) => {
+  const url = fixture('figure', `<main class="kc-course"><section class="kc-screen">
+  <figure class="kc-figure" id="fig-ok">
+    <img class="kc-figure__image" src="${pathToFileURL(join(REF, 'fonts', 'LICENSE-JetBrainsMono-OFL.txt')).href}"
+         alt="SIGNAL LOG 主页：左侧是发射表单，右侧是三条已提交的留言">
+    <figcaption class="kc-figure__caption">这是它在本机真实跑起来之后截的。</figcaption>
+  </figure>
+  <figure class="kc-figure" id="fig-noalt">
+    <img class="kc-figure__image" src="x.png" alt="">
+    <figcaption class="kc-figure__caption">没有 alt。</figcaption>
+  </figure>
+  <figure class="kc-figure" id="fig-styled">
+    <img class="kc-figure__image" src="x.png" alt="有 alt" style="width:50%">
+    <figcaption class="kc-figure__caption">带了内联 style。</figcaption>
+  </figure>
+  <figure class="kc-figure" id="fig-nocap">
+    <img class="kc-figure__image" src="x.png" alt="有 alt">
+  </figure>
+</section></main>`)
+  await tab.goto(url)
+
+  await it('图不超过版心宽度，说明在图下方，样式全来自样式表', async () => {
+    const r = await tab.eval(`var f=document.getElementById('fig-ok');
+      var i=f.querySelector('.kc-figure__image'), c=f.querySelector('.kc-figure__caption');
+      var fr=f.getBoundingClientRect(), ir=i.getBoundingClientRect(), cr=c.getBoundingClientRect();
+      var s=getComputedStyle(i);
+      return {figW:Math.round(fr.width), imgW:Math.round(ir.width),
+              capBelow:cr.top>=ir.bottom-1, radius:s.borderRadius, border:s.borderTopStyle,
+              inline:i.getAttribute('style'), live:f.classList.contains('kc-is-live'),
+              broken:f.querySelectorAll('.kc-broken').length};`)
+    assert(r.live, '合规的图示应初始化成功')
+    eq(r.broken, 0, '合规的图示不该报错')
+    assert(r.imgW <= r.figW + 1, '图不许超出容器')
+    assert(r.capBelow, '说明要在图下方')
+    assert(parseFloat(r.radius) > 0 && r.border !== 'none', '圆角和描边应当来自样式表')
+    eq(r.inline, null, '合规的图不带内联 style')
+  })
+
+  await it('缺 alt、带内联 style、缺说明，三种都留下可见痕迹', async () => {
+    const r = await tab.eval(`function t(id){return [].map.call(document.querySelectorAll('#'+id+' .kc-broken'),function(b){return b.textContent;});}
+      return {noalt:t('fig-noalt'), styled:t('fig-styled'), nocap:t('fig-nocap')};`)
+    assert(r.noalt.join('').indexOf('alt') >= 0, '缺 alt 要报出来，实际：' + JSON.stringify(r.noalt))
+    assert(r.styled.join('').indexOf('内联 style') >= 0, '内联 style 要报出来，实际：' + JSON.stringify(r.styled))
+    assert(r.nocap.join('').indexOf('说明') >= 0, '缺说明要报出来，实际：' + JSON.stringify(r.nocap))
+  })
+
+  await it('窄屏下图跟着缩，不横向溢出', async () => {
+    await tab.viewport(360, 900)
+    const r = await tab.eval(`var i=document.querySelector('#fig-ok .kc-figure__image').getBoundingClientRect();
+      return {right:Math.round(i.right), cw:document.documentElement.clientWidth,
+              sw:document.documentElement.scrollWidth};`)
+    assert(r.right <= r.cw + 1, '窄屏下图超出了视口')
+    assert(r.sw <= r.cw + 1, '窄屏下出现横向滚动条')
+    await tab.viewport(1100, 800)
+  })
+
+  await it('脚本未运行时图和说明照常显示', async () => {
+    const nojs = fixture('figure-nojs', `<main class="kc-course"><section class="kc-screen">
+      <figure class="kc-figure"><img class="kc-figure__image" src="x.png" alt="一张图">
+      <figcaption class="kc-figure__caption">说明。</figcaption></figure></section></main>`, { nojs: true })
+    await tab.goto(nojs)
+    const r = await tab.eval(`var f=document.querySelector('.kc-figure');
+      return {fig:getComputedStyle(f).display!=='none',
+              cap:document.querySelector('.kc-figure__caption').textContent,
+              broken:document.querySelectorAll('.kc-broken').length};`)
+    assert(r.fig, '无脚本时图示照常显示')
+    eq(r.cap, '说明。')
+    eq(r.broken, 0, '无脚本时不该出现痕迹')
+  })
+})
+
 /* KC_GROUPS_END */
 
 // ---------------------------------------------------------------- 入口
