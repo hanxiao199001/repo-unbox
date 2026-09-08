@@ -1,0 +1,205 @@
+<section class="kc-module" id="kc-m4" data-kc-tone="a" data-kc-metaphor="档案室的检索卡片">
+<p class="kc-module__number">04</p>
+<h2 class="kc-module__title">找回讯号</h2>
+<p class="kc-module__subtitle">讯号已经存进去了，接下来看看怎么把它翻出来，以及管理员怎么把它撕掉</p>
+
+<section class="kc-screen">
+<h3 class="kc-screen__title">档案室怎么按关键词翻资料</h3>
+
+<p>主页左下角有一排筛选按钮：ALL、EARTH、UNKNOWN、CUSTOM，右边还有一个搜索框。你点一下 EARTH，列表立刻只显示来源是 Earth 的留言——这背后其实是浏览器和服务器又走了一遍“问答”，只是这次问的是“把符合条件的记录翻出来给我看”，而不是“帮我存一条新的”。</p>
+
+<div class="kc-code-pair">
+<div class="kc-code-pair__code">
+<p class="kc-code-pair__source">public/app.js:116-121</p>
+<pre data-kc-lang="en">function originFilterValue() {
+  if (state.originFilterType === 'earth') return 'earth';
+  if (state.originFilterType === 'unknown') return '__unknown__';
+  if (state.originFilterType === 'custom') return state.customOrigin.trim();
+  return '';
+}</pre>
+</div>
+<div class="kc-code-pair__lines">
+<p class="kc-code-pair__line">四个筛选按钮对应四种返回值：ALL 是空字符串（不筛选），EARTH 是固定的 'earth'，CUSTOM 是你在旁边输入框里打的内容。</p>
+<p class="kc-code-pair__line">UNKNOWN 比较特殊，它返回的不是“unknown”这个词本身，而是一个双下划线包裹的暗号 '__unknown__'——这个暗号是前端和后端私下约定好的，服务器那边看到这个特定字符串，就知道要执行一套专门的“查找没有来源的留言”的逻辑，而不是当成一个普通的关键词去匹配。</p>
+</div>
+</div>
+
+<div class="kc-code-pair">
+<div class="kc-code-pair__code">
+<p class="kc-code-pair__source">db.js:69-75</p>
+<pre data-kc-lang="en">const listMessagesStmtFactory = ({ hasQuery, hasOrigin, unknownOriginOnly }) => {
+  let sql = `
+    SELECT id, created_at, callsign, origin, message, strength
+    FROM messages
+    WHERE 1=1
+  `;
+  if (hasQuery) sql += ` AND message LIKE @q`;</pre>
+</div>
+<div class="kc-code-pair__lines">
+<p class="kc-code-pair__line">这是一个“现场拼 SQL 语句”的写法：先搭一个 WHERE 1=1 的空壳（这句恒成立，方便后面用 AND 往上叠条件，不用纠结第一个条件前要不要写 WHERE），再根据实际传进来的筛选条件，一段一段往后拼。</p>
+<p class="kc-code-pair__line"><span class="kc-term" data-kc-define="LIKE 是 SQL（数据库查询语言）里表示“模糊匹配”的关键字，配合 % 通配符使用，比如 LIKE '%orbit%' 表示“只要包含 orbit 这几个字就算命中”，不要求完全一样。国内工程师直接说 LIKE 查询或者模糊查询。">LIKE</span> 就是数据库里的“模糊匹配”，你在搜索框里打的关键词，就是通过这个拼进 SQL 里去匹配留言正文的。</p>
+</div>
+</div>
+
+<p>现在来做第二次找 bug 练习：下面这段代码取自 db.js 里真正决定“怎么处理 UNKNOWN 筛选”的部分，同样被人悄悄改坏了一处。</p>
+
+<div class="kc-bughunt">
+<p class="kc-bughunt__lead">这段代码被人悄悄改坏了，点一下你觉得有问题的那一行。</p>
+<div class="kc-bughunt__code" data-kc-lang="en">
+<button class="kc-bughunt__line" data-kc-hint="这一行只是定义函数和它接收的四个参数，本身没有问题。"><span class="kc-bughunt__lineno">120</span>export function listMessages({ limit, offset, query, origin }) {</button>
+<button class="kc-bughunt__line" data-kc-bug data-kc-explain="这里把 '__unknown__' 写成了 'unknown'。它必须和 app.js 里 originFilterValue() 返回的暗号一字不差，改错之后不会报任何错——请求照样发出去、服务器照样回一个 200，只是这个条件永远匹配不上，UNKNOWN 筛选按钮从此变成摆设，点了也是白点。这类靠一个字符串在两个文件之间手动保持一致的写法很脆弱，一旦有人改动其中一处忘了改另一处，就是这种“不报错、但也不工作”的静默失效。"><span class="kc-bughunt__lineno">121</span>  const unknownOriginOnly = origin === 'unknown';</button>
+<button class="kc-bughunt__line" data-kc-hint="这一行只是判断有没有搜索关键字，跟来源筛选是两件事，本身没有问题。"><span class="kc-bughunt__lineno">122</span>  const hasQuery = Boolean(query);</button>
+<button class="kc-bughunt__line" data-kc-hint="这一行依赖上一行算出的 unknownOriginOnly，如果上一行错了它会跟着受影响，但这一行自己的写法没有问题。"><span class="kc-bughunt__lineno">123</span>  const hasOrigin = Boolean(origin) && !unknownOriginOnly;</button>
+<button class="kc-bughunt__line" data-kc-hint="这一行只是开始搭一个用来装参数的对象，本身没有问题。"><span class="kc-bughunt__lineno">124</span>  const params = {</button>
+<button class="kc-bughunt__line" data-kc-hint="这一行是往参数对象里塞一个字段名，没有问题。"><span class="kc-bughunt__lineno">125</span>    limit,</button>
+<button class="kc-bughunt__line" data-kc-hint="同上，塞另一个字段名，没有问题。"><span class="kc-bughunt__lineno">126</span>    offset</button>
+<button class="kc-bughunt__line" data-kc-hint="只是收尾的大括号，没有问题。"><span class="kc-bughunt__lineno">127</span>  };</button>
+</div>
+<div class="kc-bughunt__feedback"></div>
+</div>
+
+</section>
+
+<section class="kc-screen">
+<h3 class="kc-screen__title">翻页是怎么回事</h3>
+
+<p>点“Load more”按钮加载更多留言，走的也是同一个接口，只是换了几个参数。</p>
+
+<div class="kc-code-pair">
+<div class="kc-code-pair__code">
+<p class="kc-code-pair__source">server.js:148-156</p>
+<pre data-kc-lang="en">app.get('/api/messages', (req, res) => {
+  const limit = Math.max(1, Math.min(50, Number.parseInt(req.query.limit, 10) || 50));
+  const offset = Math.max(0, Number.parseInt(req.query.offset, 10) || 0);
+  const query = normalizeText(req.query.q, 100);
+  const origin = normalizeText(req.query.origin, 64);
+
+  const result = listMessages({ limit, offset, query, origin });
+  return res.json(result);
+});</pre>
+</div>
+<div class="kc-code-pair__lines">
+<p class="kc-code-pair__line">limit 是“一次要几条”，offset 是“从第几条之后开始数”——这就是<span class="kc-term" data-kc-define="pagination（分页）指把很长的一份数据切成一页一页地给，而不是一次性把几千条全塞给你。offset 表示跳过前面多少条，limit 表示这一页要几条。国内工程师直接说分页或者 pagination。">分页（pagination）</span>最基础的两个参数。不管是第一页还是点了三次“Load more”之后的第四页，走的都是这同一个接口，只是每次带的 offset 不一样。</p>
+<p class="kc-code-pair__line">limit 被 Math.min(50, ...) 死死摁住不能超过 50——就算你在网址里手动改成 limit=10000 也没用，服务器根本不会理你，这是防止有人一次性拖走整个数据库的一道小保险。</p>
+</div>
+</div>
+
+<div class="kc-code-pair">
+<div class="kc-code-pair__code">
+<p class="kc-code-pair__source">public/app.js:143-151</p>
+<pre data-kc-lang="en">  const qs = new URLSearchParams({
+    limit: String(state.limit),
+    offset: String(state.offset),
+    q: state.query,
+    origin: originFilterValue()
+  });
+
+  try {
+    const data = await apiFetch(`/api/messages?${qs.toString()}`);</pre>
+</div>
+<div class="kc-code-pair__lines">
+<p class="kc-code-pair__line"><span class="kc-term" data-kc-define="URLSearchParams 是浏览器自带的一个小工具，专门用来把一堆键值对拼成网址后面 ?a=1&amp;b=2 这种查询字符串的格式，省得自己手动拼字符串、处理特殊字符转义。国内工程师直接说 URLSearchParams。">URLSearchParams</span> 把 limit、offset、q、origin 这四个值，自动拼成一段合法的网址参数，你不用自己操心中间要不要加 & 符号、特殊字符要不要转义。</p>
+<p class="kc-code-pair__line">state.offset 会在每次成功加载后自动更新成“已经拿到几条”，所以点第二次“Load more”时，offset 传的就不再是 0，而是已加载的条数。</p>
+</div>
+</div>
+
+</section>
+
+<section class="kc-screen">
+<h3 class="kc-screen__title">只有管理员能撕掉这一页</h3>
+
+<p>普通用户点“Report”只是留个举报记录，留言本身还在；只有在 /admin 页面、填对了管理员口令，才能真的把一条留言从数据库里删掉。这条路线又要经过模块 00 里认过的那道 header 检查。</p>
+
+<div class="kc-code-pair">
+<div class="kc-code-pair__code">
+<p class="kc-code-pair__source">server.js:226-235</p>
+<pre data-kc-lang="en">app.delete('/api/messages/:id', adminGuard, (req, res) => {
+  const id = Number.parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id &lt;= 0) {
+    return jsonError(res, 400, 'Invalid message id.');
+  }
+
+  const removed = deleteMessage(id);
+  if (!removed) {
+    return jsonError(res, 404, 'Message not found.');
+  }</pre>
+</div>
+<div class="kc-code-pair__lines">
+<p class="kc-code-pair__line">这条<span class="kc-term" data-kc-define="DELETE 是 HTTP 请求的一种方式，意思是“我要删掉这个东西”，对应 GET（查看）、POST（新建）。国内工程师直接说 DELETE 接口。">DELETE</span> 接口前面挂着 adminGuard 这个中间件——回想模块 00 认过的那段代码：请求得先带对 x-admin-token 这个 header，才轮到这里真正执行删除。</p>
+<p class="kc-code-pair__line">id 要先检查是不是一个正常的正整数，数据库里如果根本没有这条记录（比如已经被删过一次），deleteMessage 会返回 false，这里会报 404 而不是假装成功。</p>
+</div>
+</div>
+
+<div class="kc-code-pair">
+<div class="kc-code-pair__code">
+<p class="kc-code-pair__source">public/app.js:263-273</p>
+<pre data-kc-lang="en">    try {
+      await apiFetch(`/api/messages/${id}`, {
+        method: 'DELETE',
+        headers: {
+          'x-admin-token': state.adminToken
+        }
+      });
+      state.items = state.items.filter((x) => x.id !== id);
+      state.total = Math.max(0, state.total - 1);
+      renderItems(true);
+      showToast('Transmission deleted.');</pre>
+</div>
+<div class="kc-code-pair__lines">
+<p class="kc-code-pair__line">管理员在页面上填的口令，存在 state.adminToken 里，删除的时候被塞进 x-admin-token 这个 header 一起发出去，跟服务器存的 ADMIN_TOKEN 比对。</p>
+<p class="kc-code-pair__line">服务器确认删除成功之后，前端并没有重新问一遍全部列表，而是直接把这一条从本地的 state.items 里过滤掉，手动把总数减一——这是一种小优化，省了一次网络请求，代价是前端要自己保证这里的账算对。</p>
+</div>
+</div>
+
+<div class="kc-quiz" id="kc-quiz-m4">
+<div class="kc-quiz__question" data-kc-answer="a"
+     data-kc-right="对。'__unknown__' 是前端 originFilterValue 和后端 db.js 私下约定的暗号，两边必须写得一模一样，这种约定在代码里没有任何强制检查，全靠人自己记住。"
+     data-kc-wrong="再想想：这个值不是用户能在界面上直接输入的东西，它是代码内部两个文件之间悄悄传递的一个约定信号。">
+  <p class="kc-quiz__prompt">'__unknown__' 这个字符串，本质上是什么？</p>
+  <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>前端和后端私下约定的一个暗号，两边必须写得完全一致</button>
+  <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>用户在自定义来源输入框里会打出来的普通文字</button>
+  <div class="kc-quiz__feedback"></div>
+</div>
+
+<div class="kc-quiz__question" data-kc-answer="c"
+     data-kc-right="对。limit 被 Math.min(50, ...) 摁住了上限，就算网址里手动改成更大的数字，服务器也不会超过 50 条一次性给出去。"
+     data-kc-wrong="再看一眼 server.js 里那一行 Math.max(1, Math.min(50, ...))——不管你传多大的数字，它都会被摁在某个上限以内。">
+  <p class="kc-quiz__prompt">如果有人在网址里把 limit 手动改成 5000，服务器会一次性返回 5000 条吗？</p>
+  <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>会，limit 传多少就返回多少</button>
+  <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>会报错拒绝这个请求</button>
+  <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>不会，服务器会把它摁在 50 条以内</button>
+  <div class="kc-quiz__feedback"></div>
+</div>
+
+<div class="kc-quiz__question" data-kc-answer="b"
+     data-kc-right="对。adminGuard 会先检查 x-admin-token 这个 header，没有它或者对不上，请求根本到不了真正执行删除的那几行代码。"
+     data-kc-wrong="再回想模块 00 认过的那段 adminGuard 代码：请求要先经过它的检查，才轮到 app.delete 后面真正的处理函数。">
+  <p class="kc-quiz__prompt">没有带对 x-admin-token 这个 header，直接请求 DELETE /api/messages/1，会发生什么？</p>
+  <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>照样能删除，header 只是用来记录谁删的</button>
+  <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>会被 adminGuard 拦下，根本到不了删除逻辑</button>
+  <div class="kc-quiz__feedback"></div>
+</div>
+
+<div class="kc-quiz__actions">
+<button class="kc-quiz__check">看看答案</button>
+<button class="kc-quiz__reset">再来一次</button>
+</div>
+</div>
+
+<div class="kc-output" id="kc-output-m4" data-kc-kind="retell" data-kc-min="80">
+<span class="kc-output__label"></span>
+<p class="kc-output__prompt">用你自己的话说一遍：你在主页点了 EARTH 筛选按钮之后，这个请求经过了哪些文件、最后是靠什么条件筛出结果的？</p>
+<textarea class="kc-output__input"></textarea>
+<p class="kc-output__meter"></p>
+<button class="kc-output__reveal">我说完了，看对照清单</button>
+<ul class="kc-output__checklist">
+<li class="kc-output__item">提到了 app.js 里 originFilterValue 决定了这次传给服务器的值</li>
+<li class="kc-output__item">提到了请求走的是 GET /api/messages 这条路</li>
+<li class="kc-output__item">说清楚了真正拼 SQL、执行查询的是 db.js</li>
+<li class="kc-output__item">没有把这个过程和“发一条新讯号”的流程搞混</li>
+</ul>
+</div>
+
+</section>
+
+</section>

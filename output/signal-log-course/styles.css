@@ -1795,3 +1795,26 @@
   }
   .kc-feedback.kc-is-marked::before { content: '✓'; }
 }
+
+/* ---------------------------------------- 图示 kc-figure (20) */
+@layer elements {
+  .kc-figure {
+    margin: var(--kc-s6) 0;
+    max-width: calc(var(--kc-measure) + 12em);
+  }
+  .kc-figure__image {
+    display: block;
+    width: 100%;
+    height: auto;
+    border: 1px solid var(--kc-rule);
+    border-radius: var(--kc-r3);
+    box-shadow: var(--kc-shadow-2);
+    background: var(--kc-paper-a);
+  }
+  .kc-figure__caption {
+    margin-block-start: var(--kc-s3);
+    font-size: var(--kc-fs-small);
+    line-height: var(--kc-lh-small);
+    color: var(--kc-ink-faint);
+  }
+}

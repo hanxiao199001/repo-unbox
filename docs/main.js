@@ -1661,6 +1661,24 @@
     live(root);
   }
 
+  /* --------------------------------------------------- 图示 kc-figure (20) */
+  /* 无交互，只做数据体检：一张没有 alt 的截图，对看不见它的人等于不存在。 */
+
+  register('图示', '.kc-figure', function (root) {
+    var img = qs('.kc-figure__image', root) || qs('img', root);
+    if (!img) { broken(root, '图示里没有图片（kc-figure__image）'); return; }
+    if (!img.getAttribute('src')) broken(root, '图片没有 src');
+    if (!(img.getAttribute('alt') || '').trim()) {
+      broken(root, '图片没有 alt；alt 要描述图里有什么，看不见图的人只能靠它');
+    }
+    if (img.getAttribute('style')) {
+      broken(root, '图片带了内联 style；样式全在 styles.css 里，内联会让一门课里的图各长各的样');
+    }
+    var cap = qs('.kc-figure__caption', root);
+    if (!cap || !cap.textContent.trim()) broken(root, '图示缺一行说明（kc-figure__caption）');
+    live(root);
+  });
+
   /* KC_MODULES_END */
 
   /* ----------------------------------------------------------------- boot */

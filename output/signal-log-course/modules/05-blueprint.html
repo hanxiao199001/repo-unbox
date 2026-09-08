@@ -1,0 +1,152 @@
+<section class="kc-module" id="kc-m5" data-kc-tone="b" data-kc-metaphor="搭一座新电台的施工顺序">
+<p class="kc-module__number">05</p>
+<h2 class="kc-module__title">做一个类似的</h2>
+<p class="kc-module__subtitle">假设你现在要做一个同类项目，按顺序告诉 AI 先做什么、后做什么</p>
+
+<section class="kc-screen">
+<h3 class="kc-screen__title">施工顺序，不是功能清单</h3>
+
+<p>走完前面五个模块，你已经知道 SIGNAL LOG 分几块、每块管什么、一条留言从表单到数据库要闯几道关。现在把这张图倒过来用：假设你要做一个同类的增删改查项目——不管是留言板、待办清单还是读书笔记本，骨架都差不多——下面这五步就是你该让 AI 按顺序去做的施工顺序。<strong>顺序比清单本身更值钱</strong>：颠倒过来做，大概率要推倒重来。</p>
+
+<div class="kc-steps">
+<div class="kc-steps__item">
+<span class="kc-steps__num">1</span>
+<p class="kc-steps__title">先搭数据结构</p>
+<p class="kc-steps__body">在 db.js 里定义你的数据表和存取函数，参照 SIGNAL LOG 的 messages 表。对 AI 说：<code class="kc-code" data-kc-lang="en">Add a SQLite table for todos in db.js, with create/list/delete functions, following the same pattern as messages in this project.</code> 为什么先做这一步：界面要显示什么、字段叫什么，全都由数据结构决定，数据的形状没定好，后面写接口和页面都是在瞎猜。</p>
+</div>
+<div class="kc-steps__item">
+<span class="kc-steps__num">2</span>
+<p class="kc-steps__title">写最基本的增和查接口</p>
+<p class="kc-steps__body">在 server.js 里加两条路由，先不加任何校验。对 AI 说：<code class="kc-code" data-kc-lang="en">Add POST and GET routes in server.js that call those db.js functions, no validation yet, just get the data flowing end to end.</code> 为什么先做这一步：先跑通一条最简单的路，确认数据真的能存进去、读出来，比一上来就把所有校验都写全更快发现问题。</p>
+</div>
+<div class="kc-steps__item">
+<span class="kc-steps__num">3</span>
+<p class="kc-steps__title">把前端表单和列表接上</p>
+<p class="kc-steps__body">在 public 目录里做一个表单和一个列表，用 fetch 调刚才那两个接口。对 AI 说：<code class="kc-code" data-kc-lang="en">Wire up a form and a list in index.html and app.js that call those two endpoints with fetch, similar to how transmission-form and log-feed work here.</code> 为什么先做这一步：有了真的跑得通的接口，你才知道前端具体要传哪些字段、该显示哪些字段，不用凭空猜。</p>
+</div>
+<div class="kc-steps__item">
+<span class="kc-steps__num">4</span>
+<p class="kc-steps__title">补上校验和防刷</p>
+<p class="kc-steps__body">照着 SIGNAL LOG 的三道关卡，加服务器端校验和频率限制。对 AI 说：<code class="kc-code" data-kc-lang="en">Add server-side validation and a rate-limiting middleware like enforcePostRateLimit in this project, plus a honeypot field on the form.</code> 为什么放在这一步：功能先跑通，你才知道真实数据长什么样、容易在哪里出问题；一上来就写校验，很容易堵住一些其实不会发生的情况，也可能漏掉真正的坑。</p>
+</div>
+<div class="kc-steps__item">
+<span class="kc-steps__num">5</span>
+<p class="kc-steps__title">最后加管理员能力</p>
+<p class="kc-steps__body">加一个用口令保护的删除接口和一个管理页面。对 AI 说：<code class="kc-code" data-kc-lang="en">Add an admin-token-protected DELETE route and a simple /admin page, following the adminGuard pattern in this project.</code> 为什么放在最后：管理功能是建立在“数据结构和接口已经稳定”这个前提上的，前面四步没做完就加管理后台，大概率要跟着前面的改动来回返工。</p>
+</div>
+</div>
+
+<p>第一步说的“参照 messages 表的样子”，具体指的就是这几行——这也是全课最后一次出现代码，贴在这里方便你复刻时直接对着抄结构：</p>
+
+<div class="kc-code-pair">
+<div class="kc-code-pair__code">
+<p class="kc-code-pair__source">db.js:6-14</p>
+<pre data-kc-lang="en">db.exec(`
+  CREATE TABLE IF NOT EXISTS messages (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    created_at TEXT NOT NULL,
+    callsign TEXT,
+    origin TEXT,
+    message TEXT NOT NULL,
+    strength INTEGER NOT NULL
+  );</pre>
+</div>
+<div class="kc-code-pair__lines">
+<p class="kc-code-pair__line">id 是每条记录自动递增的编号，created_at 记时间，剩下三个字段是这个项目特有的业务内容，NOT NULL 表示这几列不许留空。</p>
+<p class="kc-code-pair__line">你做“读书笔记本”，对应的表可能是 id、created_at、title（书名）、note（笔记内容）——字段名换掉，NOT NULL 和自增 id 这两个套路照抄就行。</p>
+</div>
+</div>
+
+</section>
+
+<section class="kc-screen">
+<h3 class="kc-screen__title">你最可能撞上的报错</h3>
+
+<p>下面四条报错都是我在本机真实跑这个项目时跑出来的，不是编的。遇到的时候，先看清楚是哪一条，再决定该对 AI 说什么。</p>
+
+<div class="kc-deflist">
+<div class="kc-deflist__row">
+<code class="kc-deflist__key" data-kc-lang="en">Error: listen EADDRINUSE: address already in use :::3000</code>
+<p class="kc-deflist__value">3000 端口已经被占了，通常是你上一次启动的服务还在后台跑着，没关掉就又启动了一次。对 AI 说：“Kill whatever is running on port 3000, or change the app to read the port from an environment variable so I can use a different one.”</p>
+</div>
+<div class="kc-deflist__row">
+<code class="kc-deflist__key" data-kc-lang="en">Admin token is not configured on server.</code>
+<p class="kc-deflist__value">你调用删除接口时，服务器发现 ADMIN_TOKEN 这个环境变量是空的。容易踩的坑是：这个项目<strong>没有引入 dotenv 这类工具包</strong>，只是 cp 了一份 .env 文件，服务器并不会自动读它。对 AI 说：“This project doesn't load .env automatically. Show me how to actually set ADMIN_TOKEN before running node server.js, for example with Node's --env-file flag.”</p>
+</div>
+<div class="kc-deflist__row">
+<code class="kc-deflist__key" data-kc-lang="en">Human check answer is incorrect.</code>
+<p class="kc-deflist__value">人机验证的数学题答错了。这条一般不是代码的问题，是你自己算错了或者页面上的题目已经刷新过一次。对 AI 说的话用不上——重新看一眼题目、填对答案就行，如果一直报错，可以说：“The human-check token might be stale, add a button to refresh it automatically on error.”</p>
+</div>
+<div class="kc-deflist__row">
+<code class="kc-deflist__key" data-kc-lang="en">Rate limit: wait at least 10 seconds between transmissions.</code>
+<p class="kc-deflist__value">你连续点了两次 Transmit，间隔不到 10 秒。这是故意设计的防刷限制，不是 bug。如果你在自己做的项目里想调整这个间隔，可以对 AI 说：“Change minGapMs in server.js from 10 seconds to 5 seconds, and explain the tradeoff of making it shorter.”</p>
+</div>
+</div>
+
+<div class="kc-note" data-kc-tone="info">
+<span class="kc-note__icon">ℹ</span>
+<p class="kc-note__title">报错原文要一字不改地丢给 AI</p>
+<p class="kc-note__body">遇到没见过的报错，最有效的做法不是自己先脑补原因，而是把终端里那一整段红字原样复制粘贴给 AI，包括最上面那一行和最下面的堆栈信息。报错文字里的每一个词都是线索，你觉得“不重要”而手动删掉的那部分，很可能正是 AI 判断原因所需要的。</p>
+</div>
+
+</section>
+
+<section class="kc-screen">
+<h3 class="kc-screen__title">让 AI 帮你跑起来</h3>
+
+<p>把项目跑起来、加一个功能、修一个报错——这三件事你已经在前两屏里各看过至少一个真实例子了。这里再补一条，覆盖“想看懂一个陌生项目”这个最开始的场景，凑成一套你以后打开任何项目都能直接用的起手式：</p>
+
+<p>对 AI 说：<code class="kc-code" data-kc-lang="en">Read through this project and tell me what each file does, and what happens end to end when I submit the form.</code> 拿到一个陌生项目，先用这句话让 AI 帮你梳理一遍角色分工和主线流程，比自己一个文件一个文件地翻要快得多——这其实就是这门课模块 01 和模块 02 到 04 分别在帮你做的事。</p>
+
+<div class="kc-quiz" id="kc-quiz-m5">
+<div class="kc-quiz__question" data-kc-answer="b"
+     data-kc-right="对。数据结构决定了后面接口传什么、页面显示什么，先定下来，后面每一步才有据可依。"
+     data-kc-wrong="再想想复刻蓝图第一步：如果数据结构都没定，接口和页面要传什么字段、显示什么字段，就无从谈起。">
+  <p class="kc-quiz__prompt">照着复刻蓝图，下面哪一步应该最先做？</p>
+  <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>加一个管理员删除页面</button>
+  <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>在 db.js 里先定义数据表和存取函数</button>
+  <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>先写好频率限制中间件</button>
+  <div class="kc-quiz__feedback"></div>
+</div>
+
+<div class="kc-quiz__question" data-kc-answer="a"
+     data-kc-right="对。这个项目没有引入 dotenv，.env 文件不会被自动读取，必须用真正的环境变量方式（比如 --env-file）把值传进去。"
+     data-kc-wrong="再回想“你最可能撞上的报错”那一屏：这条报错专门提到了这个项目缺少某个工具包，导致某个文件不会被自动读取。">
+  <p class="kc-quiz__prompt">复制了 .env.example 改名成 .env，为什么 ADMIN_TOKEN 还是不生效？</p>
+  <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>这个项目没装 dotenv，不会自动读取 .env 文件</button>
+  <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>ADMIN_TOKEN 这个名字打错了</button>
+  <div class="kc-quiz__feedback"></div>
+</div>
+
+<div class="kc-quiz__question" data-kc-answer="c"
+     data-kc-right="对。把报错原文一字不改地复制给 AI，包括看起来“不重要”的堆栈信息，能提供更完整的线索。"
+     data-kc-wrong="再看一眼上面的提示框：它明确建议不要自己先脑补或者删减报错内容。">
+  <p class="kc-quiz__prompt">遇到没见过的报错，比较好的做法是？</p>
+  <button class="kc-quiz__option" data-kc-value="a"><span class="kc-quiz__marker"></span>自己先猜一个原因，再去问 AI 对不对</button>
+  <button class="kc-quiz__option" data-kc-value="b"><span class="kc-quiz__marker"></span>只把看起来关键的第一行发给 AI，其余的太长就不发了</button>
+  <button class="kc-quiz__option" data-kc-value="c"><span class="kc-quiz__marker"></span>把终端里的报错原文一字不改整段发给 AI</button>
+  <div class="kc-quiz__feedback"></div>
+</div>
+
+<div class="kc-quiz__actions">
+<button class="kc-quiz__check">看看答案</button>
+<button class="kc-quiz__reset">再来一次</button>
+</div>
+</div>
+
+<div class="kc-output" id="kc-output-m5" data-kc-kind="instruct" data-kc-min="70">
+<span class="kc-output__label"></span>
+<p class="kc-output__prompt">你想做一个“读书笔记本”项目，同样是增删改查类。参照复刻蓝图第一步和第二步，把你会对 AI 说的完整指令写出来（数据结构 + 最基本的接口这两步都要提到）。</p>
+<textarea class="kc-output__input"></textarea>
+<p class="kc-output__meter"></p>
+<button class="kc-output__reveal">我说完了，看对照清单</button>
+<ul class="kc-output__checklist">
+<li class="kc-output__item">提到了先在 db.js 这一层定义数据表和字段</li>
+<li class="kc-output__item">提到了 server.js 里最基本的新增和查询两个接口</li>
+<li class="kc-output__item">说清楚了先不加校验，等接口跑通了再补</li>
+</ul>
+</div>
+
+</section>
+
+</section>
